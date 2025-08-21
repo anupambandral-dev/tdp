@@ -1,0 +1,5 @@
+{
+  "name": "Tour de Prior Art",
+  "description": "A web application for managing and participating in prior art search challenges. It provides role-based dashboards for managers, trainees, and evaluators to track progress, submit work, and provide feedback.",
+  "requestFramePermissions": []
+}
