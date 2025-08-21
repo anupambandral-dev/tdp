@@ -10,7 +10,7 @@ interface EvaluateSubmissionProps {
 }
 
 interface ChallengeWithSubmissionsAndProfiles extends SubChallenge {
-    submissions: (Submission & { profiles: Profile })[];
+    submissions: (Submission & { profiles: Profile | null })[];
 }
 
 export const EvaluateSubmission: React.FC<EvaluateSubmissionProps> = ({ currentUser }) => {
