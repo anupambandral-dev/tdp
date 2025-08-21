@@ -3,10 +3,10 @@ import { useParams, Link } from 'react-router-dom';
 import { supabase } from '../../supabaseClient';
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
-import { ResultTier, IncorrectMarking, OverallChallenge, SubChallenge, Profile, Submission } from '../../types';
+import { ResultTier, IncorrectMarking, OverallChallenge, SubChallenge, Profile, Submission, PopulatedSubChallenge } from '../../types';
 
 interface PopulatedOverallChallenge extends OverallChallenge {
-    sub_challenges: SubChallenge[];
+    sub_challenges: PopulatedSubChallenge[];
 }
 
 export const ChallengeDetail: React.FC = () => {
