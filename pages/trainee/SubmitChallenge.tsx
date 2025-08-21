@@ -122,7 +122,7 @@ export const SubmitChallenge: React.FC<SubmitChallengeProps> = ({ currentUser })
         submitted_at: new Date().toISOString(),
     };
 
-    const { error } = await supabase.from('submissions').upsert(submissionData, {
+    const { error } = await supabase.from('submissions').upsert(submissionData as any, {
         onConflict: 'sub_challenge_id, trainee_id'
     });
 

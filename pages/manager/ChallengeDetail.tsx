@@ -53,7 +53,7 @@ export const ChallengeDetail: React.FC = () => {
         if (!challenge) return 0;
         let totalScore = 0;
         challenge.sub_challenges.forEach(sc => {
-            const submission = sc.submissions.find(s => s.trainee_id === traineeId);
+            const submission = sc.submissions?.find(s => s.trainee_id === traineeId);
             if (submission?.evaluation) {
                 const rules = sc.evaluation_rules;
                 submission.results.forEach((result: any) => {
@@ -101,7 +101,7 @@ export const ChallengeDetail: React.FC = () => {
                                 <p className="text-sm text-gray-500 dark:text-gray-400">Patent: {sc.patent_number}</p>
                                 <p className="mt-2 text-gray-700 dark:text-gray-300">{sc.summary}</p>
                                 <div className="mt-4 flex justify-between items-center text-sm">
-                                    <p>Submissions: {sc.submissions.length} / {challenge.trainee_ids.length}</p>
+                                    <p>Submissions: {sc.submissions?.length || 0} / {challenge.trainee_ids.length}</p>
                                     <p>End Time: {new Date(sc.submission_end_time).toLocaleString()}</p>
                                 </div>
                             </Card>

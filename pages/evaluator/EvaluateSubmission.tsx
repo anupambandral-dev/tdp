@@ -18,7 +18,7 @@ export const EvaluateSubmission: React.FC<EvaluateSubmissionProps> = ({ currentU
     const [selectedTraineeId, setSelectedTraineeId] = useState<string | null>(null);
     
     const selectedSubmission = useMemo(() => {
-        const sub = challenge?.submissions.find(s => s.trainee_id === selectedTraineeId);
+        const sub = challenge?.submissions?.find(s => s.trainee_id === selectedTraineeId);
         return sub;
     }, [challenge, selectedTraineeId]);
     
@@ -107,7 +107,7 @@ export const EvaluateSubmission: React.FC<EvaluateSubmissionProps> = ({ currentU
 
         const { error } = await supabase
             .from('submissions')
-            .update({ evaluation: newEvaluation })
+            .update({ evaluation: newEvaluation } as any)
             .eq('id', selectedSubmission.id);
 
         if (error) {
@@ -115,13 +115,13 @@ export const EvaluateSubmission: React.FC<EvaluateSubmissionProps> = ({ currentU
         } else {
             alert('Evaluation saved successfully!');
             // After successful submission, find the next unevaluated trainee and select them
-            const currentIndex = challenge.submissions.findIndex(s => s.trainee_id === selectedTraineeId);
-            const nextUnevaluated = challenge.submissions.find((s, index) => index > currentIndex && !s.evaluation);
+            const currentIndex = challenge.submissions?.findIndex(s => s.trainee_id === selectedTraineeId) ?? -1;
+            const nextUnevaluated = challenge.submissions?.find((s, index) => index > currentIndex && !s.evaluation);
 
             if(nextUnevaluated) {
                 setSelectedTraineeId(nextUnevaluated.trainee_id);
                 // Manually refresh challenge data to show this one as evaluated
-                setChallenge(prev => prev ? ({...prev, submissions: prev.submissions.map(s => s.id === selectedSubmission.id ? {...s, evaluation: newEvaluation} : s)}) : null);
+                setChallenge(prev => prev ? ({...prev, submissions: prev.submissions?.map(s => s.id === selectedSubmission.id ? {...s, evaluation: newEvaluation} : s)}) : null);
             } else {
                  navigate('/evaluator');
             }
@@ -140,7 +140,7 @@ export const EvaluateSubmission: React.FC<EvaluateSubmissionProps> = ({ currentU
                     <h2 className="text-xl font-semibold mb-4">Submissions</h2>
                     <Card>
                         <ul className="space-y-2">
-                           {challenge.submissions.map(submission => {
+                           {challenge.submissions?.map(submission => {
                                const trainee = submission.profiles;
                                const isEvaluated = !!submission.evaluation;
                                return (

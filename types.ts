@@ -82,7 +82,7 @@ export interface Submission {
     path: string; // Path in Supabase Storage
   };
   evaluation?: Evaluation;
-  profiles: Profile; // To hold the trainee's profile data
+  profiles?: Profile; // To hold the trainee's profile data
 }
 
 // Corresponds to the 'sub_challenges' table
@@ -96,7 +96,7 @@ export interface SubChallenge {
   claim_focus: string;
   submission_end_time: string;
   evaluation_rules: EvaluationRules;
-  submissions: Submission[]; // Fetched separately
+  submissions?: Submission[]; // Fetched separately
 }
 
 // Corresponds to the 'overall_challenges' table

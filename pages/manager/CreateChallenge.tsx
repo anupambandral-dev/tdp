@@ -69,7 +69,7 @@ export const CreateChallenge: React.FC<CreateChallengeProps> = ({ currentUser })
             evaluator_ids: Array.from(selectedEvaluatorIds),
         };
         
-        const { error } = await supabase.from('overall_challenges').insert(newChallenge);
+        const { error } = await supabase.from('overall_challenges').insert(newChallenge as any);
 
         if (error) {
             alert(`Error creating challenge: ${error.message}`);

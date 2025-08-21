@@ -76,20 +76,21 @@ export const UserManagement: React.FC = () => {
         <div>
             <h2 className="text-2xl font-semibold mb-4">Add New Users</h2>
             <Card className="space-y-4">
-                <h3 className="font-semibold text-lg">Using a CSV File</h3>
+                <h3 className="font-semibold text-lg">Invitation Workflow</h3>
                 <p className="text-sm text-gray-600 dark:text-gray-400">
-                    The most efficient way to add multiple trainees and evaluators is by importing a CSV file directly into your Supabase database.
+                    To add new employees, you must invite them to the application. This will create their secure account and automatically generate their user profile.
                 </p>
                 <ol className="list-decimal list-inside text-sm space-y-2">
-                    <li>Prepare a CSV file with columns: `name`, `email`, `role`. The role must be one of: `Manager`, `Trainee`, `Evaluator`, `Mentor`.</li>
                     <li>Go to your Supabase project dashboard.</li>
-                    <li>Navigate to the **Table Editor** and select the `profiles` table.</li>
-                    <li>Click the **"Insert"** button and choose **"Import data from CSV"**.</li>
-                    <li>Upload your file and map the columns.</li>
-                    <li>Once imported, you must still invite these users to create their accounts via the **Authentication** &rarr; **Users** &rarr; **"Invite user"** page in Supabase.</li>
+                    <li>Navigate to **Authentication** in the left sidebar.</li>
+                    <li>Click the **"Invite user"** button and enter the employee's email address.</li>
+                    <li>The employee will receive a magic link to log in. Upon their first visit, their account will be active.</li>
+                    <li>
+                        Their profile will be created with a default role of **'Trainee'**. To change this, go to the **Table Editor**, select the `profiles` table, and edit their `role` to `Evaluator` or `Manager` as needed.
+                    </li>
                 </ol>
-                <a href="https://supabase.com/docs/guides/database/tables#importing-data-csv" target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline text-sm">
-                    Learn more in the Supabase Docs &rarr;
+                <a href="https://supabase.com/docs/guides/auth/managing-users#inviting-users" target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline text-sm">
+                    Learn more about user invitations &rarr;
                 </a>
             </Card>
         </div>

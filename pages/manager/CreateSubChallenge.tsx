@@ -78,7 +78,7 @@ export const CreateSubChallenge: React.FC = () => {
             evaluation_rules: rules,
         };
 
-        const { error } = await supabase.from('sub_challenges').insert(newSubChallenge);
+        const { error } = await supabase.from('sub_challenges').insert(newSubChallenge as any);
 
         if (error) {
             alert(`Error creating sub-challenge: ${error.message}`);

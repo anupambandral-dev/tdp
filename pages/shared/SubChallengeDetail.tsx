@@ -49,7 +49,7 @@ const ManagerView: React.FC<{ subChallenge: SubChallenge }> = ({ subChallenge })
                             </tr>
                         </thead>
                         <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-                            {subChallenge.submissions.map(submission => {
+                            {subChallenge.submissions?.map(submission => {
                                 const trainee = submission.profiles;
                                 const { score } = getTotalScore(submission, subChallenge);
                                 return (
@@ -83,7 +83,7 @@ const ManagerView: React.FC<{ subChallenge: SubChallenge }> = ({ subChallenge })
 
 // Trainee's view of their own submission
 const TraineeView: React.FC<{ subChallenge: SubChallenge, currentUser: Profile }> = ({ subChallenge, currentUser }) => {
-    const submission = subChallenge.submissions.find(s => s.trainee_id === currentUser.id);
+    const submission = subChallenge.submissions?.find(s => s.trainee_id === currentUser.id);
 
     if (!submission) {
         return <Card><p className="text-center">You have not made a submission for this challenge.</p></Card>;

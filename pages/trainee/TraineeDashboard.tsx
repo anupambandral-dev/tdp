@@ -59,14 +59,14 @@ export const TraineeDashboard: React.FC<TraineeDashboardProps> = ({ currentUser 
 
   const getStatus = (challenge: SubChallenge) => {
     const endTime = new Date(challenge.submission_end_time);
-    const submission = challenge.submissions.find(s => s.trainee_id === currentUser.id);
+    const submission = challenge.submissions?.find(s => s.trainee_id === currentUser.id);
     if (submission) return 'Submitted';
     if (endTime < new Date()) return 'Ended';
     return 'Active';
   };
   
   const getScore = (challenge: SubChallenge) => {
-    const submission = challenge.submissions.find(s => s.trainee_id === currentUser.id);
+    const submission = challenge.submissions?.find(s => s.trainee_id === currentUser.id);
     if (!submission?.evaluation) return 'N/A';
     
     const rules = challenge.evaluation_rules;

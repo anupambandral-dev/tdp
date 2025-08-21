@@ -52,8 +52,8 @@ export const EvaluatorDashboard: React.FC<EvaluatorDashboardProps> = ({ currentU
   }, [currentUser.id]);
 
   const getEvaluationStats = (challenge: SubChallenge) => {
-    const totalSubmissions = challenge.submissions.length;
-    const evaluatedSubmissions = challenge.submissions.filter(s => s.evaluation?.evaluator_id === currentUser.id).length;
+    const totalSubmissions = challenge.submissions?.length || 0;
+    const evaluatedSubmissions = challenge.submissions?.filter(s => s.evaluation?.evaluator_id === currentUser.id).length || 0;
     return { totalSubmissions, evaluatedSubmissions };
   };
 
