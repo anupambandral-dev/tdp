@@ -41,14 +41,14 @@ export const EvaluateSubmission: React.FC<EvaluateSubmissionProps> = ({ currentU
                 .single();
             
             if (data) {
-                setChallenge(data as unknown as ChallengeWithSubmissionsAndProfiles);
-                if (data.submissions && data.submissions.length > 0) {
+                setChallenge(data as any);
+                if ((data as any).submissions && (data as any).submissions.length > 0) {
                     // find first unevaluated submission
-                    const firstUnevaluated = data.submissions.find((s: Submission) => !s.evaluation);
+                    const firstUnevaluated = (data as any).submissions.find((s: Submission) => !s.evaluation);
                     if (firstUnevaluated) {
                         setSelectedTraineeId(firstUnevaluated.trainee_id);
                     } else {
-                        setSelectedTraineeId(data.submissions[0].trainee_id);
+                        setSelectedTraineeId((data as any).submissions[0].trainee_id);
                     }
                 }
             }
