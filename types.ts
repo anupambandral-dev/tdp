@@ -96,6 +96,7 @@ export interface SubChallenge {
   claim_focus: string;
   submission_end_time: string;
   evaluation_rules: EvaluationRules;
+  submissions?: Submission[];
 }
 
 export interface PopulatedSubChallenge extends SubChallenge {

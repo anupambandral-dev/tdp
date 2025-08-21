@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Profile, SubChallenge, ResultTier, IncorrectMarking, PopulatedSubChallenge } from '../../types';
+import { Profile, SubChallenge, ResultTier, IncorrectMarking } from '../../types';
 import { supabase } from '../../supabaseClient';
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
@@ -14,7 +14,7 @@ const ClockIcon = () => (
 );
 
 export const TraineeDashboard: React.FC<TraineeDashboardProps> = ({ currentUser }) => {
-  const [traineeChallenges, setTraineeChallenges] = useState<PopulatedSubChallenge[]>([]);
+  const [traineeChallenges, setTraineeChallenges] = useState<SubChallenge[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -49,7 +49,7 @@ export const TraineeDashboard: React.FC<TraineeDashboardProps> = ({ currentUser 
       if (scError) {
         setError(scError.message);
       } else {
-        setTraineeChallenges((data as PopulatedSubChallenge[]) || []);
+        setTraineeChallenges((data as SubChallenge[]) || []);
       }
       setLoading(false);
     };
@@ -57,7 +57,7 @@ export const TraineeDashboard: React.FC<TraineeDashboardProps> = ({ currentUser 
     fetchChallenges();
   }, [currentUser.id]);
 
-  const getStatus = (challenge: PopulatedSubChallenge) => {
+  const getStatus = (challenge: SubChallenge) => {
     const endTime = new Date(challenge.submission_end_time);
     const submission = challenge.submissions?.find(s => s.trainee_id === currentUser.id);
     if (submission) return 'Submitted';
@@ -65,7 +65,7 @@ export const TraineeDashboard: React.FC<TraineeDashboardProps> = ({ currentUser 
     return 'Active';
   };
   
-  const getScore = (challenge: PopulatedSubChallenge) => {
+  const getScore = (challenge: SubChallenge) => {
     const submission = challenge.submissions?.find(s => s.trainee_id === currentUser.id);
     if (!submission?.evaluation) return 'N/A';
     
