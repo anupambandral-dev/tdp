@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Profile, SubChallenge, ResultTier, IncorrectMarking } from '../../types';
+import { Profile, SubChallenge, ResultTier, IncorrectMarking, PopulatedSubChallenge } from '../../types';
 import { supabase } from '../../supabaseClient';
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
@@ -10,11 +10,11 @@ interface TraineeDashboardProps {
 }
 
 const ClockIcon = () => (
-    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4 mr-1"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4 mr-1"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
 );
 
 export const TraineeDashboard: React.FC<TraineeDashboardProps> = ({ currentUser }) => {
-  const [traineeChallenges, setTraineeChallenges] = useState<SubChallenge[]>([]);
+  const [traineeChallenges, setTraineeChallenges] = useState<PopulatedSubChallenge[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -49,7 +49,7 @@ export const TraineeDashboard: React.FC<TraineeDashboardProps> = ({ currentUser 
       if (scError) {
         setError(scError.message);
       } else {
-        setTraineeChallenges((data as SubChallenge[]) || []);
+        setTraineeChallenges((data as PopulatedSubChallenge[]) || []);
       }
       setLoading(false);
     };
@@ -57,7 +57,7 @@ export const TraineeDashboard: React.FC<TraineeDashboardProps> = ({ currentUser 
     fetchChallenges();
   }, [currentUser.id]);
 
-  const getStatus = (challenge: SubChallenge) => {
+  const getStatus = (challenge: PopulatedSubChallenge) => {
     const endTime = new Date(challenge.submission_end_time);
     const submission = challenge.submissions?.find(s => s.trainee_id === currentUser.id);
     if (submission) return 'Submitted';
@@ -65,7 +65,7 @@ export const TraineeDashboard: React.FC<TraineeDashboardProps> = ({ currentUser 
     return 'Active';
   };
   
-  const getScore = (challenge: SubChallenge) => {
+  const getScore = (challenge: PopulatedSubChallenge) => {
     const submission = challenge.submissions?.find(s => s.trainee_id === currentUser.id);
     if (!submission?.evaluation) return 'N/A';
     
