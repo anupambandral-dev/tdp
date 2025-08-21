@@ -49,7 +49,7 @@ export const TraineeDashboard: React.FC<TraineeDashboardProps> = ({ currentUser 
       if (scError) {
         setError(scError.message);
       } else {
-        setTraineeChallenges((data as SubChallenge[]) || []);
+        setTraineeChallenges((data as any) || []);
       }
       setLoading(false);
     };
