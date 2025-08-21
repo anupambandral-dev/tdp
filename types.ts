@@ -99,6 +99,10 @@ export interface SubChallenge {
   submissions?: Submission[]; // Fetched separately
 }
 
+export interface PopulatedSubChallenge extends SubChallenge {
+  submissions: Submission[];
+}
+
 // Corresponds to the 'overall_challenges' table
 export interface OverallChallenge {
   id: string;
