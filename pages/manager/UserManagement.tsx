@@ -74,23 +74,22 @@ export const UserManagement: React.FC = () => {
              </Card>
         </div>
         <div>
-            <h2 className="text-2xl font-semibold mb-4">Add New Users</h2>
+            <h2 className="text-2xl font-semibold mb-4">Add & Manage Users</h2>
             <Card className="space-y-4">
-                <h3 className="font-semibold text-lg">Invitation Workflow</h3>
+                <h3 className="font-semibold text-lg">User Workflow</h3>
                 <p className="text-sm text-gray-600 dark:text-gray-400">
-                    To add new employees, you must invite them to the application. This will create their secure account and automatically generate their user profile.
+                    Employees can now sign up for the application themselves. You can then manage their roles directly in the Supabase dashboard.
                 </p>
                 <ol className="list-decimal list-inside text-sm space-y-2">
-                    <li>Go to your Supabase project dashboard.</li>
-                    <li>Navigate to **Authentication** in the left sidebar.</li>
-                    <li>Click the **"Invite user"** button and enter the employee's email address.</li>
-                    <li>The employee will receive a magic link to log in. Upon their first visit, their account will be active.</li>
+                    <li>Direct new employees to the application's login page.</li>
+                    <li>They should click **"Sign up"** and create an account with their name, email, and a password.</li>
+                    <li>Upon successful sign-up, their profile is automatically created with the default role of **'Trainee'**.</li>
                     <li>
-                        Their profile will be created with a default role of **'Trainee'**. To change this, go to the **Table Editor**, select the `profiles` table, and edit their `role` to `Evaluator` or `Manager` as needed.
+                        To change a user's role, go to your Supabase project, navigate to the **Table Editor**, select the `profiles` table, and edit the `role` for that user to `Evaluator` or `Manager` as needed.
                     </li>
                 </ol>
-                <a href="https://supabase.com/docs/guides/auth/managing-users#inviting-users" target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline text-sm">
-                    Learn more about user invitations &rarr;
+                 <a href="https://supabase.com/docs/guides/auth/managing-users" target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline text-sm">
+                    Learn more about user management &rarr;
                 </a>
             </Card>
         </div>

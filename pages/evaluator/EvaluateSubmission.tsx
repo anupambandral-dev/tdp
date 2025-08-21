@@ -10,7 +10,7 @@ interface EvaluateSubmissionProps {
 }
 
 interface ChallengeWithSubmissionsAndProfiles extends SubChallenge {
-    submissions?: (Submission & { profiles: Profile })[];
+    submissions: (Submission & { profiles: Profile })[];
 }
 
 export const EvaluateSubmission: React.FC<EvaluateSubmissionProps> = ({ currentUser }) => {
@@ -119,18 +119,18 @@ export const EvaluateSubmission: React.FC<EvaluateSubmissionProps> = ({ currentU
         } else {
             alert('Evaluation saved successfully!');
             // After successful submission, find the next unevaluated trainee and select them
-            const currentIndex = challenge.submissions?.findIndex(s => s.trainee_id === selectedTraineeId) ?? -1;
-            const nextUnevaluated = challenge.submissions?.find((s, index) => index > currentIndex && !s.evaluation);
+            const currentIndex = challenge.submissions.findIndex(s => s.trainee_id === selectedTraineeId) ?? -1;
+            const nextUnevaluated = challenge.submissions.find((s, index) => index > currentIndex && !s.evaluation);
 
             if(nextUnevaluated) {
                 setSelectedTraineeId(nextUnevaluated.trainee_id);
                 // Manually refresh challenge data to show this one as evaluated
                 setChallenge(prev => {
-                    if (!prev || !prev.submissions) return prev;
+                    if (!prev) return prev;
                     const newSubmissions = prev.submissions.map(s =>
                         s.id === selectedSubmission.id ? { ...s, evaluation: newEvaluation } : s
                     );
-                    return { ...prev, submissions: newSubmissions as any };
+                    return { ...prev, submissions: newSubmissions };
                 });
             } else {
                  navigate('/evaluator');
@@ -150,7 +150,7 @@ export const EvaluateSubmission: React.FC<EvaluateSubmissionProps> = ({ currentU
                     <h2 className="text-xl font-semibold mb-4">Submissions</h2>
                     <Card>
                         <ul className="space-y-2">
-                           {challenge.submissions?.map(submission => {
+                           {challenge.submissions.map(submission => {
                                const trainee = submission.profiles;
                                const isEvaluated = !!submission.evaluation;
                                return (

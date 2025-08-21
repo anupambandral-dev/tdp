@@ -6,7 +6,7 @@ import { Button } from '../../components/ui/Button';
 import { ResultTier, IncorrectMarking, OverallChallenge, SubChallenge, Profile, Submission } from '../../types';
 
 interface PopulatedOverallChallenge extends OverallChallenge {
-    sub_challenges: (SubChallenge & { submissions: Submission[] })[];
+    sub_challenges: SubChallenge[];
 }
 
 export const ChallengeDetail: React.FC = () => {
