@@ -6,7 +6,7 @@ import { Button } from '../../components/ui/Button';
 import { ResultTier, IncorrectMarking, OverallChallenge, SubChallenge, Profile, Submission } from '../../types';
 
 interface PopulatedOverallChallenge extends OverallChallenge {
-    sub_challenges: SubChallenge[];
+    sub_challenges: (SubChallenge & { submissions: Submission[] })[];
 }
 
 export const ChallengeDetail: React.FC = () => {
@@ -23,15 +23,15 @@ export const ChallengeDetail: React.FC = () => {
 
             const { data, error } = await supabase
                 .from('overall_challenges')
-                .select('*, sub_challenges(*, submissions(*, profiles(*)))')
+                .select('*, sub_challenges(*, submissions(*))')
                 .eq('id', challengeId)
-                .single();
+                .single<PopulatedOverallChallenge>();
             
             if (error) {
                 setError(error.message);
                 console.error(error);
             } else if (data) {
-                setChallenge(data as PopulatedOverallChallenge);
+                setChallenge(data);
                 if (data.trainee_ids.length > 0) {
                     const { data: profilesData, error: profilesError } = await supabase
                         .from('profiles')

@@ -85,7 +85,7 @@ export const TraineePerforma: React.FC = () => {
             <div className="space-y-6">
                 <h2 className="text-2xl font-semibold border-b pb-2 dark:border-gray-700">Sub-Challenge Performance</h2>
                 {overallChallenge.sub_challenges.map(subChallenge => {
-                    const submission = subChallenge.submissions[0]; // We filtered to only get one
+                    const submission = subChallenge.submissions && subChallenge.submissions[0]; // We filtered to only get one
                     return (
                         <Card key={subChallenge.id}>
                             <h3 className="text-xl font-semibold text-blue-600 dark:text-blue-400">{subChallenge.title}</h3>

@@ -9,10 +9,14 @@ interface EvaluateSubmissionProps {
     currentUser: Profile;
 }
 
+interface ChallengeWithSubmissionsAndProfiles extends SubChallenge {
+    submissions?: (Submission & { profiles: Profile })[];
+}
+
 export const EvaluateSubmission: React.FC<EvaluateSubmissionProps> = ({ currentUser }) => {
     const { challengeId } = useParams();
     const navigate = useNavigate();
-    const [challenge, setChallenge] = useState<SubChallenge | null>(null);
+    const [challenge, setChallenge] = useState<ChallengeWithSubmissionsAndProfiles | null>(null);
     const [loading, setLoading] = useState(true);
 
     const [selectedTraineeId, setSelectedTraineeId] = useState<string | null>(null);
@@ -37,7 +41,7 @@ export const EvaluateSubmission: React.FC<EvaluateSubmissionProps> = ({ currentU
                 .single();
             
             if (data) {
-                setChallenge(data as any);
+                setChallenge(data as unknown as ChallengeWithSubmissionsAndProfiles);
                 if (data.submissions && data.submissions.length > 0) {
                     // find first unevaluated submission
                     const firstUnevaluated = data.submissions.find((s: Submission) => !s.evaluation);
@@ -121,7 +125,13 @@ export const EvaluateSubmission: React.FC<EvaluateSubmissionProps> = ({ currentU
             if(nextUnevaluated) {
                 setSelectedTraineeId(nextUnevaluated.trainee_id);
                 // Manually refresh challenge data to show this one as evaluated
-                setChallenge(prev => prev ? ({...prev, submissions: prev.submissions?.map(s => s.id === selectedSubmission.id ? {...s, evaluation: newEvaluation} : s)}) : null);
+                setChallenge(prev => {
+                    if (!prev || !prev.submissions) return prev;
+                    const newSubmissions = prev.submissions.map(s =>
+                        s.id === selectedSubmission.id ? { ...s, evaluation: newEvaluation } : s
+                    );
+                    return { ...prev, submissions: newSubmissions as any };
+                });
             } else {
                  navigate('/evaluator');
             }
