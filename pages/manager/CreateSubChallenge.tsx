@@ -1,17 +1,15 @@
-
-
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { v4 as uuidv4 } from 'uuid';
-import { MOCK_CHALLENGES } from '../../constants';
+import { supabase } from '../../supabaseClient';
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
-import { SubChallenge, EvaluationRules, ResultTier, IncorrectMarking, SubChallengeWithSubmissions } from '../../types';
+import { EvaluationRules, ResultTier, IncorrectMarking, OverallChallenge, SubChallenge } from '../../types';
 
 export const CreateSubChallenge: React.FC = () => {
     const { challengeId } = useParams<{ challengeId: string }>();
     const navigate = useNavigate();
-    const overallChallenge = MOCK_CHALLENGES.find(c => c.id === challengeId);
+    const [overallChallenge, setOverallChallenge] = useState<OverallChallenge | null>(null);
+    const [loading, setLoading] = useState(true);
 
     const [title, setTitle] = useState('');
     const [patentNumber, setPatentNumber] = useState('');
@@ -29,6 +27,22 @@ export const CreateSubChallenge: React.FC = () => {
         report: { enabled: false, maxScore: 30 }
     });
     
+    useEffect(() => {
+        const fetchOverallChallenge = async () => {
+            if (!challengeId) return;
+            setLoading(true);
+            const { data, error } = await supabase
+                .from('overall_challenges')
+                .select('*')
+                .eq('id', challengeId)
+                .single();
+            if (data) setOverallChallenge(data);
+            setLoading(false);
+        };
+        fetchOverallChallenge();
+    }, [challengeId]);
+    
+    if (loading) return <div className="p-8">Loading...</div>
     if (!overallChallenge) {
         return <div className="text-center p-8">Overall Challenge not found.</div>;
     }
@@ -44,7 +58,7 @@ export const CreateSubChallenge: React.FC = () => {
         }
     };
 
-    const handleSubmit = (e: React.FormEvent) => {
+    const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         
         if (!submissionEndTime || new Date(submissionEndTime) <= new Date()) {
@@ -52,9 +66,9 @@ export const CreateSubChallenge: React.FC = () => {
             return;
         }
 
-        const newSubChallenge: SubChallengeWithSubmissions = {
-            id: uuidv4(),
-            created_at: new Date().toISOString(),
+        setLoading(true);
+
+        const newSubChallenge: Omit<SubChallenge, 'id' | 'created_at' | 'submissions'> = {
             overall_challenge_id: challengeId!,
             title,
             patent_number: patentNumber,
@@ -62,12 +76,17 @@ export const CreateSubChallenge: React.FC = () => {
             claim_focus: claimFocus,
             submission_end_time: new Date(submissionEndTime).toISOString(),
             evaluation_rules: rules,
-            submissions: [],
         };
 
-        overallChallenge.sub_challenges.push(newSubChallenge);
-        alert('Sub-challenge created successfully!');
-        navigate(`/manager/challenge/${challengeId}`);
+        const { error } = await supabase.from('sub_challenges').insert(newSubChallenge);
+
+        if (error) {
+            alert(`Error creating sub-challenge: ${error.message}`);
+        } else {
+            alert('Sub-challenge created successfully!');
+            navigate(`/manager/challenge/${challengeId}`);
+        }
+        setLoading(false);
     };
 
     return (
@@ -131,9 +150,9 @@ export const CreateSubChallenge: React.FC = () => {
 
                     <div className="flex justify-end space-x-4 pt-4 border-t dark:border-gray-700">
                         <Link to={`/manager/challenge/${challengeId}`}>
-                           <Button type="button" variant="secondary">Cancel</Button>
+                           <Button type="button" variant="secondary" disabled={loading}>Cancel</Button>
                         </Link>
-                        <Button type="submit">Create Sub-Challenge</Button>
+                        <Button type="submit" disabled={loading}>{loading ? 'Creating...' : 'Create Sub-Challenge'}</Button>
                     </div>
                 </form>
             </Card>

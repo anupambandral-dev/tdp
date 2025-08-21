@@ -1,11 +1,10 @@
-
 import React, { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { v4 as uuidv4 } from 'uuid';
-import { MOCK_CHALLENGES } from '../../constants';
+import { supabase } from '../../supabaseClient';
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
-import { SubmittedResult, ResultType, ResultTier, User, Submission } from '../../types';
+import { SubmittedResult, ResultType, ResultTier, Profile, Submission, SubChallenge } from '../../types';
 
 const UploadIcon = () => (
     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5 mr-2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
@@ -15,18 +14,37 @@ const TrashIcon = () => (
 );
 
 interface SubmitChallengeProps {
-    currentUser: User;
+    currentUser: Profile;
 }
 
 export const SubmitChallenge: React.FC<SubmitChallengeProps> = ({ currentUser }) => {
   const { challengeId } = useParams();
   const navigate = useNavigate();
-  const challenge = MOCK_CHALLENGES.flatMap(c => c.sub_challenges).find(sc => sc.id === challengeId);
+  const [challenge, setChallenge] = useState<SubChallenge | null>(null);
   
-  const [results, setResults] = useState<Omit<SubmittedResult, 'trainee_tier'> & { trainee_tier: ResultTier }[]>([{ id: uuidv4(), value: '', type: ResultType.PATENT, trainee_tier: ResultTier.TIER_1 }]);
+  const [results, setResults] = useState<SubmittedResult[]>([{ id: uuidv4(), value: '', type: ResultType.PATENT, trainee_tier: ResultTier.TIER_1 }]);
   const [reportFile, setReportFile] = useState<File | null>(null);
   const [timeLeft, setTimeLeft] = useState('');
   const [isOver, setIsOver] = useState(false);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchChallenge = async () => {
+        if (!challengeId) return;
+        setLoading(true);
+        const { data, error } = await supabase
+            .from('sub_challenges')
+            .select('*')
+            .eq('id', challengeId)
+            .single();
+        
+        if (data) {
+            setChallenge(data);
+        }
+        setLoading(false);
+    };
+    fetchChallenge();
+  }, [challengeId]);
 
   useEffect(() => {
     if (!challenge) return;
@@ -51,9 +69,11 @@ export const SubmitChallenge: React.FC<SubmitChallengeProps> = ({ currentUser })
     }, 1000);
     
     return () => clearInterval(interval);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [challenge]);
 
+  if (loading) {
+    return <div className="text-center p-8">Loading challenge...</div>;
+  }
   if (!challenge) {
     return <div className="text-center p-8">Challenge not found.</div>;
   }
@@ -72,53 +92,47 @@ export const SubmitChallenge: React.FC<SubmitChallengeProps> = ({ currentUser })
     }
   }
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (results.some(r => r.value.trim() === '')) {
       alert('Please ensure all result fields are filled out.');
       return;
     }
 
-    if (!challenge) {
-        alert('Could not find challenge to submit to.');
-        return;
+    setLoading(true);
+    
+    let reportFileData: { name: string; path: string } | undefined = undefined;
+
+    if (reportFile && challenge.evaluation_rules.report.enabled) {
+        const filePath = `${currentUser.id}/${challenge.id}/${uuidv4()}-${reportFile.name}`;
+        const { error: uploadError } = await supabase.storage.from('reports').upload(filePath, reportFile);
+        if (uploadError) {
+            alert(`Error uploading report: ${uploadError.message}`);
+            setLoading(false);
+            return;
+        }
+        reportFileData = { name: reportFile.name, path: filePath };
     }
 
-    const newSubmission: Omit<Submission, 'id' | 'created_at' | 'sub_challenge_id'> = {
+    const submissionData: Partial<Submission> = {
+        sub_challenge_id: challenge.id,
         trainee_id: currentUser.id,
-        submitted_at: new Date().toISOString(),
         results: results,
-        report_file: reportFile ? { name: reportFile.name, path: '#' } : undefined,
+        report_file: reportFileData,
+        submitted_at: new Date().toISOString(),
     };
-    
-    // Find and update the sub-challenge in our mock data.
-    const overallChallenge = MOCK_CHALLENGES.find(oc => oc.id === challenge.overall_challenge_id);
-    if (!overallChallenge) return;
 
-    const subChallenge = overallChallenge.sub_challenges.find(sc => sc.id === challenge.id);
-    if (!subChallenge) return;
-    
-    // Check if a submission for this user already exists.
-    const existingSubmissionIndex = subChallenge.submissions.findIndex(s => s.trainee_id === currentUser.id);
+    const { error } = await supabase.from('submissions').upsert(submissionData, {
+        onConflict: 'sub_challenge_id, trainee_id'
+    });
 
-    const submissionToSave: Submission = {
-      ...newSubmission,
-      id: existingSubmissionIndex !== -1 ? subChallenge.submissions[existingSubmissionIndex].id : uuidv4(),
-      created_at: existingSubmissionIndex !== -1 ? subChallenge.submissions[existingSubmissionIndex].created_at : new Date().toISOString(),
-      sub_challenge_id: challenge.id
-    }
-
-
-    if (existingSubmissionIndex !== -1) {
-        // Update existing submission
-        subChallenge.submissions[existingSubmissionIndex] = submissionToSave;
+    if (error) {
+        alert(`Error saving submission: ${error.message}`);
     } else {
-        // Add new submission
-        subChallenge.submissions.push(submissionToSave);
+        alert('Submission successful!');
+        navigate('/trainee');
     }
-    
-    alert('Submission successful! (Simulated)');
-    navigate('/trainee');
+    setLoading(false);
   }
 
   return (
@@ -188,7 +202,7 @@ export const SubmitChallenge: React.FC<SubmitChallengeProps> = ({ currentUser })
           )}
 
           <div className="text-right">
-            <Button type="submit" disabled={isOver}>Submit</Button>
+            <Button type="submit" disabled={isOver || loading}>{loading ? 'Submitting...' : 'Submit'}</Button>
           </div>
         </form>
       </Card>

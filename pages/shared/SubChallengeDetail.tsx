@@ -1,24 +1,12 @@
-
-
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { User, Role, SubChallenge, OverallChallenge, Submission, IncorrectMarking, ResultTier, SubChallengeWithSubmissions, OverallChallengeWithSubChallenges } from '../../types';
-import { MOCK_CHALLENGES, ALL_EMPLOYEES } from '../../constants';
+import { Profile, Role, SubChallenge, OverallChallenge, Submission, IncorrectMarking, ResultTier } from '../../types';
+import { supabase } from '../../supabaseClient';
 import { Card } from '../../components/ui/Card';
 
 interface SubChallengeDetailProps {
-  currentUser: User;
+  currentUser: Profile;
 }
-
-const findChallengeData = (subChallengeId: string): { subChallenge: SubChallengeWithSubmissions | null, overallChallenge: OverallChallengeWithSubChallenges | null } => {
-    for (const oc of MOCK_CHALLENGES) {
-        const sc = oc.sub_challenges.find(s => s.id === subChallengeId);
-        if (sc) {
-            return { subChallenge: sc, overallChallenge: oc };
-        }
-    }
-    return { subChallenge: null, overallChallenge: null };
-};
 
 const getTotalScore = (submission: Submission, subChallenge: SubChallenge) => {
     if (!submission.evaluation) return { score: 0 };
@@ -45,7 +33,7 @@ const getTotalScore = (submission: Submission, subChallenge: SubChallenge) => {
 }
 
 // Manager's view of all submissions
-const ManagerView: React.FC<{ subChallenge: SubChallengeWithSubmissions }> = ({ subChallenge }) => {
+const ManagerView: React.FC<{ subChallenge: SubChallenge }> = ({ subChallenge }) => {
     return (
         <div>
             <h2 className="text-2xl font-semibold mb-4">Submissions Overview</h2>
@@ -62,7 +50,7 @@ const ManagerView: React.FC<{ subChallenge: SubChallengeWithSubmissions }> = ({ 
                         </thead>
                         <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
                             {subChallenge.submissions.map(submission => {
-                                const trainee = ALL_EMPLOYEES.find(e => e.id === submission.trainee_id);
+                                const trainee = submission.profiles;
                                 const { score } = getTotalScore(submission, subChallenge);
                                 return (
                                     <tr key={submission.trainee_id}>
@@ -94,7 +82,7 @@ const ManagerView: React.FC<{ subChallenge: SubChallengeWithSubmissions }> = ({ 
 
 
 // Trainee's view of their own submission
-const TraineeView: React.FC<{ subChallenge: SubChallengeWithSubmissions, currentUser: User }> = ({ subChallenge, currentUser }) => {
+const TraineeView: React.FC<{ subChallenge: SubChallenge, currentUser: Profile }> = ({ subChallenge, currentUser }) => {
     const submission = subChallenge.submissions.find(s => s.trainee_id === currentUser.id);
 
     if (!submission) {
@@ -117,7 +105,7 @@ const TraineeView: React.FC<{ subChallenge: SubChallengeWithSubmissions, current
                   {submission.report_file && (
                       <div>
                           <h3 className="font-semibold text-md">Submitted Report</h3>
-                          <a href={submission.report_file.path} className="text-blue-600 dark:text-blue-400 hover:underline">{submission.report_file.name}</a>
+                          <a href={supabase.storage.from('reports').getPublicUrl(submission.report_file.path).data.publicUrl} className="text-blue-600 dark:text-blue-400 hover:underline" target="_blank" rel="noopener noreferrer">{submission.report_file.name}</a>
                       </div>
                   )}
                 </Card>
@@ -169,8 +157,38 @@ const TraineeView: React.FC<{ subChallenge: SubChallengeWithSubmissions, current
 
 export const SubChallengeDetail: React.FC<SubChallengeDetailProps> = ({ currentUser }) => {
     const { subChallengeId } = useParams<{ subChallengeId: string }>();
-    const { subChallenge, overallChallenge } = findChallengeData(subChallengeId!);
+    const [subChallenge, setSubChallenge] = useState<SubChallenge | null>(null);
+    const [overallChallenge, setOverallChallenge] = useState<OverallChallenge | null>(null);
+    const [loading, setLoading] = useState(true);
 
+    useEffect(() => {
+        const fetchDetails = async () => {
+            if (!subChallengeId) return;
+            setLoading(true);
+            const { data: scData, error: scError } = await supabase
+                .from('sub_challenges')
+                .select('*, submissions(*, profiles(*))')
+                .eq('id', subChallengeId)
+                .single();
+            
+            if (scData) {
+                setSubChallenge(scData as any);
+                const { data: ocData, error: ocError } = await supabase
+                    .from('overall_challenges')
+                    .select('*')
+                    .eq('id', scData.overall_challenge_id)
+                    .single();
+                if (ocData) {
+                    setOverallChallenge(ocData);
+                }
+            }
+            setLoading(false);
+        };
+        fetchDetails();
+    }, [subChallengeId]);
+
+
+    if (loading) return <div className="p-8">Loading details...</div>;
     if (!subChallenge || !overallChallenge) {
         return <div className="text-center p-8">Challenge not found.</div>;
     }

@@ -1,30 +1,58 @@
-
 import React, { useState, useMemo, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { MOCK_CHALLENGES, ALL_EMPLOYEES } from '../../constants';
+import { supabase } from '../../supabaseClient';
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
-import { User, ResultEvaluation, ResultTier, SubmittedResult, IncorrectMarking } from '../../types';
+import { Profile, ResultEvaluation, ResultTier, SubmittedResult, IncorrectMarking, SubChallenge, Submission, Evaluation } from '../../types';
 
 interface EvaluateSubmissionProps {
-    currentUser: User;
+    currentUser: Profile;
 }
 
 export const EvaluateSubmission: React.FC<EvaluateSubmissionProps> = ({ currentUser }) => {
     const { challengeId } = useParams();
     const navigate = useNavigate();
-    const challenge = MOCK_CHALLENGES.flatMap(c => c.sub_challenges).find(sc => sc.id === challengeId);
-    
-    const [selectedTraineeId, setSelectedTraineeId] = useState<string | null>(challenge?.submissions[0]?.trainee_id || null);
+    const [challenge, setChallenge] = useState<SubChallenge | null>(null);
+    const [loading, setLoading] = useState(true);
 
+    const [selectedTraineeId, setSelectedTraineeId] = useState<string | null>(null);
+    
     const selectedSubmission = useMemo(() => {
-        return challenge?.submissions.find(s => s.trainee_id === selectedTraineeId);
+        const sub = challenge?.submissions.find(s => s.trainee_id === selectedTraineeId);
+        return sub;
     }, [challenge, selectedTraineeId]);
     
     const [resultEvals, setResultEvals] = useState<ResultEvaluation[]>([]);
     const [reportScore, setReportScore] = useState<number | string>('');
     const [feedback, setFeedback] = useState<string>('');
     
+    useEffect(() => {
+        const fetchChallenge = async () => {
+            if (!challengeId) return;
+            setLoading(true);
+            const { data, error } = await supabase
+                .from('sub_challenges')
+                .select('*, submissions(*, profiles(*))')
+                .eq('id', challengeId)
+                .single();
+            
+            if (data) {
+                setChallenge(data as any);
+                if (data.submissions && data.submissions.length > 0) {
+                    // find first unevaluated submission
+                    const firstUnevaluated = data.submissions.find((s: Submission) => !s.evaluation);
+                    if (firstUnevaluated) {
+                        setSelectedTraineeId(firstUnevaluated.trainee_id);
+                    } else {
+                        setSelectedTraineeId(data.submissions[0].trainee_id);
+                    }
+                }
+            }
+            setLoading(false);
+        };
+        fetchChallenge();
+    }, [challengeId]);
+
     useEffect(() => {
         if (selectedSubmission) {
             setResultEvals(selectedSubmission.evaluation?.result_evaluations || selectedSubmission.results.map(r => ({ result_id: r.id, evaluator_tier: r.trainee_tier })));
@@ -33,14 +61,10 @@ export const EvaluateSubmission: React.FC<EvaluateSubmissionProps> = ({ currentU
         }
     }, [selectedSubmission]);
 
-
-    if (!challenge) {
-        return <div className="text-center p-8">Challenge not found.</div>;
-    }
+    if (loading) return <div className="p-8">Loading submission data...</div>;
+    if (!challenge) return <div className="text-center p-8">Challenge not found.</div>;
 
     const rules = challenge.evaluation_rules;
-
-    const getTrainee = (id: string) => ALL_EMPLOYEES.find(e => e.id === id);
 
     const handleEvalChange = (resultId: string, evaluatorTier: ResultTier) => {
         setResultEvals(prev => prev.map(e => e.result_id === resultId ? {...e, evaluator_tier: evaluatorTier} : e));
@@ -64,26 +88,16 @@ export const EvaluateSubmission: React.FC<EvaluateSubmissionProps> = ({ currentU
       return { score: 0, status: 'N/A' };
     };
 
-    const handleSubmit = (e: React.FormEvent) => {
+    const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         
-        if (!selectedTraineeId || !challenge) {
-            alert('Cannot save evaluation. Missing data.');
+        if (!selectedSubmission) {
+            alert('Cannot save evaluation. No submission selected.');
             return;
         }
 
-        // Find and update the submission in our mock data structure.
-        const overallChallenge = MOCK_CHALLENGES.find(oc => oc.sub_challenges.some(sc => sc.id === challenge.id));
-        if (!overallChallenge) return;
-
-        const subChallenge = overallChallenge.sub_challenges.find(sc => sc.id === challenge.id);
-        if (!subChallenge) return;
-
-        const submissionIndex = subChallenge.submissions.findIndex(s => s.trainee_id === selectedTraineeId);
-        if (submissionIndex === -1) return;
-
-        // Create the new evaluation object
-        const newEvaluation = {
+        setLoading(true);
+        const newEvaluation: Evaluation = {
             evaluator_id: currentUser.id,
             result_evaluations: resultEvals,
             report_score: challenge.evaluation_rules.report.enabled ? Number(reportScore) : undefined,
@@ -91,11 +105,28 @@ export const EvaluateSubmission: React.FC<EvaluateSubmissionProps> = ({ currentU
             evaluated_at: new Date().toISOString(),
         };
 
-        // Update the mock data in-place
-        subChallenge.submissions[submissionIndex].evaluation = newEvaluation;
+        const { error } = await supabase
+            .from('submissions')
+            .update({ evaluation: newEvaluation })
+            .eq('id', selectedSubmission.id);
 
-        alert('Evaluation saved successfully!');
-        navigate('/evaluator');
+        if (error) {
+            alert(`Error saving evaluation: ${error.message}`);
+        } else {
+            alert('Evaluation saved successfully!');
+            // After successful submission, find the next unevaluated trainee and select them
+            const currentIndex = challenge.submissions.findIndex(s => s.trainee_id === selectedTraineeId);
+            const nextUnevaluated = challenge.submissions.find((s, index) => index > currentIndex && !s.evaluation);
+
+            if(nextUnevaluated) {
+                setSelectedTraineeId(nextUnevaluated.trainee_id);
+                // Manually refresh challenge data to show this one as evaluated
+                setChallenge(prev => prev ? ({...prev, submissions: prev.submissions.map(s => s.id === selectedSubmission.id ? {...s, evaluation: newEvaluation} : s)}) : null);
+            } else {
+                 navigate('/evaluator');
+            }
+        }
+        setLoading(false);
     };
 
     return (
@@ -110,7 +141,8 @@ export const EvaluateSubmission: React.FC<EvaluateSubmissionProps> = ({ currentU
                     <Card>
                         <ul className="space-y-2">
                            {challenge.submissions.map(submission => {
-                               const trainee = getTrainee(submission.trainee_id);
+                               const trainee = submission.profiles;
+                               const isEvaluated = !!submission.evaluation;
                                return (
                                    <li key={submission.trainee_id}>
                                        <button 
@@ -118,8 +150,8 @@ export const EvaluateSubmission: React.FC<EvaluateSubmissionProps> = ({ currentU
                                             onClick={() => setSelectedTraineeId(submission.trainee_id)}
                                         >
                                            <img src={trainee?.avatar_url} alt={trainee?.name} className="w-8 h-8 rounded-full" />
-                                           <span className="font-medium">{trainee?.name}</span>
-                                           {submission.evaluation && <span className="text-green-500 text-xs">(Evaluated)</span>}
+                                           <span className="font-medium flex-grow">{trainee?.name}</span>
+                                           {isEvaluated && <span className="text-green-500 text-xs font-bold">✓</span>}
                                        </button>
                                    </li>
                                )
@@ -131,7 +163,7 @@ export const EvaluateSubmission: React.FC<EvaluateSubmissionProps> = ({ currentU
                 {selectedSubmission ? (
                     <Card>
                         <div className="mb-6">
-                            <h2 className="text-2xl font-semibold">Evaluating: {getTrainee(selectedSubmission.trainee_id)?.name}</h2>
+                            <h2 className="text-2xl font-semibold">Evaluating: {selectedSubmission.profiles?.name}</h2>
                             <p className="text-sm text-gray-500">Submitted at: {new Date(selectedSubmission.submitted_at).toLocaleString()}</p>
                         </div>
                         
@@ -165,7 +197,7 @@ export const EvaluateSubmission: React.FC<EvaluateSubmissionProps> = ({ currentU
                             <div>
                                 <label htmlFor="reportScore" className="flex justify-between items-center text-sm font-medium text-gray-700 dark:text-gray-300">
                                     <span>Report Evaluation</span>
-                                    <a href={selectedSubmission.report_file?.path} className="text-blue-600 hover:underline" target="_blank" rel="noopener noreferrer">View Report: {selectedSubmission.report_file?.name}</a>
+                                    {selectedSubmission.report_file?.path && <a href={supabase.storage.from('reports').getPublicUrl(selectedSubmission.report_file.path).data.publicUrl} className="text-blue-600 hover:underline" target="_blank" rel="noopener noreferrer">View Report: {selectedSubmission.report_file?.name}</a>}
                                 </label>
                                 <input 
                                     type="number" 
@@ -185,7 +217,7 @@ export const EvaluateSubmission: React.FC<EvaluateSubmissionProps> = ({ currentU
                                 <textarea id="feedback" rows={4} className="mt-1 block w-full input" value={feedback} onChange={e => setFeedback(e.target.value)} />
                             </div>
                             <div className="text-right">
-                                <Button type="submit">Save Evaluation</Button>
+                                <Button type="submit" disabled={loading}>{loading ? 'Saving...' : 'Save & Next'}</Button>
                             </div>
                         </form>
                     </Card>

@@ -1,4 +1,3 @@
-
 // Corresponds to the 'user_role' enum in Supabase
 export enum Role {
   MANAGER = 'Manager',
@@ -14,12 +13,6 @@ export interface Profile {
   email: string;
   role: Role;
   avatar_url: string;
-}
-
-// Add User and Trainee types
-export type User = Profile;
-export interface Trainee extends Profile {
-  mentorId: string;
 }
 
 // Enums for evaluation logic
@@ -89,6 +82,7 @@ export interface Submission {
     path: string; // Path in Supabase Storage
   };
   evaluation?: Evaluation;
+  profiles: Profile; // To hold the trainee's profile data
 }
 
 // Corresponds to the 'sub_challenges' table
@@ -102,11 +96,7 @@ export interface SubChallenge {
   claim_focus: string;
   submission_end_time: string;
   evaluation_rules: EvaluationRules;
-}
-
-// A version of SubChallenge that includes fetched submissions
-export interface SubChallengeWithSubmissions extends SubChallenge {
-    submissions: Submission[];
+  submissions: Submission[]; // Fetched separately
 }
 
 // Corresponds to the 'overall_challenges' table
@@ -117,9 +107,4 @@ export interface OverallChallenge {
   manager_ids: string[];
   trainee_ids: string[];
   evaluator_ids: string[];
-}
-
-// A version of OverallChallenge that includes fetched sub-challenges
-export interface OverallChallengeWithSubChallenges extends OverallChallenge {
-    sub_challenges: SubChallengeWithSubmissions[];
 }

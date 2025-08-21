@@ -62,7 +62,7 @@ export const CreateChallenge: React.FC<CreateChallengeProps> = ({ currentUser })
         }
         setLoading(true);
 
-        const newChallenge = {
+        const newChallenge: Omit<OverallChallenge, 'id' | 'created_at'> = {
             name: challengeName,
             manager_ids: [currentUser.id],
             trainee_ids: Array.from(selectedTraineeIds),

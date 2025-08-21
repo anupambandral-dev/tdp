@@ -1,10 +1,8 @@
-
-
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { MOCK_CHALLENGES, ALL_EMPLOYEES } from '../../constants';
+import { supabase } from '../../supabaseClient';
 import { Card } from '../../components/ui/Card';
-import { SubChallenge, Submission, IncorrectMarking, ResultTier } from '../../types';
+import { SubChallenge, Submission, IncorrectMarking, ResultTier, OverallChallenge, Profile } from '../../types';
 
 const getTotalScore = (submission: Submission, subChallenge: SubChallenge) => {
     if (!submission.evaluation) return { score: 0 };
@@ -30,12 +28,42 @@ const getTotalScore = (submission: Submission, subChallenge: SubChallenge) => {
     return { score: Math.round(totalScore) };
 }
 
+interface FetchedOverallChallenge extends OverallChallenge {
+    sub_challenges: (SubChallenge & { submissions: Submission[] })[];
+}
+
 export const TraineePerforma: React.FC = () => {
     const { challengeId, traineeId } = useParams<{ challengeId: string; traineeId: string }>();
+    const [overallChallenge, setOverallChallenge] = useState<FetchedOverallChallenge | null>(null);
+    const [trainee, setTrainee] = useState<Profile | null>(null);
+    const [loading, setLoading] = useState(true);
 
-    const overallChallenge = MOCK_CHALLENGES.find(c => c.id === challengeId);
-    const trainee = ALL_EMPLOYEES.find(u => u.id === traineeId);
+    useEffect(() => {
+        const fetchData = async () => {
+            if (!challengeId || !traineeId) return;
+            setLoading(true);
 
+            // Fetch Trainee Profile
+            const { data: traineeData } = await supabase.from('profiles').select('*').eq('id', traineeId).single();
+            setTrainee(traineeData);
+
+            // Fetch Overall Challenge with its sub-challenges and only this trainee's submissions
+            const { data: challengeData, error } = await supabase
+                .from('overall_challenges')
+                .select('*, sub_challenges(*, submissions(*))')
+                .eq('id', challengeId)
+                .eq('sub_challenges.submissions.trainee_id', traineeId)
+                .single();
+            
+            if (challengeData) {
+                setOverallChallenge(challengeData as FetchedOverallChallenge);
+            }
+            setLoading(false);
+        };
+        fetchData();
+    }, [challengeId, traineeId]);
+
+    if (loading) return <div className="p-8">Loading trainee performa...</div>;
     if (!overallChallenge || !trainee) {
         return <div className="text-center p-8">Trainee or Challenge not found.</div>;
     }
@@ -57,7 +85,7 @@ export const TraineePerforma: React.FC = () => {
             <div className="space-y-6">
                 <h2 className="text-2xl font-semibold border-b pb-2 dark:border-gray-700">Sub-Challenge Performance</h2>
                 {overallChallenge.sub_challenges.map(subChallenge => {
-                    const submission = subChallenge.submissions.find(s => s.trainee_id === trainee.id);
+                    const submission = subChallenge.submissions[0]; // We filtered to only get one
                     return (
                         <Card key={subChallenge.id}>
                             <h3 className="text-xl font-semibold text-blue-600 dark:text-blue-400">{subChallenge.title}</h3>
@@ -82,7 +110,7 @@ export const TraineePerforma: React.FC = () => {
                                             {submission.report_file && (
                                                 <div>
                                                     <p className="text-sm font-medium text-gray-700 dark:text-gray-300">Report File:</p>
-                                                    <a href={submission.report_file.path} className="text-blue-600 dark:text-blue-400 hover:underline text-sm">{submission.report_file.name}</a>
+                                                    <a href={supabase.storage.from('reports').getPublicUrl(submission.report_file.path).data.publicUrl} className="text-blue-600 dark:text-blue-400 hover:underline text-sm" target="_blank" rel="noopener noreferrer">{submission.report_file.name}</a>
                                                 </div>
                                             )}
                                         </div>

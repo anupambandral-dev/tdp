@@ -1,28 +1,63 @@
-
-
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { MOCK_CHALLENGES, ALL_EMPLOYEES } from '../../constants';
+import { supabase } from '../../supabaseClient';
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
-import { ResultTier, IncorrectMarking } from '../../types';
+import { ResultTier, IncorrectMarking, OverallChallenge, SubChallenge, Profile, Submission } from '../../types';
+
+interface PopulatedOverallChallenge extends OverallChallenge {
+    sub_challenges: SubChallenge[];
+}
 
 export const ChallengeDetail: React.FC = () => {
     const { challengeId } = useParams();
-    const challenge = MOCK_CHALLENGES.find(c => c.id === challengeId);
+    const [challenge, setChallenge] = useState<PopulatedOverallChallenge | null>(null);
+    const [trainees, setTrainees] = useState<Profile[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
 
-    if (!challenge) {
-        return <div className="text-center p-8">Challenge not found.</div>;
-    }
+    useEffect(() => {
+        const fetchChallengeDetails = async () => {
+            if (!challengeId) return;
+            setLoading(true);
+
+            const { data, error } = await supabase
+                .from('overall_challenges')
+                .select('*, sub_challenges(*, submissions(*, profiles(*)))')
+                .eq('id', challengeId)
+                .single();
+            
+            if (error) {
+                setError(error.message);
+                console.error(error);
+            } else if (data) {
+                setChallenge(data as PopulatedOverallChallenge);
+                if (data.trainee_ids.length > 0) {
+                    const { data: profilesData, error: profilesError } = await supabase
+                        .from('profiles')
+                        .select('*')
+                        .in('id', data.trainee_ids);
+                    if (profilesError) {
+                        setError(profilesError.message);
+                    } else {
+                        setTrainees(profilesData || []);
+                    }
+                }
+            }
+            setLoading(false);
+        };
+        fetchChallengeDetails();
+    }, [challengeId]);
 
     const getTraineeScore = (traineeId: string) => {
+        if (!challenge) return 0;
         let totalScore = 0;
         challenge.sub_challenges.forEach(sc => {
             const submission = sc.submissions.find(s => s.trainee_id === traineeId);
             if (submission?.evaluation) {
                 const rules = sc.evaluation_rules;
-                submission.results.forEach(result => {
-                    const evaluation = submission.evaluation?.result_evaluations.find(re => re.result_id === result.id);
+                submission.results.forEach((result: any) => {
+                    const evaluation = submission.evaluation?.result_evaluations.find((re: any) => re.result_id === result.id);
                     if (evaluation) {
                         if (result.trainee_tier === evaluation.evaluator_tier) {
                             totalScore += rules.tierScores[result.trainee_tier as ResultTier] || 0;
@@ -41,6 +76,10 @@ export const ChallengeDetail: React.FC = () => {
         });
         return Math.round(totalScore);
     };
+
+    if (loading) return <div className="p-8">Loading challenge details...</div>;
+    if (error) return <div className="p-8 text-red-500">Error: {error}</div>;
+    if (!challenge) return <div className="text-center p-8">Challenge not found.</div>;
 
     return (
         <div className="container mx-auto p-4 sm:p-6 lg:p-8">
@@ -78,10 +117,10 @@ export const ChallengeDetail: React.FC = () => {
                     <h2 className="text-2xl font-semibold mb-6">Trainee Leaderboard</h2>
                     <Card>
                         <ul className="space-y-1">
-                            {challenge.trainee_ids
-                                .map(id => ({ user: ALL_EMPLOYEES.find(e => e.id === id), score: getTraineeScore(id) }))
+                            {trainees
+                                .map(user => ({ user, score: getTraineeScore(user.id) }))
                                 .sort((a, b) => b.score - a.score)
-                                .map(({ user, score }, index) => user && (
+                                .map(({ user, score }, index) => (
                                 <li key={user.id}>
                                     <Link to={`/manager/challenge/${challenge.id}/trainee/${user.id}`} className="block p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
                                         <div className="flex items-center justify-between">

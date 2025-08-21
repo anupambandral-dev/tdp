@@ -48,7 +48,7 @@ export const ManagerDashboard: React.FC<ManagerDashboardProps> = ({ currentUser 
       } else {
         const formattedData = data.map(d => ({
             ...d,
-            sub_challenges_count: Array.isArray(d.sub_challenges) ? d.sub_challenges[0].count : 0
+            sub_challenges_count: (Array.isArray(d.sub_challenges) && d.sub_challenges.length > 0) ? d.sub_challenges[0].count : 0
         }))
         setChallenges(formattedData);
       }
