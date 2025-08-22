@@ -1,10 +1,9 @@
-
 import React, { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { supabase } from '../../supabaseClient';
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
-import { EvaluationRules, ResultTier, IncorrectMarking, OverallChallenge } from '../../types';
+import { EvaluationRules, ResultTier, IncorrectMarking, OverallChallenge, Json } from '../../types';
 import { TablesInsert } from '../../database.types';
 
 export const CreateSubChallenge: React.FC = () => {
@@ -76,10 +75,10 @@ export const CreateSubChallenge: React.FC = () => {
             summary,
             claim_focus: claimFocus,
             submission_end_time: new Date(submissionEndTime).toISOString(),
-            evaluation_rules: rules as any,
+            evaluation_rules: rules as unknown as Json,
         };
 
-        const { error } = await supabase.from('sub_challenges').insert([newSubChallenge] as any);
+        const { error } = await supabase.from('sub_challenges').insert([newSubChallenge]);
 
         if (error) {
             alert(`Error creating sub-challenge: ${error.message}`);

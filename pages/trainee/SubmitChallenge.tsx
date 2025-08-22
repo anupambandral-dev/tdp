@@ -1,11 +1,10 @@
-
 import React, { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { v4 as uuidv4 } from 'uuid';
 import { supabase } from '../../supabaseClient';
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
-import { SubmittedResult, ResultType, ResultTier, Profile, Submission, SubChallenge, EvaluationRules } from '../../types';
+import { SubmittedResult, ResultType, ResultTier, Profile, Submission, SubChallenge, EvaluationRules, Json } from '../../types';
 import { TablesInsert } from '../../database.types';
 
 const UploadIcon = () => (
@@ -122,12 +121,12 @@ export const SubmitChallenge: React.FC<SubmitChallengeProps> = ({ currentUser })
     const submissionData: TablesInsert<'submissions'> = {
         sub_challenge_id: challenge.id,
         trainee_id: currentUser.id,
-        results: results as any,
-        report_file: reportFileData as any,
+        results: results as unknown as Json,
+        report_file: reportFileData as unknown as Json,
         submitted_at: new Date().toISOString(),
     };
 
-    const { error } = await supabase.from('submissions').upsert([submissionData] as any, {
+    const { error } = await supabase.from('submissions').upsert([submissionData], {
         onConflict: 'sub_challenge_id, trainee_id'
     });
 

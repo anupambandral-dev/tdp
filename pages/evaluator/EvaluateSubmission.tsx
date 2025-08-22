@@ -110,7 +110,7 @@ export const EvaluateSubmission: React.FC<EvaluateSubmissionProps> = ({ currentU
 
         const { error } = await supabase
             .from('submissions')
-            .update({ evaluation: newEvaluation }) 
+            .update({ evaluation: newEvaluation as unknown as Json }) 
             .eq('id', selectedSubmission.id);
 
         if (error) {
@@ -125,7 +125,7 @@ export const EvaluateSubmission: React.FC<EvaluateSubmissionProps> = ({ currentU
                 setChallenge(prev => {
                     if (!prev) return prev;
                     const newSubmissions = prev.submissions.map(s =>
-                        s.id === selectedSubmission.id ? { ...s, evaluation: newEvaluation } : s
+                        s.id === selectedSubmission.id ? { ...s, evaluation: newEvaluation as unknown as Json } : s
                     );
                     return { ...prev, submissions: newSubmissions };
                 });

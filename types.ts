@@ -66,7 +66,7 @@ export interface ResultEvaluation {
   evaluator_tier: ResultTier;
 }
 
-export type Evaluation = {
+export interface Evaluation {
   evaluator_id: string;
   result_evaluations: ResultEvaluation[];
   report_score?: number;
