@@ -1,4 +1,5 @@
 
+
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Profile, SubChallenge, SubChallengeWithSubmissions } from '../../types';
@@ -40,7 +41,7 @@ export const EvaluatorDashboard: React.FC<EvaluatorDashboardProps> = ({ currentU
         const challengeIds = overallChallenges.map(oc => oc.id);
         const { data: subChallenges, error: scError } = await supabase
             .from('sub_challenges')
-            .select('*, submissions(*, profiles(id, name, avatar_url, email, role))')
+            .select('*, submissions(*, profiles(*))')
             .in('overall_challenge_id', challengeIds)
             .returns<SubChallengeWithSubmissions[]>();
 
