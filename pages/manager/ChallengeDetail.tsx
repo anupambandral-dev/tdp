@@ -29,12 +29,13 @@ export const ChallengeDetail: React.FC = () => {
                 setError(error.message);
                 console.error(error);
             } else if (data) {
-                setChallenge(data as OverallChallengeWithSubChallenges);
-                if (data.trainee_ids.length > 0) {
+                const typedData = data as unknown as OverallChallengeWithSubChallenges;
+                setChallenge(typedData);
+                if (typedData.trainee_ids.length > 0) {
                     const { data: profilesData, error: profilesError } = await supabase
                         .from('profiles')
                         .select('*')
-                        .in('id', data.trainee_ids)
+                        .in('id', typedData.trainee_ids)
                         .returns<Profile[]>();
                     if (profilesError) {
                         setError(profilesError.message);
