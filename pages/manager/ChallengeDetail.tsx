@@ -20,7 +20,7 @@ export const ChallengeDetail: React.FC = () => {
 
             const { data, error } = await supabase
                 .from('overall_challenges')
-                .select('*, sub_challenges(*, submissions(*, profiles(*)))')
+                .select('*, sub_challenges(*, submissions(*, profiles(id, name, avatar_url, email, role)))')
                 .eq('id', challengeId)
                 .single();
             

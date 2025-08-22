@@ -44,7 +44,7 @@ export const TraineeDashboard: React.FC<TraineeDashboardProps> = ({ currentUser 
       const challengeIds = overallChallenges.map(oc => oc.id);
       const { data, error: scError } = await supabase
         .from('sub_challenges')
-        .select('*, submissions(*, profiles(*))')
+        .select('*, submissions(*, profiles(id, name, avatar_url, email, role))')
         .in('overall_challenge_id', challengeIds);
 
       if (scError) {

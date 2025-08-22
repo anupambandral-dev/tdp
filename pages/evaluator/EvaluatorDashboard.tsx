@@ -38,7 +38,7 @@ export const EvaluatorDashboard: React.FC<EvaluatorDashboardProps> = ({ currentU
         const challengeIds = overallChallenges.map(oc => oc.id);
         const { data: subChallenges, error: scError } = await supabase
             .from('sub_challenges')
-            .select('*, submissions(*, profiles(*))')
+            .select('*, submissions(*, profiles(id, name, avatar_url, email, role))')
             .in('overall_challenge_id', challengeIds)
 
         if (scError) {

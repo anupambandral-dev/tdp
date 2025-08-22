@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { Profile, Role, SubChallenge, OverallChallenge, Submission, IncorrectMarking, ResultTier, Evaluation, EvaluationRules, SubChallengeWithSubmissions, SubmittedResult } from '../../types';
@@ -175,7 +176,7 @@ export const SubChallengeDetail: React.FC<SubChallengeDetailProps> = ({ currentU
             setLoading(true);
             const { data: scData, error: scError } = await supabase
                 .from('sub_challenges')
-                .select('*, submissions(*, profiles(*))')
+                .select('*, submissions(*, profiles(id, name, avatar_url, email, role))')
                 .eq('id', subChallengeId)
                 .single();
             

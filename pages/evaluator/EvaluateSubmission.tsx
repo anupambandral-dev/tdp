@@ -32,7 +32,7 @@ export const EvaluateSubmission: React.FC<EvaluateSubmissionProps> = ({ currentU
             setLoading(true);
             const { data, error } = await supabase
                 .from('sub_challenges')
-                .select('*, submissions(*, profiles(*))')
+                .select('*, submissions(*, profiles(id, name, avatar_url, email, role))')
                 .eq('id', challengeId)
                 .single();
             
@@ -111,7 +111,7 @@ export const EvaluateSubmission: React.FC<EvaluateSubmissionProps> = ({ currentU
 
         const { error } = await supabase
             .from('submissions')
-            .update({ evaluation: newEvaluation }) 
+            .update({ evaluation: newEvaluation as any }) 
             .eq('id', selectedSubmission.id);
 
         if (error) {
@@ -126,7 +126,7 @@ export const EvaluateSubmission: React.FC<EvaluateSubmissionProps> = ({ currentU
                 setChallenge(prev => {
                     if (!prev) return prev;
                     const newSubmissions = prev.submissions.map(s =>
-                        s.id === selectedSubmission.id ? { ...s, evaluation: newEvaluation } : s
+                        s.id === selectedSubmission.id ? { ...s, evaluation: newEvaluation as any } : s
                     );
                     return { ...prev, submissions: newSubmissions };
                 });
