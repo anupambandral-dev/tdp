@@ -1,9 +1,3 @@
-
-
-
-
-
-
 import React, { useState, useMemo, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { supabase } from '../../supabaseClient';
@@ -116,7 +110,7 @@ export const EvaluateSubmission: React.FC<EvaluateSubmissionProps> = ({ currentU
 
         const { error } = await supabase
             .from('submissions')
-            .update({ evaluation: newEvaluation } as any) 
+            .update({ evaluation: newEvaluation }) 
             .eq('id', selectedSubmission.id);
 
         if (error) {
@@ -131,7 +125,7 @@ export const EvaluateSubmission: React.FC<EvaluateSubmissionProps> = ({ currentU
                 setChallenge(prev => {
                     if (!prev) return prev;
                     const newSubmissions = prev.submissions.map(s =>
-                        s.id === selectedSubmission.id ? { ...s, evaluation: newEvaluation as unknown as Json } : s
+                        s.id === selectedSubmission.id ? { ...s, evaluation: newEvaluation } : s
                     );
                     return { ...prev, submissions: newSubmissions };
                 });

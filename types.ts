@@ -66,24 +66,24 @@ export interface ResultEvaluation {
   evaluator_tier: ResultTier;
 }
 
-export interface Evaluation {
+export type Evaluation = {
   evaluator_id: string;
   result_evaluations: ResultEvaluation[];
   report_score?: number;
   feedback: string;
   evaluated_at: string;
-}
+};
 
 // --- COMPOSITE TYPES for joined data ---
 
-export interface SubmissionWithProfile extends Submission {
+export type SubmissionWithProfile = Submission & {
   profiles: Profile | null;
-}
+};
 
-export interface SubChallengeWithSubmissions extends SubChallenge {
+export type SubChallengeWithSubmissions = SubChallenge & {
   submissions: SubmissionWithProfile[];
-}
+};
 
-export interface OverallChallengeWithSubChallenges extends OverallChallenge {
+export type OverallChallengeWithSubChallenges = OverallChallenge & {
   sub_challenges: SubChallengeWithSubmissions[];
-}
+};
