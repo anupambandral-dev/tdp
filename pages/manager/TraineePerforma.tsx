@@ -52,17 +52,33 @@ export const TraineePerforma: React.FC = () => {
             if (traineeData) setTrainee(traineeData as unknown as Profile);
 
             // Fetch Overall Challenge with its sub-challenges and only this trainee's submissions
+            // The !inner hint ensures sub_challenges are only returned if they have a matching submission
             const { data: challengeData, error } = await supabase
                 .from('overall_challenges')
-                .select('*, sub_challenges(*, submissions(*))')
+                .select('*, sub_challenges!inner(*, submissions!inner(*))')
                 .eq('id', challengeId)
                 .eq('sub_challenges.submissions.trainee_id', traineeId)
                 .single();
             
-            if (error) {
+            if (error && error.code !== 'PGRST116') { // Ignore 'PGRST116' (single row not found) if trainee has no submissions
                 console.error(error);
             } else if (challengeData) {
                 setOverallChallenge(challengeData as unknown as FetchedOverallChallenge);
+            } else {
+                // If no data, fetch the challenge shell without submissions to show 'Not Submitted'
+                const { data: shellData } = await supabase
+                    .from('overall_challenges')
+                    .select('*, sub_challenges(*)')
+                    .eq('id', challengeId)
+                    .single();
+                if (shellData) {
+                    const typedShellData = shellData as unknown as (OverallChallenge & { sub_challenges: SubChallenge[] });
+                    const challengeWithEmptySubmissions = {
+                        ...typedShellData,
+                        sub_challenges: typedShellData.sub_challenges.map(sc => ({...sc, submissions: []}))
+                    }
+                    setOverallChallenge(challengeWithEmptySubmissions as unknown as FetchedOverallChallenge);
+                }
             }
             setLoading(false);
         };
@@ -91,7 +107,7 @@ export const TraineePerforma: React.FC = () => {
             <div className="space-y-6">
                 <h2 className="text-2xl font-semibold border-b pb-2 dark:border-gray-700">Sub-Challenge Performance</h2>
                 {overallChallenge.sub_challenges.map(subChallenge => {
-                    const submission = subChallenge.submissions && subChallenge.submissions[0]; // We filtered to only get one
+                    const submission = subChallenge.submissions?.find(s => s.trainee_id === traineeId);
                     const evaluation = submission?.evaluation as unknown as Evaluation | null;
                     const results = submission?.results as unknown as SubmittedResult[] | null;
                     const reportFile = submission?.report_file as { name: string; path: string } | null;
