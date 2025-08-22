@@ -113,7 +113,7 @@ export const EvaluateSubmission: React.FC<EvaluateSubmissionProps> = ({ currentU
 
         const { error } = await supabase
             .from('submissions')
-            .update({ evaluation: newEvaluation as any }) 
+            .update({ evaluation: newEvaluation as unknown as Json }) 
             .eq('id', selectedSubmission.id);
 
         if (error) {
