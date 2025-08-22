@@ -22,13 +22,13 @@ export const ChallengeDetail: React.FC = () => {
                 .from('overall_challenges')
                 .select('*, sub_challenges(*, submissions(*, profiles(id, name, avatar_url, email, role)))')
                 .eq('id', challengeId)
-                .single();
+                .single<OverallChallengeWithSubChallenges>();
             
             if (error) {
                 setError(error.message);
                 console.error(error);
             } else if (data) {
-                setChallenge(data as unknown as OverallChallengeWithSubChallenges);
+                setChallenge(data);
                 if (data.trainee_ids.length > 0) {
                     const { data: profilesData, error: profilesError } = await supabase
                         .from('profiles')

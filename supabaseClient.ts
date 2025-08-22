@@ -10,6 +10,6 @@ if (!supabaseUrl || !supabaseAnonKey) {
   initializationError = 'Supabase URL and/or anonymous key are missing. Make sure you have VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY set in your environment variables (e.g., in your Netlify dashboard).';
 }
 
-// We still create the client to avoid making it nullable everywhere in the app.
-// App.tsx will check for the initializationError and prevent the app from running if it exists.
-export const supabase = createClient<Database>(supabaseUrl!, supabaseAnonKey!);
+// Pass empty strings if the vars are missing to prevent a hard crash.
+// The App component will check for initializationError and show a user-friendly message.
+export const supabase = createClient<Database>(supabaseUrl || '', supabaseAnonKey || '');

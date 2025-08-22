@@ -178,12 +178,12 @@ export const SubChallengeDetail: React.FC<SubChallengeDetailProps> = ({ currentU
                 .from('sub_challenges')
                 .select('*, submissions(*, profiles(id, name, avatar_url, email, role))')
                 .eq('id', subChallengeId)
-                .single();
+                .single<SubChallengeWithSubmissions>();
             
             if (scError) {
                 console.error(scError);
             } else if (scData) {
-                setSubChallenge(scData as unknown as SubChallengeWithSubmissions);
+                setSubChallenge(scData);
                 const { data: ocData, error: ocError } = await supabase
                     .from('overall_challenges')
                     .select('*')

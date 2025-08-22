@@ -23,7 +23,7 @@ export const TraineeDashboard: React.FC<TraineeDashboardProps> = ({ currentUser 
     const fetchChallenges = async () => {
       setLoading(true);
       // 1. Find overall challenges for this trainee
-      const { data: overallChallenges, error: ocError } = await supabase
+      const { data: overallChallengesData, error: ocError } = await supabase
         .from('overall_challenges')
         .select('id')
         .contains('trainee_ids', [currentUser.id]);
@@ -33,8 +33,10 @@ export const TraineeDashboard: React.FC<TraineeDashboardProps> = ({ currentUser 
         setLoading(false);
         return;
       }
+      
+      const overallChallenges = overallChallengesData || [];
 
-      if (!overallChallenges || overallChallenges.length === 0) {
+      if (overallChallenges.length === 0) {
         setTraineeChallenges([]);
         setLoading(false);
         return;
@@ -45,12 +47,13 @@ export const TraineeDashboard: React.FC<TraineeDashboardProps> = ({ currentUser 
       const { data, error: scError } = await supabase
         .from('sub_challenges')
         .select('*, submissions(*, profiles(id, name, avatar_url, email, role))')
-        .in('overall_challenge_id', challengeIds);
+        .in('overall_challenge_id', challengeIds)
+        .returns<SubChallengeWithSubmissions[]>();
 
       if (scError) {
         setError(scError.message);
       } else if (data) {
-        setTraineeChallenges(data as unknown as SubChallengeWithSubmissions[]);
+        setTraineeChallenges(data);
       }
       setLoading(false);
     };

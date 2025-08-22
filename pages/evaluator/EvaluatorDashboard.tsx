@@ -18,7 +18,7 @@ export const EvaluatorDashboard: React.FC<EvaluatorDashboardProps> = ({ currentU
   useEffect(() => {
     const fetchChallenges = async () => {
         setLoading(true);
-        const { data: overallChallenges, error: ocError } = await supabase
+        const { data: overallChallengesData, error: ocError } = await supabase
           .from('overall_challenges')
           .select('id')
           .contains('evaluator_ids', [currentUser.id]);
@@ -29,7 +29,9 @@ export const EvaluatorDashboard: React.FC<EvaluatorDashboardProps> = ({ currentU
           return;
         }
 
-        if (!overallChallenges || overallChallenges.length === 0) {
+        const overallChallenges = overallChallengesData || [];
+
+        if (overallChallenges.length === 0) {
           setAssignedChallenges([]);
           setLoading(false);
           return;
@@ -40,11 +42,12 @@ export const EvaluatorDashboard: React.FC<EvaluatorDashboardProps> = ({ currentU
             .from('sub_challenges')
             .select('*, submissions(*, profiles(id, name, avatar_url, email, role))')
             .in('overall_challenge_id', challengeIds)
+            .returns<SubChallengeWithSubmissions[]>();
 
         if (scError) {
             setError(scError.message);
         } else if (subChallenges) {
-            setAssignedChallenges(subChallenges as unknown as SubChallengeWithSubmissions[]);
+            setAssignedChallenges(subChallenges);
         }
         setLoading(false);
     };

@@ -4,7 +4,7 @@ import { useParams, Link, useNavigate } from 'react-router-dom';
 import { supabase } from '../../supabaseClient';
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
-import { Profile, ResultEvaluation, ResultTier, SubmittedResult, IncorrectMarking, SubChallenge, Submission, Evaluation, EvaluationRules, SubmissionWithProfile, SubChallengeWithSubmissions } from '../../types';
+import { Profile, ResultEvaluation, ResultTier, SubmittedResult, IncorrectMarking, SubChallenge, Submission, Evaluation, EvaluationRules, SubmissionWithProfile, SubChallengeWithSubmissions, Json } from '../../types';
 
 interface EvaluateSubmissionProps {
     currentUser: Profile;
@@ -34,12 +34,12 @@ export const EvaluateSubmission: React.FC<EvaluateSubmissionProps> = ({ currentU
                 .from('sub_challenges')
                 .select('*, submissions(*, profiles(id, name, avatar_url, email, role))')
                 .eq('id', challengeId)
-                .single();
+                .single<SubChallengeWithSubmissions>();
             
             if (error) {
                 console.error(error);
             } else if (data) {
-                setChallenge(data as unknown as SubChallengeWithSubmissions);
+                setChallenge(data);
                 if (data.submissions && data.submissions.length > 0) {
                     const firstUnevaluated = data.submissions.find((s) => !s.evaluation);
                     if (firstUnevaluated) {
@@ -111,7 +111,7 @@ export const EvaluateSubmission: React.FC<EvaluateSubmissionProps> = ({ currentU
 
         const { error } = await supabase
             .from('submissions')
-            .update({ evaluation: newEvaluation as any }) 
+            .update({ evaluation: newEvaluation as Json }) 
             .eq('id', selectedSubmission.id);
 
         if (error) {

@@ -1,4 +1,7 @@
-import { Database, Tables } from './database.types';
+import { Database, Tables, Json as DbJson } from './database.types';
+
+// Re-export Json for convenience
+export type Json = DbJson;
 
 // Export role enum for convenience in the app
 export const Role = {
