@@ -1,6 +1,9 @@
 
 
 
+
+
+
 import React, { useState, useMemo, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { supabase } from '../../supabaseClient';
@@ -36,8 +39,7 @@ export const EvaluateSubmission: React.FC<EvaluateSubmissionProps> = ({ currentU
                 .from('sub_challenges')
                 .select('*, submissions(*, profiles(id, name, avatar_url, email, role))')
                 .eq('id', challengeId)
-                .returns<SubChallengeWithSubmissions>()
-                .single();
+                .single<SubChallengeWithSubmissions>();
             
             if (error) {
                 console.error(error);
@@ -114,7 +116,7 @@ export const EvaluateSubmission: React.FC<EvaluateSubmissionProps> = ({ currentU
 
         const { error } = await supabase
             .from('submissions')
-            .update({ evaluation: newEvaluation as any }) 
+            .update({ evaluation: newEvaluation } as any) 
             .eq('id', selectedSubmission.id);
 
         if (error) {

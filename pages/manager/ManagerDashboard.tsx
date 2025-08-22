@@ -45,18 +45,18 @@ export const ManagerDashboard: React.FC<ManagerDashboardProps> = ({ currentUser 
       const { data, error } = await supabase
         .from('overall_challenges')
         .select('*, sub_challenges(count)')
-        .contains('manager_ids', [currentUser.id])
-        .returns<ChallengeWithSubChallengeCount[]>();
-
+        .contains('manager_ids', [currentUser.id]);
+        
       if (error) {
         setError(error.message);
         console.error('Error fetching challenges:', error);
       } else if (data) {
-        const formattedData = data.map(d => ({
+        const typedData = data as unknown as ChallengeWithSubChallengeCount[];
+        const formattedData = typedData.map(d => ({
             ...d,
             sub_challenges_count: d.sub_challenges[0]?.count ?? 0
         }))
-        setChallenges(formattedData as unknown as ChallengeWithCounts[]);
+        setChallenges(formattedData);
       }
       setLoading(false);
     };

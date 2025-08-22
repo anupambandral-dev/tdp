@@ -1,6 +1,8 @@
 
 
 
+
+
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Profile, SubChallenge, ResultTier, IncorrectMarking, Evaluation, EvaluationRules, SubmittedResult, SubChallengeWithSubmissions } from '../../types';
@@ -28,8 +30,7 @@ export const TraineeDashboard: React.FC<TraineeDashboardProps> = ({ currentUser 
       const { data: overallChallengesData, error: ocError } = await supabase
         .from('overall_challenges')
         .select('id')
-        .contains('trainee_ids', [currentUser.id])
-        .returns<{ id: string }[]>();
+        .contains('trainee_ids', [currentUser.id]);
 
       if (ocError) {
         setError(ocError.message);
@@ -37,7 +38,7 @@ export const TraineeDashboard: React.FC<TraineeDashboardProps> = ({ currentUser 
         return;
       }
       
-      const overallChallenges = overallChallengesData || [];
+      const overallChallenges = (overallChallengesData as unknown as { id: string }[]) || [];
 
       if (overallChallenges.length === 0) {
         setTraineeChallenges([]);
@@ -49,14 +50,13 @@ export const TraineeDashboard: React.FC<TraineeDashboardProps> = ({ currentUser 
       const challengeIds = overallChallenges.map(oc => oc.id);
       const { data, error: scError } = await supabase
         .from('sub_challenges')
-        .select('*, submissions(*, profiles(*))')
-        .in('overall_challenge_id', challengeIds)
-        .returns<SubChallengeWithSubmissions[]>();
+        .select('*, submissions(*, profiles(id, name, avatar_url, email, role))')
+        .in('overall_challenge_id', challengeIds);
 
       if (scError) {
         setError(scError.message);
       } else if (data) {
-        setTraineeChallenges(data);
+        setTraineeChallenges(data as unknown as SubChallengeWithSubmissions[]);
       }
       setLoading(false);
     };

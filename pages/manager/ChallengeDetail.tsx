@@ -1,6 +1,9 @@
 
 
 
+
+
+
 import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { supabase } from '../../supabaseClient';
@@ -22,10 +25,9 @@ export const ChallengeDetail: React.FC = () => {
 
             const { data, error } = await supabase
                 .from('overall_challenges')
-                .select('*, sub_challenges(*, submissions(*, profiles(*)))')
+                .select('*, sub_challenges(*, submissions(*, profiles(id, name, avatar_url, email, role)))')
                 .eq('id', challengeId)
-                .returns<OverallChallengeWithSubChallenges>()
-                .single();
+                .single<OverallChallengeWithSubChallenges>();
             
             if (error) {
                 setError(error.message);
@@ -36,12 +38,12 @@ export const ChallengeDetail: React.FC = () => {
                     const { data: profilesData, error: profilesError } = await supabase
                         .from('profiles')
                         .select('*')
-                        .in('id', data.trainee_ids)
-                        .returns<Profile[]>();
+                        .in('id', data.trainee_ids);
+
                     if (profilesError) {
                         setError(profilesError.message);
                     } else if (profilesData) {
-                        setTrainees(profilesData);
+                        setTrainees(profilesData as unknown as Profile[]);
                     }
                 }
             }
