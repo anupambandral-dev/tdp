@@ -1,4 +1,5 @@
 
+
 import React, { useState, useMemo, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Profile, Role, OverallChallenge } from '../../types';
@@ -29,7 +30,7 @@ export const CreateChallenge: React.FC<CreateChallengeProps> = ({ currentUser })
 
     useEffect(() => {
         const fetchEmployees = async () => {
-            const { data, error } = await supabase.from('profiles').select('*');
+            const { data, error } = await supabase.from('profiles').select('*').returns<Profile[]>();
             if (error) {
                 console.error('Error fetching employees:', error);
             } else if (data) {
@@ -74,7 +75,7 @@ export const CreateChallenge: React.FC<CreateChallengeProps> = ({ currentUser })
             evaluator_ids: Array.from(selectedEvaluatorIds),
         };
         
-        const { error } = await supabase.from('overall_challenges').insert([newChallenge]);
+        const { error } = await supabase.from('overall_challenges').insert([newChallenge] as any);
 
         if (error) {
             alert(`Error creating challenge: ${error.message}`);

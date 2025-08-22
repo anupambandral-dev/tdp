@@ -1,3 +1,4 @@
+
 import React, { useState, useMemo, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { supabase } from '../../supabaseClient';
@@ -38,14 +39,13 @@ export const EvaluateSubmission: React.FC<EvaluateSubmissionProps> = ({ currentU
             if (error) {
                 console.error(error);
             } else if (data) {
-                const typedData = data as SubChallengeWithSubmissions;
-                setChallenge(typedData);
-                if (typedData.submissions && typedData.submissions.length > 0) {
-                    const firstUnevaluated = typedData.submissions.find((s) => !s.evaluation);
+                setChallenge(data as unknown as SubChallengeWithSubmissions);
+                if (data.submissions && data.submissions.length > 0) {
+                    const firstUnevaluated = data.submissions.find((s) => !s.evaluation);
                     if (firstUnevaluated) {
                         setSelectedTraineeId(firstUnevaluated.trainee_id);
                     } else {
-                        setSelectedTraineeId(typedData.submissions[0].trainee_id);
+                        setSelectedTraineeId(data.submissions[0].trainee_id);
                     }
                 }
             }
@@ -111,7 +111,7 @@ export const EvaluateSubmission: React.FC<EvaluateSubmissionProps> = ({ currentU
 
         const { error } = await supabase
             .from('submissions')
-            .update({ evaluation: newEvaluation as any }) // Cast to any for JSONB
+            .update({ evaluation: newEvaluation }) 
             .eq('id', selectedSubmission.id);
 
         if (error) {
@@ -126,7 +126,7 @@ export const EvaluateSubmission: React.FC<EvaluateSubmissionProps> = ({ currentU
                 setChallenge(prev => {
                     if (!prev) return prev;
                     const newSubmissions = prev.submissions.map(s =>
-                        s.id === selectedSubmission.id ? { ...s, evaluation: newEvaluation as any } : s
+                        s.id === selectedSubmission.id ? { ...s, evaluation: newEvaluation } : s
                     );
                     return { ...prev, submissions: newSubmissions };
                 });

@@ -182,7 +182,7 @@ export const SubChallengeDetail: React.FC<SubChallengeDetailProps> = ({ currentU
             if (scError) {
                 console.error(scError);
             } else if (scData) {
-                setSubChallenge(scData as SubChallengeWithSubmissions);
+                setSubChallenge(scData as unknown as SubChallengeWithSubmissions);
                 const { data: ocData, error: ocError } = await supabase
                     .from('overall_challenges')
                     .select('*')
@@ -191,7 +191,7 @@ export const SubChallengeDetail: React.FC<SubChallengeDetailProps> = ({ currentU
                 if (ocError) {
                     console.error(ocError);
                 } else if (ocData) {
-                    setOverallChallenge(ocData);
+                    setOverallChallenge(ocData as unknown as OverallChallenge);
                 }
             }
             setLoading(false);

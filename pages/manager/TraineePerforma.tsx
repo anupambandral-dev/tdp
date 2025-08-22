@@ -49,7 +49,7 @@ export const TraineePerforma: React.FC = () => {
             // Fetch Trainee Profile
             const { data: traineeData, error: traineeError } = await supabase.from('profiles').select('*').eq('id', traineeId).single();
             if (traineeError) console.error(traineeError);
-            if (traineeData) setTrainee(traineeData);
+            if (traineeData) setTrainee(traineeData as unknown as Profile);
 
             // Fetch Overall Challenge with its sub-challenges and only this trainee's submissions
             const { data: challengeData, error } = await supabase
@@ -62,7 +62,7 @@ export const TraineePerforma: React.FC = () => {
             if (error) {
                 console.error(error);
             } else if (challengeData) {
-                setOverallChallenge(challengeData as FetchedOverallChallenge);
+                setOverallChallenge(challengeData as unknown as FetchedOverallChallenge);
             }
             setLoading(false);
         };

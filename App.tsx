@@ -1,4 +1,6 @@
 
+
+
 import React, { useState, useEffect } from 'react';
 import { HashRouter, Routes, Route, Navigate, Outlet } from 'react-router-dom';
 import { Profile, Role } from './types';
@@ -14,7 +16,7 @@ import { CreateChallenge } from './pages/manager/CreateChallenge';
 import { CreateSubChallenge } from './pages/manager/CreateSubChallenge';
 import { SubChallengeDetail } from './pages/shared/SubChallengeDetail';
 import { TraineePerforma } from './pages/manager/TraineePerforma';
-import { supabase } from './supabaseClient';
+import { supabase, initializationError } from './supabaseClient';
 import { Session } from '@supabase/supabase-js';
 import { UserManagement } from './pages/manager/UserManagement';
 
@@ -24,8 +26,20 @@ const App: React.FC = () => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    if (initializationError) {
+        setLoading(false);
+        return;
+    }
+
     const getSession = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
+      const { data: { session }, error } = await supabase.auth.getSession();
+      
+      if (error) {
+        console.error("Error getting session:", error);
+        setLoading(false);
+        return;
+      }
+
       setSession(session);
 
       if(session) {
@@ -33,7 +47,7 @@ const App: React.FC = () => {
           .from('profiles')
           .select('*')
           .eq('id', session.user.id)
-          .single();
+          .single<Profile>();
         if (profile) setCurrentUser(profile);
       }
       setLoading(false);
@@ -49,7 +63,7 @@ const App: React.FC = () => {
             .from('profiles')
             .select('*')
             .eq('id', session.user.id)
-            .single();
+            .single<Profile>();
           if (profile) setCurrentUser(profile);
         } else {
           setCurrentUser(null);
@@ -80,6 +94,19 @@ const App: React.FC = () => {
     }
     return <Outlet />;
   };
+
+  if (initializationError) {
+    return (
+        <div className="min-h-screen flex items-center justify-center p-4 bg-red-100 text-red-900 dark:bg-red-900 dark:text-red-100">
+          <div className="text-center max-w-2xl">
+            <h1 className="text-2xl font-bold mb-4">Application Configuration Error</h1>
+            <p className="mb-4">The application cannot start because it's missing essential configuration.</p>
+            <p className="bg-red-200 dark:bg-red-800 p-4 rounded-lg font-mono text-sm text-left">{initializationError}</p>
+             <p className="mt-4 text-sm">Please ensure you have correctly set up your environment variables in the Netlify dashboard.</p>
+          </div>
+        </div>
+    );
+  }
 
   if (loading) {
     return (

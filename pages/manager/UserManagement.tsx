@@ -21,7 +21,7 @@ export const UserManagement: React.FC = () => {
         setError(error.message);
         console.error("Error fetching profiles:", error);
       } else if (data) {
-        setProfiles(data);
+        setProfiles(data as unknown as Profile[]);
       }
       setLoading(false);
     };

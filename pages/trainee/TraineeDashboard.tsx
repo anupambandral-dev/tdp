@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Profile, SubChallenge, ResultTier, IncorrectMarking, Evaluation, EvaluationRules, SubmittedResult, SubChallengeWithSubmissions } from '../../types';
@@ -49,7 +50,7 @@ export const TraineeDashboard: React.FC<TraineeDashboardProps> = ({ currentUser 
       if (scError) {
         setError(scError.message);
       } else if (data) {
-        setTraineeChallenges(data as SubChallengeWithSubmissions[]);
+        setTraineeChallenges(data as unknown as SubChallengeWithSubmissions[]);
       }
       setLoading(false);
     };

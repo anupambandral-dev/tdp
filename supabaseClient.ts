@@ -1,11 +1,15 @@
 import { createClient } from '@supabase/supabase-js';
 import { Database } from './database.types';
 
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+const supabaseUrl = (import.meta as any).env.VITE_SUPABASE_URL;
+const supabaseAnonKey = (import.meta as any).env.VITE_SUPABASE_ANON_KEY;
+
+export let initializationError: string | null = null;
 
 if (!supabaseUrl || !supabaseAnonKey) {
-  throw new Error('Supabase URL and anonymous key are required. Make sure you have VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY set in your environment.');
+  initializationError = 'Supabase URL and/or anonymous key are missing. Make sure you have VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY set in your environment variables (e.g., in your Netlify dashboard).';
 }
 
-export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey);
+// We still create the client to avoid making it nullable everywhere in the app.
+// App.tsx will check for the initializationError and prevent the app from running if it exists.
+export const supabase = createClient<Database>(supabaseUrl!, supabaseAnonKey!);
