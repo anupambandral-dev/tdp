@@ -35,18 +35,19 @@ export const EvaluateSubmission: React.FC<EvaluateSubmissionProps> = ({ currentU
                 .from('sub_challenges')
                 .select('*, submissions(*, profiles(id, name, avatar_url, email, role))')
                 .eq('id', challengeId)
-                .single<SubChallengeWithSubmissions>();
+                .single();
             
             if (error) {
                 console.error(error);
             } else if (data) {
-                setChallenge(data);
-                if (data.submissions && data.submissions.length > 0) {
-                    const firstUnevaluated = data.submissions.find((s) => !s.evaluation);
+                const challengeData = data as unknown as SubChallengeWithSubmissions;
+                setChallenge(challengeData);
+                if (challengeData.submissions && challengeData.submissions.length > 0) {
+                    const firstUnevaluated = challengeData.submissions.find((s) => !s.evaluation);
                     if (firstUnevaluated) {
                         setSelectedTraineeId(firstUnevaluated.trainee_id);
                     } else {
-                        setSelectedTraineeId(data.submissions[0].trainee_id);
+                        setSelectedTraineeId(challengeData.submissions[0].trainee_id);
                     }
                 }
             }
