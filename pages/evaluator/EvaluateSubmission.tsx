@@ -1,5 +1,6 @@
 
 
+
 import React, { useState, useMemo, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { supabase } from '../../supabaseClient';
@@ -35,19 +36,19 @@ export const EvaluateSubmission: React.FC<EvaluateSubmissionProps> = ({ currentU
                 .from('sub_challenges')
                 .select('*, submissions(*, profiles(id, name, avatar_url, email, role))')
                 .eq('id', challengeId)
+                .returns<SubChallengeWithSubmissions>()
                 .single();
             
             if (error) {
                 console.error(error);
             } else if (data) {
-                const challengeData = data as unknown as SubChallengeWithSubmissions;
-                setChallenge(challengeData);
-                if (challengeData.submissions && challengeData.submissions.length > 0) {
-                    const firstUnevaluated = challengeData.submissions.find((s) => !s.evaluation);
+                setChallenge(data);
+                if (data.submissions && data.submissions.length > 0) {
+                    const firstUnevaluated = data.submissions.find((s) => !s.evaluation);
                     if (firstUnevaluated) {
                         setSelectedTraineeId(firstUnevaluated.trainee_id);
                     } else {
-                        setSelectedTraineeId(challengeData.submissions[0].trainee_id);
+                        setSelectedTraineeId(data.submissions[0].trainee_id);
                     }
                 }
             }
@@ -113,7 +114,7 @@ export const EvaluateSubmission: React.FC<EvaluateSubmissionProps> = ({ currentU
 
         const { error } = await supabase
             .from('submissions')
-            .update({ evaluation: newEvaluation as unknown as Json }) 
+            .update({ evaluation: newEvaluation as any }) 
             .eq('id', selectedSubmission.id);
 
         if (error) {

@@ -1,6 +1,3 @@
-
-
-
 import React, { useState, useEffect } from 'react';
 import { HashRouter, Routes, Route, Navigate, Outlet } from 'react-router-dom';
 import { Profile, Role } from './types';
@@ -31,34 +28,39 @@ const App: React.FC = () => {
         return;
     }
 
-    const getSession = async () => {
-      const { data: { session }, error } = await supabase.auth.getSession();
-      
-      if (error) {
-        console.error("Error getting session:", error);
+    const getSessionAndProfile = async () => {
+      try {
+        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+        if (sessionError) throw sessionError;
+        
+        setSession(session);
+
+        if (session?.user) {
+          const { data: profile, error: profileError } = await supabase
+            .from('profiles')
+            .select('*')
+            .eq('id', session.user.id)
+            .single<Profile>();
+          if (profileError) throw profileError;
+          setCurrentUser(profile);
+        } else {
+          setCurrentUser(null);
+        }
+      } catch (error) {
+        console.error("Error during initial session fetch:", error);
+        setCurrentUser(null);
+        setSession(null);
+      } finally {
         setLoading(false);
-        return;
       }
-
-      setSession(session);
-
-      if(session) {
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('*')
-          .eq('id', session.user.id)
-          .single<Profile>();
-        if (profile) setCurrentUser(profile);
-      }
-      setLoading(false);
     };
     
-    getSession();
+    getSessionAndProfile();
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (_event, session) => {
         setSession(session);
-        if(session) {
+        if(session?.user) {
           const { data: profile } = await supabase
             .from('profiles')
             .select('*')
@@ -68,7 +70,7 @@ const App: React.FC = () => {
         } else {
           setCurrentUser(null);
         }
-        setLoading(false);
+        // No need to set loading to false here as the initial load is what matters.
       }
     );
 
@@ -80,6 +82,7 @@ const App: React.FC = () => {
   const handleLogout = async () => {
     await supabase.auth.signOut();
     setCurrentUser(null);
+    setSession(null);
   };
 
   const ProtectedRoute: React.FC<{ allowedRoles: Role[] }> = ({ allowedRoles }) => {

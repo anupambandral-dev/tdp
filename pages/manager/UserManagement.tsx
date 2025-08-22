@@ -77,23 +77,23 @@ export const UserManagement: React.FC = () => {
             <h2 className="text-2xl font-semibold mb-4">Add & Manage Users</h2>
             <Card className="space-y-6">
                 <div>
-                    <h3 className="font-semibold text-lg">User Workflow</h3>
+                    <h3 className="font-semibold text-lg">Invitation Workflow</h3>
                     <p className="text-sm text-gray-600 dark:text-gray-400 mt-2">
-                        Employees can now sign up for the application themselves. You can then manage their roles directly in the Supabase dashboard.
+                        To add new users, you must invite them via the Supabase dashboard. They will receive an email with a magic link to sign in for the first time.
                     </p>
                     <ol className="list-decimal list-inside text-sm space-y-2 mt-2">
-                        <li>Direct new employees to the application's login page.</li>
-                        <li>They should click **"Sign up"** and create an account with their name, email, and a password.</li>
-                        <li>Upon successful sign-up, their profile is automatically created with the default role of **'Trainee'**.</li>
+                        <li>Go to your Supabase project dashboard.</li>
+                        <li>Navigate to the **Authentication** section and click the **"Invite user"** button.</li>
+                        <li>Enter the employee's email address. Their profile will be automatically created with the default role of **'Trainee'**.</li>
                         <li>
-                            To change a user's role, go to your Supabase project, navigate to the **Table Editor**, select the `profiles` table, and edit the `role` for that user to `Evaluator` or `Manager` as needed.
+                            To change a user's role, go to the **Table Editor**, select the `profiles` table, and edit the `role` for that user to `Evaluator` or `Manager` as needed.
                         </li>
                     </ol>
                 </div>
                 <div className="p-4 bg-blue-50 dark:bg-gray-700 rounded-lg">
                      <h4 className="font-bold text-md text-blue-800 dark:text-blue-200">First-Time Admin Setup</h4>
                      <p className="text-sm text-blue-700 dark:text-blue-300 mt-1">
-                        The first account to sign up (likely yours) will also default to 'Trainee'. Please follow step 4 above for your own account to grant yourself 'Manager' privileges. This is a one-time security setup step.
+                        To get your own 'Manager' account, you must invite yourself using the process above. After your first login, follow step 4 for your own account to grant yourself 'Manager' privileges.
                      </p>
                 </div>
                  <a href="https://supabase.com/docs/guides/auth/managing-users" target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline text-sm block pt-2 border-t dark:border-gray-600">

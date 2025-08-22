@@ -1,5 +1,6 @@
 
 
+
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Profile, SubChallenge, ResultTier, IncorrectMarking, Evaluation, EvaluationRules, SubmittedResult, SubChallengeWithSubmissions } from '../../types';
@@ -49,12 +50,13 @@ export const TraineeDashboard: React.FC<TraineeDashboardProps> = ({ currentUser 
       const { data, error: scError } = await supabase
         .from('sub_challenges')
         .select('*, submissions(*, profiles(*))')
-        .in('overall_challenge_id', challengeIds);
+        .in('overall_challenge_id', challengeIds)
+        .returns<SubChallengeWithSubmissions[]>();
 
       if (scError) {
         setError(scError.message);
       } else if (data) {
-        setTraineeChallenges(data as unknown as SubChallengeWithSubmissions[]);
+        setTraineeChallenges(data);
       }
       setLoading(false);
     };
