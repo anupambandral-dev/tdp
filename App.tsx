@@ -34,7 +34,7 @@ const App: React.FC = () => {
           .select('*')
           .eq('id', session.user.id)
           .single();
-        setCurrentUser(profile);
+        if (profile) setCurrentUser(profile);
       }
       setLoading(false);
     };
@@ -50,10 +50,11 @@ const App: React.FC = () => {
             .select('*')
             .eq('id', session.user.id)
             .single();
-          setCurrentUser(profile);
+          if (profile) setCurrentUser(profile);
         } else {
           setCurrentUser(null);
         }
+        setLoading(false);
       }
     );
 
@@ -69,13 +70,12 @@ const App: React.FC = () => {
 
   const ProtectedRoute: React.FC<{ allowedRoles: Role[] }> = ({ allowedRoles }) => {
     if (loading) {
-      return <div>Loading...</div>; // Or a spinner component
+      return <div className="min-h-screen flex items-center justify-center"><p>Loading session...</p></div>;
     }
     if (!currentUser) {
       return <Navigate to="/" replace />;
     }
     if (!allowedRoles.includes(currentUser.role)) {
-      // Redirect to their own dashboard if they try to access a wrong page
       return <Navigate to={`/${currentUser.role.toLowerCase()}`} replace />;
     }
     return <Outlet />;
@@ -84,7 +84,7 @@ const App: React.FC = () => {
   if (loading) {
     return (
         <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900">
-            <p className="text-white">Loading application...</p>
+            <p className="text-gray-500">Loading application...</p>
         </div>
     );
   }
@@ -101,7 +101,7 @@ const App: React.FC = () => {
               <Route path="/manager" element={currentUser ? <ManagerDashboard currentUser={currentUser} /> : null} />
                <Route path="/manager/users" element={<UserManagement />} />
               <Route path="/manager/challenge/:challengeId" element={<ChallengeDetail />} />
-              <Route path="/manager/challenge/:challengeId/trainee/:traineeId" element={currentUser ? <TraineePerforma /> : null} />
+              <Route path="/manager/challenge/:challengeId/trainee/:traineeId" element={<TraineePerforma />} />
               <Route path="/manager/create-challenge" element={currentUser ? <CreateChallenge currentUser={currentUser} /> : null} />
               <Route path="/manager/challenge/:challengeId/create-sub-challenge" element={<CreateSubChallenge />} />
               <Route path="/manager/sub-challenge/:subChallengeId" element={currentUser ? <SubChallengeDetail currentUser={currentUser} /> : null} />

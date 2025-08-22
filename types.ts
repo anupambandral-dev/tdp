@@ -1,19 +1,21 @@
-// Corresponds to the 'user_role' enum in Supabase
-export enum Role {
-  MANAGER = 'Manager',
-  TRAINEE = 'Trainee',
-  EVALUATOR = 'Evaluator',
-  MENTOR = 'Mentor'
-}
+import { Database, Tables } from './database.types';
 
-// Corresponds to the 'profiles' table
-export interface Profile {
-  id: string;
-  name: string;
-  email: string;
-  role: Role;
-  avatar_url: string;
-}
+// Export role enum for convenience in the app
+export const Role = {
+  MANAGER: 'Manager',
+  TRAINEE: 'Trainee',
+  EVALUATOR: 'Evaluator',
+  MENTOR: 'Mentor'
+} as const;
+export type Role = (typeof Role)[keyof typeof Role];
+
+
+// Re-export table types for easier access
+export type Profile = Tables<'profiles'>;
+export type OverallChallenge = Tables<'overall_challenges'>;
+export type SubChallenge = Tables<'sub_challenges'>;
+export type Submission = Tables<'submissions'>;
+
 
 // Enums for evaluation logic
 export enum ResultType {
@@ -69,46 +71,16 @@ export interface Evaluation {
   evaluated_at: string;
 }
 
-// Corresponds to the 'submissions' table
-export interface Submission {
-  id: string;
-  created_at: string;
-  sub_challenge_id: string;
-  trainee_id: string;
-  submitted_at: string;
-  results: SubmittedResult[];
-  report_file?: {
-    name: string;
-    path: string; // Path in Supabase Storage
-  };
-  evaluation?: Evaluation;
-  profiles?: Profile; // To hold the trainee's profile data
-}
+// --- COMPOSITE TYPES for joined data ---
 
-// Corresponds to the 'sub_challenges' table
-export interface SubChallenge {
-  id: string;
-  created_at: string;
-  overall_challenge_id: string;
-  title: string;
-  patent_number: string;
-  summary: string;
-  claim_focus: string;
-  submission_end_time: string;
-  evaluation_rules: EvaluationRules;
-  submissions?: Submission[];
-}
+export type SubmissionWithProfile = Submission & {
+  profiles: Profile | null;
+};
 
-export interface PopulatedSubChallenge extends SubChallenge {
-  submissions: Submission[];
-}
+export type SubChallengeWithSubmissions = SubChallenge & {
+  submissions: SubmissionWithProfile[];
+};
 
-// Corresponds to the 'overall_challenges' table
-export interface OverallChallenge {
-  id: string;
-  created_at: string;
-  name: string;
-  manager_ids: string[];
-  trainee_ids: string[];
-  evaluator_ids: string[];
-}
+export type OverallChallengeWithSubChallenges = OverallChallenge & {
+  sub_challenges: SubChallengeWithSubmissions[];
+};

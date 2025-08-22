@@ -5,13 +5,14 @@ import { Profile, Role, OverallChallenge } from '../../types';
 import { supabase } from '../../supabaseClient';
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
+import { TablesInsert } from '../../database.types';
 
 interface CreateChallengeProps {
     currentUser: Profile;
 }
 
 const SearchIcon = () => (
-    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
 );
 
 
@@ -29,7 +30,11 @@ export const CreateChallenge: React.FC<CreateChallengeProps> = ({ currentUser })
     useEffect(() => {
         const fetchEmployees = async () => {
             const { data, error } = await supabase.from('profiles').select('*');
-            if (data) setAllEmployees(data);
+            if (error) {
+                console.error('Error fetching employees:', error);
+            } else if (data) {
+                setAllEmployees(data);
+            }
         };
         fetchEmployees();
     }, []);
@@ -62,14 +67,14 @@ export const CreateChallenge: React.FC<CreateChallengeProps> = ({ currentUser })
         }
         setLoading(true);
 
-        const newChallenge: Omit<OverallChallenge, 'id' | 'created_at'> = {
+        const newChallenge: TablesInsert<'overall_challenges'> = {
             name: challengeName,
             manager_ids: [currentUser.id],
             trainee_ids: Array.from(selectedTraineeIds),
             evaluator_ids: Array.from(selectedEvaluatorIds),
         };
         
-        const { error } = await supabase.from('overall_challenges').insert(newChallenge as any);
+        const { error } = await supabase.from('overall_challenges').insert([newChallenge]);
 
         if (error) {
             alert(`Error creating challenge: ${error.message}`);

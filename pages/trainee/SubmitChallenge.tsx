@@ -4,13 +4,14 @@ import { v4 as uuidv4 } from 'uuid';
 import { supabase } from '../../supabaseClient';
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
-import { SubmittedResult, ResultType, ResultTier, Profile, Submission, SubChallenge } from '../../types';
+import { SubmittedResult, ResultType, ResultTier, Profile, Submission, SubChallenge, EvaluationRules } from '../../types';
+import { TablesInsert } from '../../database.types';
 
 const UploadIcon = () => (
-    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5 mr-2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5 mr-2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
 );
 const TrashIcon = () => (
-    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5 text-gray-500 hover:text-red-500"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5 text-gray-500 hover:text-red-500"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
 );
 
 interface SubmitChallengeProps {
@@ -38,7 +39,9 @@ export const SubmitChallenge: React.FC<SubmitChallengeProps> = ({ currentUser })
             .eq('id', challengeId)
             .single();
         
-        if (data) {
+        if (error) {
+            console.error(error.message);
+        } else if (data) {
             setChallenge(data);
         }
         setLoading(false);
@@ -102,8 +105,9 @@ export const SubmitChallenge: React.FC<SubmitChallengeProps> = ({ currentUser })
     setLoading(true);
     
     let reportFileData: { name: string; path: string } | undefined = undefined;
+    const rules = challenge.evaluation_rules as unknown as EvaluationRules;
 
-    if (reportFile && challenge.evaluation_rules.report.enabled) {
+    if (reportFile && rules.report.enabled) {
         const filePath = `${currentUser.id}/${challenge.id}/${uuidv4()}-${reportFile.name}`;
         const { error: uploadError } = await supabase.storage.from('reports').upload(filePath, reportFile);
         if (uploadError) {
@@ -114,15 +118,15 @@ export const SubmitChallenge: React.FC<SubmitChallengeProps> = ({ currentUser })
         reportFileData = { name: reportFile.name, path: filePath };
     }
 
-    const submissionData: Partial<Submission> = {
+    const submissionData: TablesInsert<'submissions'> = {
         sub_challenge_id: challenge.id,
         trainee_id: currentUser.id,
-        results: results,
-        report_file: reportFileData,
+        results: results as any,
+        report_file: reportFileData as any,
         submitted_at: new Date().toISOString(),
     };
 
-    const { error } = await supabase.from('submissions').upsert(submissionData as any, {
+    const { error } = await supabase.from('submissions').upsert([submissionData], {
         onConflict: 'sub_challenge_id, trainee_id'
     });
 
@@ -134,6 +138,8 @@ export const SubmitChallenge: React.FC<SubmitChallengeProps> = ({ currentUser })
     }
     setLoading(false);
   }
+
+  const rules = challenge.evaluation_rules as unknown as EvaluationRules;
 
   return (
     <div className="container mx-auto p-4 sm:p-6 lg:p-8 max-w-4xl">
@@ -180,7 +186,7 @@ export const SubmitChallenge: React.FC<SubmitChallengeProps> = ({ currentUser })
             </Button>
           </div>
           
-          {challenge.evaluation_rules.report.enabled && (
+          {rules.report.enabled && (
             <div>
               <label htmlFor="reportFile" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
                 Upload Report

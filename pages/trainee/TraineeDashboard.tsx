@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Profile, SubChallenge, ResultTier, IncorrectMarking } from '../../types';
+import { Profile, SubChallenge, ResultTier, IncorrectMarking, Evaluation, EvaluationRules, SubmittedResult, SubChallengeWithSubmissions } from '../../types';
 import { supabase } from '../../supabaseClient';
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
@@ -14,7 +14,7 @@ const ClockIcon = () => (
 );
 
 export const TraineeDashboard: React.FC<TraineeDashboardProps> = ({ currentUser }) => {
-  const [traineeChallenges, setTraineeChallenges] = useState<SubChallenge[]>([]);
+  const [traineeChallenges, setTraineeChallenges] = useState<SubChallengeWithSubmissions[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -33,7 +33,7 @@ export const TraineeDashboard: React.FC<TraineeDashboardProps> = ({ currentUser 
         return;
       }
 
-      if (overallChallenges.length === 0) {
+      if (!overallChallenges || overallChallenges.length === 0) {
         setTraineeChallenges([]);
         setLoading(false);
         return;
@@ -43,13 +43,13 @@ export const TraineeDashboard: React.FC<TraineeDashboardProps> = ({ currentUser 
       const challengeIds = overallChallenges.map(oc => oc.id);
       const { data, error: scError } = await supabase
         .from('sub_challenges')
-        .select('*, submissions(*)')
+        .select('*, submissions(*, profiles(*))')
         .in('overall_challenge_id', challengeIds);
 
       if (scError) {
         setError(scError.message);
-      } else {
-        setTraineeChallenges((data as any) || []);
+      } else if (data) {
+        setTraineeChallenges(data as SubChallengeWithSubmissions[]);
       }
       setLoading(false);
     };
@@ -57,7 +57,7 @@ export const TraineeDashboard: React.FC<TraineeDashboardProps> = ({ currentUser 
     fetchChallenges();
   }, [currentUser.id]);
 
-  const getStatus = (challenge: SubChallenge) => {
+  const getStatus = (challenge: SubChallengeWithSubmissions) => {
     const endTime = new Date(challenge.submission_end_time);
     const submission = challenge.submissions?.find(s => s.trainee_id === currentUser.id);
     if (submission) return 'Submitted';
@@ -65,17 +65,20 @@ export const TraineeDashboard: React.FC<TraineeDashboardProps> = ({ currentUser 
     return 'Active';
   };
   
-  const getScore = (challenge: SubChallenge) => {
+  const getScore = (challenge: SubChallengeWithSubmissions) => {
     const submission = challenge.submissions?.find(s => s.trainee_id === currentUser.id);
-    if (!submission?.evaluation) return 'N/A';
+    const evaluation = submission?.evaluation as unknown as Evaluation | null;
+    const results = submission?.results as unknown as SubmittedResult[] | null;
+
+    if (!evaluation || !results) return 'N/A';
     
-    const rules = challenge.evaluation_rules;
+    const rules = challenge.evaluation_rules as unknown as EvaluationRules;
     let totalScore = 0;
 
-    submission.results.forEach(result => {
-      const evaluation = submission.evaluation?.result_evaluations.find(re => re.result_id === result.id);
-      if (evaluation) {
-        if (result.trainee_tier === evaluation.evaluator_tier) {
+    results.forEach(result => {
+      const resultEvaluation = evaluation.result_evaluations.find(re => re.result_id === result.id);
+      if (resultEvaluation) {
+        if (result.trainee_tier === resultEvaluation.evaluator_tier) {
           totalScore += rules.tierScores[result.trainee_tier as ResultTier] || 0;
         } else {
           if (rules.incorrectMarking === IncorrectMarking.PENALTY) {
@@ -85,8 +88,8 @@ export const TraineeDashboard: React.FC<TraineeDashboardProps> = ({ currentUser 
       }
     });
 
-    if (rules.report.enabled && submission.evaluation?.report_score) {
-      totalScore += submission.evaluation.report_score;
+    if (rules.report.enabled && evaluation.report_score) {
+      totalScore += evaluation.report_score;
     }
     
     return `${Math.round(totalScore)}`;

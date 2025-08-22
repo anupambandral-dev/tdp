@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Profile, SubChallenge } from '../../types';
+import { Profile, SubChallenge, SubChallengeWithSubmissions } from '../../types';
 import { supabase } from '../../supabaseClient';
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
@@ -10,7 +10,7 @@ interface EvaluatorDashboardProps {
 }
 
 export const EvaluatorDashboard: React.FC<EvaluatorDashboardProps> = ({ currentUser }) => {
-  const [assignedChallenges, setAssignedChallenges] = useState<SubChallenge[]>([]);
+  const [assignedChallenges, setAssignedChallenges] = useState<SubChallengeWithSubmissions[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -28,7 +28,7 @@ export const EvaluatorDashboard: React.FC<EvaluatorDashboardProps> = ({ currentU
           return;
         }
 
-        if (overallChallenges.length === 0) {
+        if (!overallChallenges || overallChallenges.length === 0) {
           setAssignedChallenges([]);
           setLoading(false);
           return;
@@ -42,8 +42,8 @@ export const EvaluatorDashboard: React.FC<EvaluatorDashboardProps> = ({ currentU
 
         if (scError) {
             setError(scError.message);
-        } else {
-            setAssignedChallenges(subChallenges || []);
+        } else if (subChallenges) {
+            setAssignedChallenges(subChallenges as SubChallengeWithSubmissions[]);
         }
         setLoading(false);
     };
@@ -51,9 +51,9 @@ export const EvaluatorDashboard: React.FC<EvaluatorDashboardProps> = ({ currentU
     fetchChallenges();
   }, [currentUser.id]);
 
-  const getEvaluationStats = (challenge: SubChallenge) => {
+  const getEvaluationStats = (challenge: SubChallengeWithSubmissions) => {
     const totalSubmissions = challenge.submissions?.length || 0;
-    const evaluatedSubmissions = challenge.submissions?.filter(s => s.evaluation?.evaluator_id === currentUser.id).length || 0;
+    const evaluatedSubmissions = challenge.submissions?.filter(s => !!s.evaluation).length || 0;
     return { totalSubmissions, evaluatedSubmissions };
   };
 

@@ -45,12 +45,12 @@ export const ManagerDashboard: React.FC<ManagerDashboardProps> = ({ currentUser 
       if (error) {
         setError(error.message);
         console.error('Error fetching challenges:', error);
-      } else {
+      } else if (data) {
         const formattedData = data.map(d => ({
             ...d,
-            sub_challenges_count: (Array.isArray(d.sub_challenges) && d.sub_challenges.length > 0) ? d.sub_challenges[0].count : 0
+            sub_challenges_count: (d.sub_challenges as unknown as [{count: number}])?.[0]?.count ?? 0
         }))
-        setChallenges(formattedData);
+        setChallenges(formattedData as ChallengeWithCounts[]);
       }
       setLoading(false);
     };

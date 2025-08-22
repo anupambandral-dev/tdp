@@ -3,27 +3,22 @@ import { useParams, Link, useNavigate } from 'react-router-dom';
 import { supabase } from '../../supabaseClient';
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
-import { Profile, ResultEvaluation, ResultTier, SubmittedResult, IncorrectMarking, SubChallenge, Submission, Evaluation } from '../../types';
+import { Profile, ResultEvaluation, ResultTier, SubmittedResult, IncorrectMarking, SubChallenge, Submission, Evaluation, EvaluationRules, SubmissionWithProfile, SubChallengeWithSubmissions } from '../../types';
 
 interface EvaluateSubmissionProps {
     currentUser: Profile;
 }
 
-interface ChallengeWithSubmissionsAndProfiles extends SubChallenge {
-    submissions: (Submission & { profiles: Profile | null })[];
-}
-
 export const EvaluateSubmission: React.FC<EvaluateSubmissionProps> = ({ currentUser }) => {
     const { challengeId } = useParams();
     const navigate = useNavigate();
-    const [challenge, setChallenge] = useState<ChallengeWithSubmissionsAndProfiles | null>(null);
+    const [challenge, setChallenge] = useState<SubChallengeWithSubmissions | null>(null);
     const [loading, setLoading] = useState(true);
 
     const [selectedTraineeId, setSelectedTraineeId] = useState<string | null>(null);
     
     const selectedSubmission = useMemo(() => {
-        const sub = challenge?.submissions?.find(s => s.trainee_id === selectedTraineeId);
-        return sub;
+        return challenge?.submissions?.find(s => s.trainee_id === selectedTraineeId);
     }, [challenge, selectedTraineeId]);
     
     const [resultEvals, setResultEvals] = useState<ResultEvaluation[]>([]);
@@ -40,15 +35,17 @@ export const EvaluateSubmission: React.FC<EvaluateSubmissionProps> = ({ currentU
                 .eq('id', challengeId)
                 .single();
             
-            if (data) {
-                setChallenge(data as any);
-                if ((data as any).submissions && (data as any).submissions.length > 0) {
-                    // find first unevaluated submission
-                    const firstUnevaluated = (data as any).submissions.find((s: Submission) => !s.evaluation);
+            if (error) {
+                console.error(error);
+            } else if (data) {
+                const typedData = data as SubChallengeWithSubmissions;
+                setChallenge(typedData);
+                if (typedData.submissions && typedData.submissions.length > 0) {
+                    const firstUnevaluated = typedData.submissions.find((s) => !s.evaluation);
                     if (firstUnevaluated) {
                         setSelectedTraineeId(firstUnevaluated.trainee_id);
                     } else {
-                        setSelectedTraineeId((data as any).submissions[0].trainee_id);
+                        setSelectedTraineeId(typedData.submissions[0].trainee_id);
                     }
                 }
             }
@@ -59,16 +56,19 @@ export const EvaluateSubmission: React.FC<EvaluateSubmissionProps> = ({ currentU
 
     useEffect(() => {
         if (selectedSubmission) {
-            setResultEvals(selectedSubmission.evaluation?.result_evaluations || selectedSubmission.results.map(r => ({ result_id: r.id, evaluator_tier: r.trainee_tier })));
-            setReportScore(selectedSubmission.evaluation?.report_score ?? '');
-            setFeedback(selectedSubmission.evaluation?.feedback || '');
+            const currentEval = selectedSubmission.evaluation as unknown as Evaluation | null;
+            const currentResults = selectedSubmission.results as unknown as SubmittedResult[] | null;
+
+            setResultEvals(currentEval?.result_evaluations || currentResults?.map(r => ({ result_id: r.id, evaluator_tier: r.trainee_tier })) || []);
+            setReportScore(currentEval?.report_score ?? '');
+            setFeedback(currentEval?.feedback || '');
         }
     }, [selectedSubmission]);
 
     if (loading) return <div className="p-8">Loading submission data...</div>;
     if (!challenge) return <div className="text-center p-8">Challenge not found.</div>;
 
-    const rules = challenge.evaluation_rules;
+    const rules = challenge.evaluation_rules as unknown as EvaluationRules;
 
     const handleEvalChange = (resultId: string, evaluatorTier: ResultTier) => {
         setResultEvals(prev => prev.map(e => e.result_id === resultId ? {...e, evaluator_tier: evaluatorTier} : e));
@@ -104,31 +104,29 @@ export const EvaluateSubmission: React.FC<EvaluateSubmissionProps> = ({ currentU
         const newEvaluation: Evaluation = {
             evaluator_id: currentUser.id,
             result_evaluations: resultEvals,
-            report_score: challenge.evaluation_rules.report.enabled ? Number(reportScore) : undefined,
+            report_score: rules.report.enabled ? Number(reportScore) : undefined,
             feedback: feedback,
             evaluated_at: new Date().toISOString(),
         };
 
         const { error } = await supabase
             .from('submissions')
-            .update({ evaluation: newEvaluation } as any)
+            .update({ evaluation: newEvaluation as any }) // Cast to any for JSONB
             .eq('id', selectedSubmission.id);
 
         if (error) {
             alert(`Error saving evaluation: ${error.message}`);
         } else {
             alert('Evaluation saved successfully!');
-            // After successful submission, find the next unevaluated trainee and select them
-            const currentIndex = challenge.submissions.findIndex(s => s.trainee_id === selectedTraineeId) ?? -1;
+            const currentIndex = challenge.submissions.findIndex(s => s.trainee_id === selectedTraineeId);
             const nextUnevaluated = challenge.submissions.find((s, index) => index > currentIndex && !s.evaluation);
 
             if(nextUnevaluated) {
                 setSelectedTraineeId(nextUnevaluated.trainee_id);
-                // Manually refresh challenge data to show this one as evaluated
                 setChallenge(prev => {
                     if (!prev) return prev;
                     const newSubmissions = prev.submissions.map(s =>
-                        s.id === selectedSubmission.id ? { ...s, evaluation: newEvaluation } : s
+                        s.id === selectedSubmission.id ? { ...s, evaluation: newEvaluation as any } : s
                     );
                     return { ...prev, submissions: newSubmissions };
                 });
@@ -159,7 +157,7 @@ export const EvaluateSubmission: React.FC<EvaluateSubmissionProps> = ({ currentU
                                             className={`w-full text-left p-3 rounded-lg flex items-center space-x-3 transition-colors ${selectedTraineeId === submission.trainee_id ? 'bg-blue-100 dark:bg-blue-900' : 'hover:bg-gray-100 dark:hover:bg-gray-700'}`}
                                             onClick={() => setSelectedTraineeId(submission.trainee_id)}
                                         >
-                                           <img src={trainee?.avatar_url} alt={trainee?.name} className="w-8 h-8 rounded-full" />
+                                           <img src={trainee?.avatar_url || ''} alt={trainee?.name} className="w-8 h-8 rounded-full" />
                                            <span className="font-medium flex-grow">{trainee?.name}</span>
                                            {isEvaluated && <span className="text-green-500 text-xs font-bold">✓</span>}
                                        </button>
@@ -181,7 +179,7 @@ export const EvaluateSubmission: React.FC<EvaluateSubmissionProps> = ({ currentU
                           <div>
                             <h3 className="font-semibold mb-2">Submitted Results</h3>
                             <div className="space-y-3">
-                              {selectedSubmission.results.map(result => {
+                              {(selectedSubmission.results as unknown as SubmittedResult[] | null)?.map(result => {
                                 const evalTier = resultEvals.find(e => e.result_id === result.id)?.evaluator_tier || result.trainee_tier;
                                 const { score, status } = getScoreForResult(result);
                                 const statusColor = status === 'Correct' ? 'text-green-500' : 'text-orange-500';
@@ -207,7 +205,7 @@ export const EvaluateSubmission: React.FC<EvaluateSubmissionProps> = ({ currentU
                             <div>
                                 <label htmlFor="reportScore" className="flex justify-between items-center text-sm font-medium text-gray-700 dark:text-gray-300">
                                     <span>Report Evaluation</span>
-                                    {selectedSubmission.report_file?.path && <a href={supabase.storage.from('reports').getPublicUrl(selectedSubmission.report_file.path).data.publicUrl} className="text-blue-600 hover:underline" target="_blank" rel="noopener noreferrer">View Report: {selectedSubmission.report_file?.name}</a>}
+                                    {(selectedSubmission.report_file as { path: string, name: string } | null)?.path && <a href={supabase.storage.from('reports').getPublicUrl((selectedSubmission.report_file as any).path).data.publicUrl} className="text-blue-600 hover:underline" target="_blank" rel="noopener noreferrer">View Report: {(selectedSubmission.report_file as any)?.name}</a>}
                                 </label>
                                 <input 
                                     type="number" 

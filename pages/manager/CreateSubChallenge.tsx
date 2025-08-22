@@ -4,6 +4,7 @@ import { supabase } from '../../supabaseClient';
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { EvaluationRules, ResultTier, IncorrectMarking, OverallChallenge, SubChallenge } from '../../types';
+import { TablesInsert } from '../../database.types';
 
 export const CreateSubChallenge: React.FC = () => {
     const { challengeId } = useParams<{ challengeId: string }>();
@@ -36,7 +37,11 @@ export const CreateSubChallenge: React.FC = () => {
                 .select('*')
                 .eq('id', challengeId)
                 .single();
-            if (data) setOverallChallenge(data);
+            if (error) {
+                console.error(error);
+            } else if (data) {
+                setOverallChallenge(data);
+            }
             setLoading(false);
         };
         fetchOverallChallenge();
@@ -68,17 +73,17 @@ export const CreateSubChallenge: React.FC = () => {
 
         setLoading(true);
 
-        const newSubChallenge: Omit<SubChallenge, 'id' | 'created_at' | 'submissions'> = {
+        const newSubChallenge: TablesInsert<'sub_challenges'> = {
             overall_challenge_id: challengeId!,
             title,
             patent_number: patentNumber,
             summary,
             claim_focus: claimFocus,
             submission_end_time: new Date(submissionEndTime).toISOString(),
-            evaluation_rules: rules,
+            evaluation_rules: rules as any, // Cast because Supabase expects generic Json
         };
 
-        const { error } = await supabase.from('sub_challenges').insert(newSubChallenge as any);
+        const { error } = await supabase.from('sub_challenges').insert([newSubChallenge]);
 
         if (error) {
             alert(`Error creating sub-challenge: ${error.message}`);

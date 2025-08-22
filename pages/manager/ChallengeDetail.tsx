@@ -3,15 +3,11 @@ import { useParams, Link } from 'react-router-dom';
 import { supabase } from '../../supabaseClient';
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
-import { ResultTier, IncorrectMarking, OverallChallenge, SubChallenge, Profile, Submission } from '../../types';
-
-interface PopulatedOverallChallenge extends OverallChallenge {
-    sub_challenges: SubChallenge[];
-}
+import { ResultTier, IncorrectMarking, OverallChallenge, SubChallenge, Profile, Submission, OverallChallengeWithSubChallenges, EvaluationRules, SubmittedResult, Evaluation } from '../../types';
 
 export const ChallengeDetail: React.FC = () => {
     const { challengeId } = useParams();
-    const [challenge, setChallenge] = useState<PopulatedOverallChallenge | null>(null);
+    const [challenge, setChallenge] = useState<OverallChallengeWithSubChallenges | null>(null);
     const [trainees, setTrainees] = useState<Profile[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
@@ -23,7 +19,7 @@ export const ChallengeDetail: React.FC = () => {
 
             const { data, error } = await supabase
                 .from('overall_challenges')
-                .select('*, sub_challenges(*, submissions(*))')
+                .select('*, sub_challenges(*, submissions(*, profiles(*)))')
                 .eq('id', challengeId)
                 .single();
             
@@ -31,16 +27,17 @@ export const ChallengeDetail: React.FC = () => {
                 setError(error.message);
                 console.error(error);
             } else if (data) {
-                setChallenge(data as any);
-                if ((data as any).trainee_ids.length > 0) {
+                const typedData = data as OverallChallengeWithSubChallenges;
+                setChallenge(typedData);
+                if (typedData.trainee_ids.length > 0) {
                     const { data: profilesData, error: profilesError } = await supabase
                         .from('profiles')
                         .select('*')
-                        .in('id', (data as any).trainee_ids);
+                        .in('id', typedData.trainee_ids);
                     if (profilesError) {
                         setError(profilesError.message);
-                    } else {
-                        setTrainees(profilesData || []);
+                    } else if (profilesData) {
+                        setTrainees(profilesData);
                     }
                 }
             }
@@ -54,12 +51,15 @@ export const ChallengeDetail: React.FC = () => {
         let totalScore = 0;
         challenge.sub_challenges.forEach(sc => {
             const submission = sc.submissions?.find(s => s.trainee_id === traineeId);
-            if (submission?.evaluation) {
-                const rules = sc.evaluation_rules;
-                submission.results.forEach((result: any) => {
-                    const evaluation = submission.evaluation?.result_evaluations.find((re: any) => re.result_id === result.id);
-                    if (evaluation) {
-                        if (result.trainee_tier === evaluation.evaluator_tier) {
+            const evaluation = submission?.evaluation as unknown as Evaluation | null;
+            const results = submission?.results as unknown as SubmittedResult[] | null;
+
+            if (evaluation && results) {
+                const rules = sc.evaluation_rules as unknown as EvaluationRules;
+                results.forEach((result) => {
+                    const resultEval = evaluation.result_evaluations.find((re) => re.result_id === result.id);
+                    if (resultEval) {
+                        if (result.trainee_tier === resultEval.evaluator_tier) {
                             totalScore += rules.tierScores[result.trainee_tier as ResultTier] || 0;
                         } else {
                             if (rules.incorrectMarking === IncorrectMarking.PENALTY) {
@@ -69,8 +69,8 @@ export const ChallengeDetail: React.FC = () => {
                     }
                 });
 
-                if (rules.report.enabled && submission.evaluation?.report_score) {
-                    totalScore += submission.evaluation.report_score;
+                if (rules.report.enabled && evaluation?.report_score) {
+                    totalScore += evaluation.report_score;
                 }
             }
         });
@@ -126,7 +126,7 @@ export const ChallengeDetail: React.FC = () => {
                                         <div className="flex items-center justify-between">
                                             <div className="flex items-center space-x-3">
                                                 <span className="font-bold w-6 text-center">{index + 1}</span>
-                                                <img src={user.avatar_url} alt={user.name} className="w-10 h-10 rounded-full" />
+                                                <img src={user.avatar_url || ''} alt={user.name} className="w-10 h-10 rounded-full" />
                                                 <span>{user.name}</span>
                                             </div>
                                             <span className="font-semibold text-lg">{score} pts</span>

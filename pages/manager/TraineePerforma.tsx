@@ -2,17 +2,20 @@ import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { supabase } from '../../supabaseClient';
 import { Card } from '../../components/ui/Card';
-import { SubChallenge, Submission, IncorrectMarking, ResultTier, OverallChallenge, Profile } from '../../types';
+import { SubChallenge, Submission, IncorrectMarking, ResultTier, OverallChallenge, Profile, EvaluationRules, SubmittedResult, Evaluation } from '../../types';
 
 const getTotalScore = (submission: Submission, subChallenge: SubChallenge) => {
-    if (!submission.evaluation) return { score: 0 };
-    const rules = subChallenge.evaluation_rules;
+    const evaluation = submission.evaluation as unknown as Evaluation | null;
+    const results = submission.results as unknown as SubmittedResult[] | null;
+    if (!evaluation || !results) return { score: 0 };
+    
+    const rules = subChallenge.evaluation_rules as unknown as EvaluationRules;
     let totalScore = 0;
 
-    submission.results.forEach(result => {
-        const evaluation = submission.evaluation?.result_evaluations.find(re => re.result_id === result.id);
-        if (evaluation) {
-            if (result.trainee_tier === evaluation.evaluator_tier) {
+    results.forEach(result => {
+        const resultEvaluation = evaluation.result_evaluations.find(re => re.result_id === result.id);
+        if (resultEvaluation) {
+            if (result.trainee_tier === resultEvaluation.evaluator_tier) {
                 totalScore += rules.tierScores[result.trainee_tier as ResultTier] || 0;
             } else {
                 if (rules.incorrectMarking === IncorrectMarking.PENALTY) {
@@ -22,8 +25,8 @@ const getTotalScore = (submission: Submission, subChallenge: SubChallenge) => {
         }
     });
 
-    if (rules.report.enabled && submission.evaluation?.report_score) {
-        totalScore += submission.evaluation.report_score;
+    if (rules.report.enabled && evaluation.report_score) {
+        totalScore += evaluation.report_score;
     }
     return { score: Math.round(totalScore) };
 }
@@ -44,8 +47,9 @@ export const TraineePerforma: React.FC = () => {
             setLoading(true);
 
             // Fetch Trainee Profile
-            const { data: traineeData } = await supabase.from('profiles').select('*').eq('id', traineeId).single();
-            setTrainee(traineeData);
+            const { data: traineeData, error: traineeError } = await supabase.from('profiles').select('*').eq('id', traineeId).single();
+            if (traineeError) console.error(traineeError);
+            if (traineeData) setTrainee(traineeData);
 
             // Fetch Overall Challenge with its sub-challenges and only this trainee's submissions
             const { data: challengeData, error } = await supabase
@@ -55,7 +59,9 @@ export const TraineePerforma: React.FC = () => {
                 .eq('sub_challenges.submissions.trainee_id', traineeId)
                 .single();
             
-            if (challengeData) {
+            if (error) {
+                console.error(error);
+            } else if (challengeData) {
                 setOverallChallenge(challengeData as FetchedOverallChallenge);
             }
             setLoading(false);
@@ -75,7 +81,7 @@ export const TraineePerforma: React.FC = () => {
             </Link>
 
             <div className="flex items-center space-x-4 mb-8">
-                <img src={trainee.avatar_url} alt={trainee.name} className="w-20 h-20 rounded-full" />
+                <img src={trainee.avatar_url || ''} alt={trainee.name} className="w-20 h-20 rounded-full" />
                 <div>
                     <h1 className="text-3xl font-bold">{trainee.name}</h1>
                     <p className="text-gray-500 dark:text-gray-400">Performance in "{overallChallenge.name}"</p>
@@ -86,6 +92,11 @@ export const TraineePerforma: React.FC = () => {
                 <h2 className="text-2xl font-semibold border-b pb-2 dark:border-gray-700">Sub-Challenge Performance</h2>
                 {overallChallenge.sub_challenges.map(subChallenge => {
                     const submission = subChallenge.submissions && subChallenge.submissions[0]; // We filtered to only get one
+                    const evaluation = submission?.evaluation as unknown as Evaluation | null;
+                    const results = submission?.results as unknown as SubmittedResult[] | null;
+                    const reportFile = submission?.report_file as { name: string; path: string } | null;
+                    const rules = subChallenge.evaluation_rules as unknown as EvaluationRules;
+
                     return (
                         <Card key={subChallenge.id}>
                             <h3 className="text-xl font-semibold text-blue-600 dark:text-blue-400">{subChallenge.title}</h3>
@@ -99,7 +110,7 @@ export const TraineePerforma: React.FC = () => {
                                             <div>
                                                 <p className="text-sm font-medium text-gray-700 dark:text-gray-300">Results:</p>
                                                 <div className="space-y-2 mt-1">
-                                                {submission.results.map(r => (
+                                                {results?.map(r => (
                                                     <div key={r.id} className="p-2 bg-gray-100 dark:bg-gray-700 rounded-md text-xs">
                                                         <p className="font-mono truncate">{r.value}</p>
                                                         <p>{r.type} - Submitted as {r.trainee_tier}</p>
@@ -107,25 +118,25 @@ export const TraineePerforma: React.FC = () => {
                                                 ))}
                                                 </div>
                                             </div>
-                                            {submission.report_file && (
+                                            {reportFile && (
                                                 <div>
                                                     <p className="text-sm font-medium text-gray-700 dark:text-gray-300">Report File:</p>
-                                                    <a href={supabase.storage.from('reports').getPublicUrl(submission.report_file.path).data.publicUrl} className="text-blue-600 dark:text-blue-400 hover:underline text-sm" target="_blank" rel="noopener noreferrer">{submission.report_file.name}</a>
+                                                    <a href={supabase.storage.from('reports').getPublicUrl(reportFile.path).data.publicUrl} className="text-blue-600 dark:text-blue-400 hover:underline text-sm" target="_blank" rel="noopener noreferrer">{reportFile.name}</a>
                                                 </div>
                                             )}
                                         </div>
                                     </div>
                                     <div>
                                         <h4 className="font-semibold">Evaluation</h4>
-                                        {submission.evaluation ? (
+                                        {evaluation ? (
                                             <div className="mt-2 space-y-3">
                                                 <div className="flex justify-between items-baseline pb-2 border-b dark:border-gray-700">
                                                     <span className="font-bold">Total Score:</span>
                                                     <span className="text-xl font-bold">{getTotalScore(submission, subChallenge).score}</span>
                                                 </div>
                                                 <ul className="space-y-1 text-sm pt-2">
-                                                    {submission.evaluation.result_evaluations.map(re => {
-                                                        const result = submission.results.find(r => r.id === re.result_id);
+                                                    {evaluation.result_evaluations.map(re => {
+                                                        const result = results?.find(r => r.id === re.result_id);
                                                         if (!result) return null;
                                                         const isCorrect = result.trainee_tier === re.evaluator_tier;
                                                         return (
@@ -136,12 +147,12 @@ export const TraineePerforma: React.FC = () => {
                                                         )
                                                     })}
                                                 </ul>
-                                                {subChallenge.evaluation_rules.report.enabled && (
-                                                    <p className="text-sm">Report Score: <strong>{submission.evaluation.report_score} / {subChallenge.evaluation_rules.report.maxScore}</strong></p>
+                                                {rules.report.enabled && (
+                                                    <p className="text-sm">Report Score: <strong>{evaluation.report_score} / {rules.report.maxScore}</strong></p>
                                                 )}
                                                 <div>
                                                     <p className="text-sm font-medium text-gray-700 dark:text-gray-300">Feedback:</p>
-                                                    <p className="mt-1 p-2 bg-gray-100 dark:bg-gray-700 rounded-md text-sm">{submission.evaluation.feedback}</p>
+                                                    <p className="mt-1 p-2 bg-gray-100 dark:bg-gray-700 rounded-md text-sm">{evaluation.feedback}</p>
                                                 </div>
                                             </div>
                                         ) : (
