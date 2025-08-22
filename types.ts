@@ -76,14 +76,14 @@ export interface Evaluation {
 
 // --- COMPOSITE TYPES for joined data ---
 
-export type SubmissionWithProfile = Submission & {
+export interface SubmissionWithProfile extends Submission {
   profiles: Profile | null;
-};
+}
 
-export type SubChallengeWithSubmissions = SubChallenge & {
+export interface SubChallengeWithSubmissions extends SubChallenge {
   submissions: SubmissionWithProfile[];
-};
+}
 
-export type OverallChallengeWithSubChallenges = OverallChallenge & {
+export interface OverallChallengeWithSubChallenges extends OverallChallenge {
   sub_challenges: SubChallengeWithSubmissions[];
-};
+}
