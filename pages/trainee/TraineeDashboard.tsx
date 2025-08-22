@@ -27,7 +27,8 @@ export const TraineeDashboard: React.FC<TraineeDashboardProps> = ({ currentUser 
       const { data: overallChallengesData, error: ocError } = await supabase
         .from('overall_challenges')
         .select('id')
-        .contains('trainee_ids', [currentUser.id]);
+        .contains('trainee_ids', [currentUser.id])
+        .returns<{ id: string }[]>();
 
       if (ocError) {
         setError(ocError.message);
@@ -48,13 +49,12 @@ export const TraineeDashboard: React.FC<TraineeDashboardProps> = ({ currentUser 
       const { data, error: scError } = await supabase
         .from('sub_challenges')
         .select('*, submissions(*, profiles(*))')
-        .in('overall_challenge_id', challengeIds)
-        .returns<SubChallengeWithSubmissions[]>();
+        .in('overall_challenge_id', challengeIds);
 
       if (scError) {
         setError(scError.message);
       } else if (data) {
-        setTraineeChallenges(data);
+        setTraineeChallenges(data as SubChallengeWithSubmissions[]);
       }
       setLoading(false);
     };
