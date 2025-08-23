@@ -41,25 +41,22 @@ const App: React.FC = () => {
 
           if (error || !profile) {
             // If the profile doesn't exist or there's an error,
-            // the session is invalid. Force a logout. This will trigger
-            // onAuthStateChange again with a null session.
+            // the session is invalid. Force a logout and reload.
             console.error("Profile not found or error fetching. Forcing logout.", error);
             await supabase.auth.signOut();
-            setCurrentUser(null);
-            setSession(null);
+            window.location.reload(); // Force a hard refresh to clear bad state
           } else {
             // Success! We have a valid user and profile.
             setCurrentUser(profile);
             setSession(session);
+            setLoading(false);
           }
         } else {
           // User is not logged in.
           setCurrentUser(null);
           setSession(null);
+          setLoading(false);
         }
-        
-        // This is now guaranteed to run after the auth check is complete.
-        setLoading(false);
       }
     );
 
@@ -70,8 +67,8 @@ const App: React.FC = () => {
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
-    setCurrentUser(null);
-    setSession(null);
+    // Force a reload to ensure all state is cleared, preventing issues with stale session data
+    window.location.reload();
   };
 
   const ProtectedRoute: React.FC<{ allowedRoles: Role[] }> = ({ allowedRoles }) => {
