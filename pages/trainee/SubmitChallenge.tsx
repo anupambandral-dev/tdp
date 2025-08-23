@@ -5,7 +5,7 @@ import { supabase } from '../../supabaseClient';
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { BackButton } from '../../components/ui/BackButton';
-import { SubmittedResult, ResultType, ResultTier, Profile, Submission, SubChallenge, EvaluationRules, Json } from '../../types';
+import { SubmittedResult, ResultType, ResultTier, Profile, Submission, SubChallenge, EvaluationRules, Json, OverallChallenge } from '../../types';
 import { TablesInsert } from '../../database.types';
 
 const UploadIcon = () => (
@@ -19,10 +19,14 @@ interface SubmitChallengeProps {
     currentUser: Profile;
 }
 
+interface FetchedSubChallenge extends SubChallenge {
+    overall_challenges: Pick<OverallChallenge, 'id' | 'ended_at'> | null;
+}
+
 export const SubmitChallenge: React.FC<SubmitChallengeProps> = ({ currentUser }) => {
   const { challengeId } = useParams();
   const navigate = useNavigate();
-  const [challenge, setChallenge] = useState<SubChallenge | null>(null);
+  const [challenge, setChallenge] = useState<FetchedSubChallenge | null>(null);
   
   const [results, setResults] = useState<SubmittedResult[]>([{ id: uuidv4(), value: '', type: ResultType.PATENT, trainee_tier: ResultTier.TIER_1 }]);
   const [reportFile, setReportFile] = useState<File | null>(null);
@@ -36,9 +40,9 @@ export const SubmitChallenge: React.FC<SubmitChallengeProps> = ({ currentUser })
         setLoading(true);
         const { data, error } = await supabase
             .from('sub_challenges')
-            .select('*')
+            .select('*, overall_challenges(id, ended_at)')
             .eq('id', challengeId)
-            .single<SubChallenge>();
+            .single<FetchedSubChallenge>();
         
         if (error) {
             console.error(error.message);
@@ -52,6 +56,13 @@ export const SubmitChallenge: React.FC<SubmitChallengeProps> = ({ currentUser })
 
   useEffect(() => {
     if (!challenge) return;
+
+    if (challenge.overall_challenges?.ended_at) {
+        setTimeLeft('Challenge Ended');
+        setIsOver(true);
+        return;
+    }
+
     const interval = setInterval(() => {
       const endTime = new Date(challenge.submission_end_time).getTime();
       const now = new Date().getTime();
@@ -141,6 +152,7 @@ export const SubmitChallenge: React.FC<SubmitChallengeProps> = ({ currentUser })
   }
 
   const rules = challenge.evaluation_rules as unknown as EvaluationRules;
+  const timeLabel = isOver ? 'Status' : 'Time Remaining';
 
   return (
     <div className="container mx-auto p-4 sm:p-6 lg:p-8 max-w-4xl">
@@ -150,7 +162,7 @@ export const SubmitChallenge: React.FC<SubmitChallengeProps> = ({ currentUser })
           <h1 className="text-3xl font-bold">{challenge.title}</h1>
           <p className="text-lg text-gray-500 dark:text-gray-400 mt-1">Patent: {challenge.patent_number}</p>
           <div className={`mt-4 text-xl font-bold p-2 rounded-lg inline-block ${isOver ? 'text-red-600 bg-red-100 dark:text-red-300 dark:bg-red-900' : 'text-green-600 bg-green-100 dark:text-green-300 dark:bg-green-900'}`}>
-            Time Remaining: {timeLeft}
+            {timeLabel}: {timeLeft}
           </div>
         </div>
         <div className="my-6 border-t dark:border-gray-700"></div>

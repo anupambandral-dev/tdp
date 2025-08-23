@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Profile, SubChallenge, ResultTier, IncorrectMarking, Evaluation, EvaluationRules, SubmittedResult, SubChallengeWithSubmissions, Submission } from '../../types';
+import { Profile, SubChallenge, ResultTier, IncorrectMarking, Evaluation, EvaluationRules, SubmittedResult, Submission, SubChallengeWithOverallChallenge } from '../../types';
 import { supabase } from '../../supabaseClient';
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
@@ -14,7 +14,7 @@ const ClockIcon = () => (
 );
 
 export const TraineeDashboard: React.FC<TraineeDashboardProps> = ({ currentUser }) => {
-  const [traineeChallenges, setTraineeChallenges] = useState<SubChallengeWithSubmissions[]>([]);
+  const [traineeChallenges, setTraineeChallenges] = useState<SubChallengeWithOverallChallenge[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -22,12 +22,12 @@ export const TraineeDashboard: React.FC<TraineeDashboardProps> = ({ currentUser 
     const fetchChallenges = async () => {
       const { data, error: scError } = await supabase
         .from('sub_challenges')
-        .select('*, submissions(*, profiles(id, name, avatar_url, email, role))');
+        .select('*, submissions(*, profiles(id, name, email, role)), overall_challenges(id, ended_at)');
 
       if (scError) {
         setError(scError.message);
       } else if (data) {
-        setTraineeChallenges(data as unknown as SubChallengeWithSubmissions[]);
+        setTraineeChallenges(data as unknown as SubChallengeWithOverallChallenge[]);
       }
     };
 
@@ -54,7 +54,6 @@ export const TraineeDashboard: React.FC<TraineeDashboardProps> = ({ currentUser 
         'postgres_changes',
         { event: '*', schema: 'public', table: 'submissions' },
         (payload) => {
-            // A submission status changed (e.g. it was evaluated), so we need to refetch to update score/status
             const submission = payload.new as Submission;
             if (submission.trainee_id === currentUser.id) {
                 fetchChallenges();
@@ -68,15 +67,17 @@ export const TraineeDashboard: React.FC<TraineeDashboardProps> = ({ currentUser 
     };
   }, [currentUser.id]);
 
-  const getStatus = (challenge: SubChallengeWithSubmissions) => {
+  const getStatus = (challenge: SubChallengeWithOverallChallenge) => {
     const endTime = new Date(challenge.submission_end_time);
     const submission = challenge.submissions?.find(s => s.trainee_id === currentUser.id);
+    
+    if (challenge.overall_challenges?.ended_at) return 'Ended';
     if (submission) return 'Submitted';
     if (endTime < new Date()) return 'Ended';
     return 'Active';
   };
   
-  const getScore = (challenge: SubChallengeWithSubmissions) => {
+  const getScore = (challenge: SubChallengeWithOverallChallenge) => {
     const submission = challenge.submissions?.find(s => s.trainee_id === currentUser.id);
     const evaluation = submission?.evaluation as unknown as Evaluation | null;
     const results = submission?.results as unknown as SubmittedResult[] | null;

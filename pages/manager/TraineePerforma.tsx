@@ -95,12 +95,9 @@ export const TraineePerforma: React.FC = () => {
         <div className="container mx-auto p-4 sm:p-6 lg:p-8">
             <BackButton to={`/manager/challenge/${challengeId}`} text="Back to Leaderboard" />
 
-            <div className="flex items-center space-x-4 mb-8">
-                <img src={trainee.avatar_url || ''} alt={trainee.name} className="w-20 h-20 rounded-full" />
-                <div>
-                    <h1 className="text-3xl font-bold">{trainee.name}</h1>
-                    <p className="text-gray-500 dark:text-gray-400">Performance in "{overallChallenge.name}"</p>
-                </div>
+            <div className="mb-8">
+                <h1 className="text-3xl font-bold">{trainee.name}</h1>
+                <p className="text-gray-500 dark:text-gray-400">Performance in "{overallChallenge.name}"</p>
             </div>
 
             <div className="space-y-6">

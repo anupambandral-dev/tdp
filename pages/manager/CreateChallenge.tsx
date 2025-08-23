@@ -112,7 +112,6 @@ export const CreateChallenge: React.FC<CreateChallengeProps> = ({ currentUser })
                                         checked={selectedTraineeIds.includes(profile.id)}
                                         onChange={() => handleToggleTrainee(profile.id)}
                                     />
-                                    <img src={profile.avatar_url ?? ''} alt={profile.name} className="h-8 w-8 rounded-full" />
                                     <div>
                                         <p className="font-medium text-sm">{profile.name}</p>
                                         <p className="text-xs text-gray-500 dark:text-gray-400">{profile.email}</p>

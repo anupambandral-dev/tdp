@@ -157,7 +157,6 @@ export const EvaluateSubmission: React.FC<EvaluateSubmissionProps> = ({ currentU
                                             className={`w-full text-left p-3 rounded-lg flex items-center space-x-3 transition-colors ${selectedTraineeId === submission.trainee_id ? 'bg-blue-100 dark:bg-blue-900' : 'hover:bg-gray-100 dark:hover:bg-gray-700'}`}
                                             onClick={() => setSelectedTraineeId(submission.trainee_id)}
                                         >
-                                           <img src={trainee?.avatar_url || ''} alt={trainee?.name} className="w-8 h-8 rounded-full" />
                                            <span className="font-medium flex-grow">{trainee?.name}</span>
                                            {isEvaluated && <span className="text-green-500 text-xs font-bold">✓</span>}
                                        </button>

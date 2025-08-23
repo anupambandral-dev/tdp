@@ -59,10 +59,7 @@ const ManagerView: React.FC<{ subChallenge: SubChallengeWithSubmissions }> = ({ 
                                 return (
                                     <tr key={submission.trainee_id}>
                                         <td className="px-6 py-4 whitespace-nowrap">
-                                            <div className="flex items-center">
-                                                <img className="h-8 w-8 rounded-full" src={trainee?.avatar_url || ''} alt="" />
-                                                <div className="ml-3">{trainee?.name}</div>
-                                            </div>
+                                            {trainee?.name}
                                         </td>
                                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">{new Date(submission.submitted_at).toLocaleString()}</td>
                                         <td className="px-6 py-4 whitespace-nowrap">

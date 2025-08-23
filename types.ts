@@ -87,3 +87,8 @@ export type SubChallengeWithSubmissions = SubChallenge & {
 export type OverallChallengeWithSubChallenges = OverallChallenge & {
   sub_challenges: SubChallengeWithSubmissions[];
 };
+
+export type SubChallengeWithOverallChallenge = SubChallenge & {
+  overall_challenges: Pick<OverallChallenge, 'id' | 'ended_at'> | null;
+  submissions: SubmissionWithProfile[];
+};

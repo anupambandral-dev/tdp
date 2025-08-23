@@ -13,39 +13,66 @@ export const ChallengeDetail: React.FC = () => {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
-    useEffect(() => {
-        const fetchChallengeDetails = async () => {
-            if (!challengeId) return;
-            setLoading(true);
+    const fetchChallengeDetails = async () => {
+        if (!challengeId) return;
+        setLoading(true);
 
-            const { data, error } = await supabase
+        const { data, error } = await supabase
+            .from('overall_challenges')
+            .select('*, sub_challenges(*, submissions(*, profiles(id, name, email, role)))')
+            .eq('id', challengeId)
+            .single<OverallChallengeWithSubChallenges>();
+        
+        if (error) {
+            setError(error.message);
+            console.error(error);
+        } else if (data) {
+            setChallenge(data);
+            if (data.trainee_ids.length > 0) {
+                const { data: profilesData, error: profilesError } = await supabase
+                    .from('profiles')
+                    .select('*')
+                    .in('id', data.trainee_ids);
+
+                if (profilesError) {
+                    setError(profilesError.message);
+                } else if (profilesData) {
+                    setTrainees(profilesData as unknown as Profile[]);
+                }
+            }
+        }
+        setLoading(false);
+    };
+
+    useEffect(() => {
+        fetchChallengeDetails();
+    }, [challengeId]);
+
+    const handleEndChallenge = async () => {
+        if (!challengeId) return;
+
+        const isConfirmed = window.confirm(
+            'Are you sure you want to end this challenge? This will close all sub-challenges to new submissions.'
+        );
+
+        if (isConfirmed) {
+            setLoading(true);
+            const { error } = await supabase
                 .from('overall_challenges')
-                .select('*, sub_challenges(*, submissions(*, profiles(id, name, avatar_url, email, role)))')
-                .eq('id', challengeId)
-                .single<OverallChallengeWithSubChallenges>();
+                .update({ ended_at: new Date().toISOString() })
+                .eq('id', challengeId);
             
             if (error) {
                 setError(error.message);
-                console.error(error);
-            } else if (data) {
-                setChallenge(data);
-                if (data.trainee_ids.length > 0) {
-                    const { data: profilesData, error: profilesError } = await supabase
-                        .from('profiles')
-                        .select('*')
-                        .in('id', data.trainee_ids);
-
-                    if (profilesError) {
-                        setError(profilesError.message);
-                    } else if (profilesData) {
-                        setTrainees(profilesData as unknown as Profile[]);
-                    }
-                }
+                alert(`Error ending challenge: ${error.message}`);
+            } else {
+                alert('Challenge ended successfully.');
+                // Refetch to get the updated status
+                fetchChallengeDetails();
             }
             setLoading(false);
-        };
-        fetchChallengeDetails();
-    }, [challengeId]);
+        }
+    };
 
     const getTraineeScore = (traineeId: string) => {
         if (!challenge) return 0;
@@ -82,14 +109,34 @@ export const ChallengeDetail: React.FC = () => {
     if (error) return <div className="p-8 text-red-500">Error: {error}</div>;
     if (!challenge) return <div className="text-center p-8">Challenge not found.</div>;
 
+    const isChallengeEnded = !!challenge.ended_at;
+
     return (
         <div className="container mx-auto p-4 sm:p-6 lg:p-8">
             <BackButton to="/manager" text="Back to Dashboard" />
-            <div className="flex justify-between items-center mb-6">
-                <h1 className="text-3xl font-bold">{challenge.name}</h1>
-                <Link to={`/manager/challenge/${challenge.id}/create-sub-challenge`}>
-                    <Button>+ Add Sub-Challenge</Button>
-                </Link>
+            <div className="flex justify-between items-start mb-6 flex-wrap gap-4">
+                <div>
+                    <h1 className="text-3xl font-bold">{challenge.name}</h1>
+                    {isChallengeEnded && (
+                        <div className="mt-2">
+                             <span className="px-3 py-1 text-sm font-semibold rounded-full bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200">
+                                Challenge Ended
+                            </span>
+                        </div>
+                    )}
+                </div>
+                <div className="flex items-center space-x-2">
+                    {!isChallengeEnded && (
+                        <>
+                            <Button variant="danger" onClick={handleEndChallenge} disabled={loading}>
+                                End Challenge
+                            </Button>
+                            <Link to={`/manager/challenge/${challenge.id}/create-sub-challenge`}>
+                                <Button>+ Add Sub-Challenge</Button>
+                            </Link>
+                        </>
+                    )}
+                </div>
             </div>
             
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -127,7 +174,6 @@ export const ChallengeDetail: React.FC = () => {
                                         <div className="flex items-center justify-between">
                                             <div className="flex items-center space-x-3">
                                                 <span className="font-bold w-6 text-center">{index + 1}</span>
-                                                <img src={user.avatar_url || ''} alt={user.name} className="w-10 h-10 rounded-full" />
                                                 <span>{user.name}</span>
                                             </div>
                                             <span className="font-semibold text-lg">{score} pts</span>

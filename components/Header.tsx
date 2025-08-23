@@ -30,9 +30,8 @@ export const Header: React.FC<HeaderProps> = ({ currentUser, onLogout }) => {
           {currentUser && (
             <div className="flex items-center space-x-4">
               <div className="flex items-center space-x-2">
-                <img className="h-8 w-8 rounded-full" src={currentUser.avatar_url ?? ''} alt={currentUser.name} />
-                <span className="text-sm font-medium text-gray-600 dark:text-gray-300 hidden sm:block">{currentUser.name}</span>
-                <span className="text-xs text-gray-500 dark:text-gray-400 bg-gray-200 dark:bg-gray-700 px-2 py-1 rounded-full hidden sm:block">{currentUser.role}</span>
+                <span className="text-sm font-medium text-gray-600 dark:text-gray-300">{currentUser.name}</span>
+                <span className="text-xs text-gray-500 dark:text-gray-400 bg-gray-200 dark:bg-gray-700 px-2 py-1 rounded-full">{currentUser.role}</span>
               </div>
               <button onClick={onLogout} className="text-sm font-medium text-blue-600 dark:text-blue-400 hover:underline">
                 Logout

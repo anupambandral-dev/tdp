@@ -12,6 +12,7 @@ export type Database = {
       overall_challenges: {
         Row: {
           created_at: string
+          ended_at: string | null
           id: string
           manager_ids: string[]
           name: string
@@ -19,6 +20,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          ended_at?: string | null
           id?: string
           manager_ids: string[]
           name: string
@@ -26,6 +28,7 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          ended_at?: string | null
           id?: string
           manager_ids?: string[]
           name?: string

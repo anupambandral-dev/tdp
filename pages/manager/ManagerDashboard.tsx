@@ -110,7 +110,12 @@ export const ManagerDashboard: React.FC<ManagerDashboardProps> = ({ currentUser 
       {!loading && !error && (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {challenges.map((challenge) => (
-            <Card key={challenge.id} className="hover:shadow-lg transition-shadow duration-200">
+            <Card key={challenge.id} className="hover:shadow-lg transition-shadow duration-200 relative">
+              {challenge.ended_at && (
+                  <span className="absolute top-2 right-2 px-2 py-1 text-xs font-semibold rounded-full bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200">
+                      Ended
+                  </span>
+              )}
               <div className="flex flex-col h-full">
                 <h2 className="text-xl font-semibold text-blue-600 dark:text-blue-400">{challenge.name}</h2>
                 <div className="flex-grow mt-4 space-y-2 text-sm text-gray-600 dark:text-gray-300">
