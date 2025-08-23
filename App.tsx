@@ -22,39 +22,43 @@ const App: React.FC = () => {
   const [currentUser, setCurrentUser] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const fetchAndSetProfile = async (user: Session['user']) => {
-    const { data: profile, error } = await supabase
-      .rpc('link_auth_to_profile')
-      .single<Profile>();
-
-    if (error || !profile) {
-      console.error("CRITICAL: Could not fetch or link user profile. Signing out.", error);
-      await supabase.auth.signOut();
-      return; // The onAuthStateChange listener will handle the new state.
-    }
-
-    setCurrentUser(profile);
-  };
-
-
   useEffect(() => {
     if (initializationError) {
       setLoading(false);
       return;
     }
     
-    // The Supabase listener will fire immediately with the initial session state.
-    // This removes the race condition from the previous implementation by having
-    // a single source of truth for the auth state.
+    // onAuthStateChange is the single source of truth for the session.
+    // It fires on initial load, login, and logout, eliminating race conditions.
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (_event, session) => {
-        setSession(session);
         if (session?.user) {
-          await fetchAndSetProfile(session.user);
+          // User is logged in, or there's an existing session.
+          // Atomically link their auth record and fetch their profile.
+          const { data: profile, error } = await supabase
+            .rpc('link_auth_to_profile')
+            .single<Profile>();
+
+          if (error || !profile) {
+            // If the profile doesn't exist or there's an error,
+            // the session is invalid. Force a logout. This will trigger
+            // onAuthStateChange again with a null session.
+            console.error("Profile not found or error fetching. Forcing logout.", error);
+            await supabase.auth.signOut();
+            setCurrentUser(null);
+            setSession(null);
+          } else {
+            // Success! We have a valid user and profile.
+            setCurrentUser(profile);
+            setSession(session);
+          }
         } else {
+          // User is not logged in.
           setCurrentUser(null);
+          setSession(null);
         }
-        // This will be called after the first check completes, removing the loading screen.
+        
+        // This is now guaranteed to run after the auth check is complete.
         setLoading(false);
       }
     );
