@@ -1,9 +1,9 @@
-
 import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { Profile, Role, SubChallenge, OverallChallenge, Submission, IncorrectMarking, ResultTier, Evaluation, EvaluationRules, SubChallengeWithSubmissions, SubmittedResult } from '../../types';
 import { supabase } from '../../supabaseClient';
 import { Card } from '../../components/ui/Card';
+import { BackButton } from '../../components/ui/BackButton';
 
 interface SubChallengeDetailProps {
   currentUser: Profile;
@@ -211,7 +211,7 @@ export const SubChallengeDetail: React.FC<SubChallengeDetailProps> = ({ currentU
 
     return (
         <div className="container mx-auto p-4 sm:p-6 lg:p-8">
-            <Link to={backLink} className="text-blue-600 dark:text-blue-400 hover:underline mb-4 inline-block">&larr; {backLinkText}</Link>
+            <BackButton to={backLink} text={backLinkText} />
             
             <Card className="mb-8">
                 <h1 className="text-3xl font-bold">{subChallenge.title}</h1>

@@ -4,6 +4,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { supabase } from '../../supabaseClient';
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
+import { BackButton } from '../../components/ui/BackButton';
 import { SubmittedResult, ResultType, ResultTier, Profile, Submission, SubChallenge, EvaluationRules, Json } from '../../types';
 import { TablesInsert } from '../../database.types';
 
@@ -143,7 +144,7 @@ export const SubmitChallenge: React.FC<SubmitChallengeProps> = ({ currentUser })
 
   return (
     <div className="container mx-auto p-4 sm:p-6 lg:p-8 max-w-4xl">
-      <Link to="/trainee" className="text-blue-600 dark:text-blue-400 hover:underline mb-4 inline-block">&larr; Back to Dashboard</Link>
+      <BackButton to="/trainee" text="Back to Dashboard" />
       <Card>
         <div className="text-center mb-4">
           <h1 className="text-3xl font-bold">{challenge.title}</h1>

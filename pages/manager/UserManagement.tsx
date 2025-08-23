@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { Profile } from '../../types';
 import { supabase } from '../../supabaseClient';
 import { Card } from '../../components/ui/Card';
+import { BackButton } from '../../components/ui/BackButton';
 
 export const UserManagement: React.FC = () => {
   const [profiles, setProfiles] = useState<Profile[]>([]);
@@ -31,7 +32,7 @@ export const UserManagement: React.FC = () => {
 
   return (
     <div className="container mx-auto p-4 sm:p-6 lg:p-8">
-      <Link to="/manager" className="text-blue-600 dark:text-blue-400 hover:underline mb-4 inline-block">&larr; Back to Dashboard</Link>
+      <BackButton to="/manager" text="Back to Dashboard" />
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-3xl font-bold">User Management</h1>
       </div>

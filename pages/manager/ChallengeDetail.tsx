@@ -1,14 +1,9 @@
-
-
-
-
-
-
 import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { supabase } from '../../supabaseClient';
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
+import { BackButton } from '../../components/ui/BackButton';
 import { ResultTier, IncorrectMarking, OverallChallenge, SubChallenge, Profile, Submission, OverallChallengeWithSubChallenges, EvaluationRules, SubmittedResult, Evaluation } from '../../types';
 
 export const ChallengeDetail: React.FC = () => {
@@ -89,7 +84,7 @@ export const ChallengeDetail: React.FC = () => {
 
     return (
         <div className="container mx-auto p-4 sm:p-6 lg:p-8">
-            <Link to="/manager" className="text-blue-600 dark:text-blue-400 hover:underline mb-4 inline-block">&larr; Back to Dashboard</Link>
+            <BackButton to="/manager" text="Back to Dashboard" />
             <div className="flex justify-between items-center mb-6">
                 <h1 className="text-3xl font-bold">{challenge.name}</h1>
                 <Link to={`/manager/challenge/${challenge.id}/create-sub-challenge`}>

@@ -4,6 +4,7 @@ import { Profile } from '../../types';
 import { supabase } from '../../supabaseClient';
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
+import { BackButton } from '../../components/ui/BackButton';
 import { TablesInsert } from '../../database.types';
 
 interface CreateChallengeProps {
@@ -77,7 +78,7 @@ export const CreateChallenge: React.FC<CreateChallengeProps> = ({ currentUser })
 
     return (
         <div className="container mx-auto p-4 sm:p-6 lg:p-8 max-w-4xl">
-            <Link to="/manager" className="text-blue-600 dark:text-blue-400 hover:underline mb-4 inline-block">&larr; Back to Dashboard</Link>
+            <BackButton to="/manager" text="Back to Dashboard" />
             <Card>
                 <h1 className="text-3xl font-bold mb-6">Create New Overall Challenge</h1>
                 <form onSubmit={handleSubmit} className="space-y-8">

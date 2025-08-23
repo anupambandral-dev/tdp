@@ -3,6 +3,7 @@ import { useParams, Link, useNavigate } from 'react-router-dom';
 import { supabase } from '../../supabaseClient';
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
+import { BackButton } from '../../components/ui/BackButton';
 import { Profile, ResultEvaluation, ResultTier, SubmittedResult, IncorrectMarking, SubChallenge, Submission, Evaluation, EvaluationRules, SubmissionWithProfile, SubChallengeWithSubmissions, Json } from '../../types';
 
 interface EvaluateSubmissionProps {
@@ -138,7 +139,7 @@ export const EvaluateSubmission: React.FC<EvaluateSubmissionProps> = ({ currentU
 
     return (
         <div className="container mx-auto p-4 sm:p-6 lg:p-8">
-            <Link to="/evaluator" className="text-blue-600 dark:text-blue-400 hover:underline mb-4 inline-block">&larr; Back to Dashboard</Link>
+            <BackButton to="/evaluator" text="Back to Dashboard" />
             <h1 className="text-3xl font-bold mb-2">{challenge.title}</h1>
             <p className="text-gray-500 dark:text-gray-400 mb-6">Evaluation Portal</p>
 

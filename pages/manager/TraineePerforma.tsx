@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { supabase } from '../../supabaseClient';
 import { Card } from '../../components/ui/Card';
+import { BackButton } from '../../components/ui/BackButton';
 import { SubChallenge, Submission, IncorrectMarking, ResultTier, OverallChallenge, Profile, EvaluationRules, SubmittedResult, Evaluation } from '../../types';
 
 const getTotalScore = (submission: Submission, subChallenge: SubChallenge) => {
@@ -92,9 +93,7 @@ export const TraineePerforma: React.FC = () => {
 
     return (
         <div className="container mx-auto p-4 sm:p-6 lg:p-8">
-            <Link to={`/manager/challenge/${challengeId}`} className="text-blue-600 dark:text-blue-400 hover:underline mb-4 inline-block">
-                &larr; Back to Leaderboard
-            </Link>
+            <BackButton to={`/manager/challenge/${challengeId}`} text="Back to Leaderboard" />
 
             <div className="flex items-center space-x-4 mb-8">
                 <img src={trainee.avatar_url || ''} alt={trainee.name} className="w-20 h-20 rounded-full" />
