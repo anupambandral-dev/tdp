@@ -23,72 +23,44 @@ const App: React.FC = () => {
   const [loading, setLoading] = useState(true);
 
   const fetchAndSetProfile = async (user: Session['user']) => {
-    // This single RPC call is now the source of truth.
-    // It finds the user's profile by their email, links the auth_id if it's not set,
-    // and returns the complete, up-to-date profile in one atomic operation.
-    // This eliminates all client-side race conditions.
     const { data: profile, error } = await supabase
       .rpc('link_auth_to_profile')
       .single<Profile>();
 
     if (error || !profile) {
-      // This is a critical error. The user is authenticated with Supabase Auth,
-      // but we cannot find or link their corresponding profile in the database.
-      // To prevent the app from being in a broken state, we must sign them out.
       console.error("CRITICAL: Could not fetch or link user profile. Signing out.", error);
       await supabase.auth.signOut();
-      setCurrentUser(null);
-      setSession(null);
-      return;
+      return; // The onAuthStateChange listener will handle the new state.
     }
 
-    // Success! The profile is guaranteed to be correct and linked.
     setCurrentUser(profile);
   };
 
 
   useEffect(() => {
     if (initializationError) {
-        setLoading(false);
-        return;
+      setLoading(false);
+      return;
     }
-
-    const getSessionAndProfile = async () => {
-      try {
-        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-        if (sessionError) throw sessionError;
-        
+    
+    // The Supabase listener will fire immediately with the initial session state.
+    // This removes the race condition from the previous implementation by having
+    // a single source of truth for the auth state.
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (_event, session) => {
         setSession(session);
-
         if (session?.user) {
           await fetchAndSetProfile(session.user);
         } else {
           setCurrentUser(null);
         }
-      } catch (error) {
-        console.error("Error during initial session fetch:", error);
-        setCurrentUser(null);
-        setSession(null);
-      } finally {
+        // This will be called after the first check completes, removing the loading screen.
         setLoading(false);
-      }
-    };
-    
-    getSessionAndProfile();
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (_event, session) => {
-        setSession(session);
-        if(session?.user) {
-          await fetchAndSetProfile(session.user);
-        } else {
-          setCurrentUser(null);
-        }
       }
     );
 
     return () => {
-      subscription?.unsubscribe();
+      subscription.unsubscribe();
     };
   }, []);
 
