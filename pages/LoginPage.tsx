@@ -4,7 +4,7 @@ import { Button } from '../components/ui/Button';
 import { supabase } from '../supabaseClient';
 
 const LogoIcon = () => (
-    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-16 w-16 text-blue-500">
+    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-16 w-16 text-blue-500">
         <circle cx="11" cy="11" r="8"></circle>
         <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
         <circle cx="11" cy="11" r="3"></circle>
@@ -16,27 +16,22 @@ const LogoIcon = () => (
 
 export const LoginPage: React.FC = () => {
     const [email, setEmail] = useState('');
+    const [password, setPassword] = useState('');
     const [loading, setLoading] = useState(false);
-    const [message, setMessage] = useState('');
     const [error, setError] = useState('');
 
     const handleLogin = async (e: React.FormEvent) => {
         e.preventDefault();
         setLoading(true);
-        setMessage('');
         setError('');
 
-        const { error } = await supabase.auth.signInWithOtp({
+        const { error } = await supabase.auth.signInWithPassword({
             email: email,
-            options: {
-                emailRedirectTo: window.location.origin,
-            },
+            password: password,
         });
 
         if (error) {
             setError(error.message);
-        } else {
-            setMessage('Check your email for the login link!');
         }
         setLoading(false);
     };
@@ -48,7 +43,7 @@ export const LoginPage: React.FC = () => {
                     <div className="flex justify-center mb-4"><LogoIcon /></div>
                     <h1 className="text-3xl font-bold text-gray-800 dark:text-white">Tour de Prior Art</h1>
                     <p className="text-gray-600 dark:text-gray-400 mt-2">
-                        Sign in via magic link
+                        Sign in to your account
                     </p>
                 </div>
 
@@ -64,16 +59,30 @@ export const LoginPage: React.FC = () => {
                             onChange={(e) => setEmail(e.target.value)}
                             required
                             disabled={loading}
+                            autoComplete="email"
+                        />
+                    </div>
+                    <div>
+                        <label htmlFor="password" className="block text-sm font-medium text-gray-700 dark:text-gray-200">Password</label>
+                        <input
+                            id="password"
+                            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 p-2"
+                            type="password"
+                            placeholder="••••••••"
+                            value={password}
+                            onChange={(e) => setPassword(e.target.value)}
+                            required
+                            disabled={loading}
+                            autoComplete="current-password"
                         />
                     </div>
                     <div>
                         <Button type="submit" className="w-full" disabled={loading}>
-                            {loading ? 'Sending link...' : 'Send Magic Link'}
+                            {loading ? 'Signing In...' : 'Sign In'}
                         </Button>
                     </div>
                 </form>
 
-                {message && <p className="mt-4 text-center text-sm text-green-600 dark:text-green-400">{message}</p>}
                 {error && <p className="mt-4 text-center text-sm text-red-600 dark:text-red-400">{error}</p>}
 
             </Card>
