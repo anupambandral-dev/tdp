@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Profile, SubChallenge, SubChallengeWithSubmissions } from '../../types';
@@ -16,9 +17,6 @@ export const EvaluatorDashboard: React.FC<EvaluatorDashboardProps> = ({ currentU
 
   useEffect(() => {
     const fetchChallenges = async () => {
-        setLoading(true);
-        // RLS policies will automatically filter to show only challenges 
-        // this user is assigned to evaluate.
         const { data, error } = await supabase
             .from('sub_challenges')
             .select('*, submissions(*, profiles(*))');
@@ -28,10 +26,41 @@ export const EvaluatorDashboard: React.FC<EvaluatorDashboardProps> = ({ currentU
         } else if (data) {
             setAssignedChallenges(data as unknown as SubChallengeWithSubmissions[]);
         }
-        setLoading(false);
     };
+    
+    const initialFetch = async () => {
+        setLoading(true);
+        await fetchChallenges();
+        setLoading(false);
+    }
+    initialFetch();
 
-    fetchChallenges();
+    // Set up real-time subscription
+    // Listen for new sub-challenges being assigned, or submissions being added/updated.
+    const channel = supabase
+      .channel('evaluator-dashboard-challenges')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'sub_challenges' },
+        (payload) => {
+          console.log('Change received on sub_challenges!', payload);
+          fetchChallenges();
+        }
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'submissions' },
+        (payload) => {
+          console.log('Change received on submissions!', payload);
+          fetchChallenges();
+        }
+      )
+      .subscribe();
+
+    // Cleanup subscription on component unmount
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, [currentUser.id]);
 
   const getEvaluationStats = (challenge: SubChallengeWithSubmissions) => {

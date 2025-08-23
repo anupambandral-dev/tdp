@@ -1,12 +1,6 @@
-
-
-
-
-
-
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Profile, SubChallenge, ResultTier, IncorrectMarking, Evaluation, EvaluationRules, SubmittedResult, SubChallengeWithSubmissions } from '../../types';
+import { Profile, SubChallenge, ResultTier, IncorrectMarking, Evaluation, EvaluationRules, SubmittedResult, SubChallengeWithSubmissions, Submission } from '../../types';
 import { supabase } from '../../supabaseClient';
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
@@ -26,9 +20,6 @@ export const TraineeDashboard: React.FC<TraineeDashboardProps> = ({ currentUser 
 
   useEffect(() => {
     const fetchChallenges = async () => {
-      setLoading(true);
-      // RLS policies on `sub_challenges` ensure we only get challenges this trainee is part of.
-      // The policy checks the parent `overall_challenge`'s `trainee_ids`.
       const { data, error: scError } = await supabase
         .from('sub_challenges')
         .select('*, submissions(*, profiles(id, name, avatar_url, email, role))');
@@ -38,10 +29,43 @@ export const TraineeDashboard: React.FC<TraineeDashboardProps> = ({ currentUser 
       } else if (data) {
         setTraineeChallenges(data as unknown as SubChallengeWithSubmissions[]);
       }
-      setLoading(false);
     };
 
-    fetchChallenges();
+    const initialFetch = async () => {
+        setLoading(true);
+        await fetchChallenges();
+        setLoading(false);
+    }
+    initialFetch();
+    
+    const channel = supabase
+      .channel('trainee-dashboard-challenges')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'sub_challenges' },
+        () => fetchChallenges()
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'overall_challenges' },
+        () => fetchChallenges()
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'submissions' },
+        (payload) => {
+            // A submission status changed (e.g. it was evaluated), so we need to refetch to update score/status
+            const submission = payload.new as Submission;
+            if (submission.trainee_id === currentUser.id) {
+                fetchChallenges();
+            }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, [currentUser.id]);
 
   const getStatus = (challenge: SubChallengeWithSubmissions) => {

@@ -42,9 +42,6 @@ export const ManagerDashboard: React.FC<ManagerDashboardProps> = ({ currentUser 
 
   useEffect(() => {
     const fetchChallenges = async () => {
-      setLoading(true);
-      // Fetch all challenges. RLS policies will automatically filter the results
-      // to only show challenges this manager is assigned to.
       const { data, error } = await supabase
         .from('overall_challenges')
         .select('*, sub_challenges(count)');
@@ -60,10 +57,34 @@ export const ManagerDashboard: React.FC<ManagerDashboardProps> = ({ currentUser 
         }))
         setChallenges(formattedData);
       }
-      setLoading(false);
     };
 
-    fetchChallenges();
+    const initialFetch = async () => {
+        setLoading(true);
+        await fetchChallenges();
+        setLoading(false);
+    }
+    
+    initialFetch();
+
+    // Set up real-time subscription
+    const channel = supabase
+      .channel('manager-dashboard-challenges')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'overall_challenges' },
+        (payload) => {
+          console.log('Change received on overall_challenges!', payload);
+          // Re-fetch without setting loading state to avoid UI flicker
+          fetchChallenges(); 
+        }
+      )
+      .subscribe();
+
+    // Cleanup subscription on component unmount
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, [currentUser.id]);
   
   return (
