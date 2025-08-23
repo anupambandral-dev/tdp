@@ -165,6 +165,7 @@ export const SubChallengeDetail: React.FC<SubChallengeDetailProps> = ({ currentU
     const { subChallengeId } = useParams<{ subChallengeId: string }>();
     const [subChallenge, setSubChallenge] = useState<SubChallengeWithSubmissions | null>(null);
     const [overallChallenge, setOverallChallenge] = useState<OverallChallenge | null>(null);
+    const [evaluators, setEvaluators] = useState<Profile[]>([]);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
@@ -179,17 +180,35 @@ export const SubChallengeDetail: React.FC<SubChallengeDetailProps> = ({ currentU
             
             if (scError) {
                 console.error(scError);
-            } else if (scData) {
+                setLoading(false);
+                return;
+            }
+
+            if (scData) {
                 setSubChallenge(scData);
-                const { data: ocData, error: ocError } = await supabase
+
+                const overallChallengePromise = supabase
                     .from('overall_challenges')
                     .select('*')
                     .eq('id', scData.overall_challenge_id)
                     .single();
-                if (ocError) {
-                    console.error(ocError);
-                } else if (ocData) {
-                    setOverallChallenge(ocData as unknown as OverallChallenge);
+
+                const evaluatorsPromise = (scData.evaluator_ids && scData.evaluator_ids.length > 0)
+                    ? supabase.from('profiles').select('*').in('id', scData.evaluator_ids)
+                    : Promise.resolve({ data: [], error: null });
+
+                const [ocResult, evaluatorsResult] = await Promise.all([overallChallengePromise, evaluatorsPromise]);
+                
+                if (ocResult.error) {
+                    console.error(ocResult.error);
+                } else if (ocResult.data) {
+                    setOverallChallenge(ocResult.data as unknown as OverallChallenge);
+                }
+
+                if (evaluatorsResult.error) {
+                    console.error('Error fetching evaluators:', evaluatorsResult.error);
+                } else if (evaluatorsResult.data) {
+                    setEvaluators(evaluatorsResult.data as Profile[]);
                 }
             }
             setLoading(false);
@@ -227,6 +246,18 @@ export const SubChallengeDetail: React.FC<SubChallengeDetailProps> = ({ currentU
                         <p>{subChallenge.claim_focus}</p>
                     </div>
                 </div>
+                 {evaluators.length > 0 && (
+                    <div className="mt-4 border-t dark:border-gray-700 pt-4">
+                        <h3 className="font-semibold text-sm text-gray-700 dark:text-gray-300">Assigned Evaluators</h3>
+                        <div className="flex flex-wrap gap-2 mt-2">
+                            {evaluators.map(evaluator => (
+                                <span key={evaluator.id} className="inline-flex items-center px-2 py-1 text-xs font-medium rounded-full bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200">
+                                    {evaluator.name}
+                                </span>
+                            ))}
+                        </div>
+                    </div>
+                )}
             </Card>
 
             {currentUser.role === Role.MANAGER && <ManagerView subChallenge={subChallenge} />}
