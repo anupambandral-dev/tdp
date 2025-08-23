@@ -28,31 +28,43 @@ const App: React.FC = () => {
       return;
     }
     
-    // onAuthStateChange is the single source of truth for the session.
-    // It fires on initial load, login, and logout, eliminating race conditions.
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (_event, session) => {
         if (session?.user) {
-          // User is logged in, or there's an existing session.
-          // Atomically link their auth record and fetch their profile.
-          const { data: profile, error } = await supabase
-            .rpc('link_auth_to_profile')
+          // A session exists. First, try the fast path for a returning user.
+          const { data: existingProfile } = await supabase
+            .from('profiles')
+            .select('*')
+            .eq('auth_id', session.user.id)
             .single<Profile>();
 
-          if (error || !profile) {
-            // If the profile doesn't exist or there's an error,
-            // the session is invalid. Force a logout and reload.
-            console.error("Profile not found or error fetching. Forcing logout.", error);
-            await supabase.auth.signOut();
-            window.location.reload(); // Force a hard refresh to clear bad state
-          } else {
-            // Success! We have a valid user and profile.
-            setCurrentUser(profile);
+          if (existingProfile) {
+            // SUCCESS: Returning user found.
+            setCurrentUser(existingProfile);
             setSession(session);
             setLoading(false);
+          } else {
+            // User is logged in, but their profile isn't linked.
+            // This is the path for a first-time login. Call RPC to link and fetch.
+            console.log("No existing profile link found, attempting to link...");
+            const { data: linkedProfile, error: rpcError } = await supabase
+              .rpc('link_auth_to_profile')
+              .single<Profile>();
+
+            if (linkedProfile && !rpcError) {
+              // SUCCESS: Profile linked and fetched.
+              setCurrentUser(linkedProfile);
+              setSession(session);
+              setLoading(false);
+            } else {
+              // CRITICAL FAILURE: User is authenticated but we cannot get their profile.
+              // This session is invalid. Force logout.
+              console.error("Failed to link or fetch profile after login. Forcing logout.", rpcError);
+              await supabase.auth.signOut();
+            }
           }
         } else {
-          // User is not logged in.
+          // No session, user is logged out.
           setCurrentUser(null);
           setSession(null);
           setLoading(false);
