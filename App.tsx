@@ -23,38 +23,27 @@ const App: React.FC = () => {
   const [loading, setLoading] = useState(true);
 
   const fetchAndSetProfile = async (user: Session['user']) => {
-    const { data: profileData, error: profileError } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('email', user.email)
+    // This single RPC call is now the source of truth.
+    // It finds the user's profile by their email, links the auth_id if it's not set,
+    // and returns the complete, up-to-date profile in one atomic operation.
+    // This eliminates all client-side race conditions.
+    const { data: profile, error } = await supabase
+      .rpc('link_auth_to_profile')
       .single<Profile>();
 
-    if (profileError) {
-      console.error("Could not fetch user profile:", profileError);
+    if (error || !profile) {
+      // This is a critical error. The user is authenticated with Supabase Auth,
+      // but we cannot find or link their corresponding profile in the database.
+      // To prevent the app from being in a broken state, we must sign them out.
+      console.error("CRITICAL: Could not fetch or link user profile. Signing out.", error);
+      await supabase.auth.signOut();
       setCurrentUser(null);
-      return null;
+      setSession(null);
+      return;
     }
 
-    if (profileData && !profileData.auth_id) {
-      // The profile exists but isn't linked. Call the secure RPC function 
-      // to link them and return the updated profile in one atomic operation.
-      const { data: linkedProfile, error: rpcError } = await supabase
-        .rpc('link_auth_to_profile')
-        .single<Profile>();
-      
-      if (rpcError) {
-        console.error("Error linking auth_id via RPC:", rpcError);
-        // Fallback to the unlinked profile. The app may be in a degraded state.
-        setCurrentUser(profileData);
-      } else {
-        // Use the profile returned directly from the function.
-        setCurrentUser(linkedProfile);
-      }
-    } else {
-       setCurrentUser(profileData);
-    }
-    
-    return profileData;
+    // Success! The profile is guaranteed to be correct and linked.
+    setCurrentUser(profile);
   };
 
 
