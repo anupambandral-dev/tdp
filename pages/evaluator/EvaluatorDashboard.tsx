@@ -17,10 +17,11 @@ export const EvaluatorDashboard: React.FC<EvaluatorDashboardProps> = ({ currentU
   useEffect(() => {
     const fetchChallenges = async () => {
         setLoading(true);
+        // RLS policies will automatically filter to show only challenges 
+        // this user is assigned to evaluate.
         const { data, error } = await supabase
             .from('sub_challenges')
-            .select('*, submissions(*, profiles(*))')
-            .contains('evaluator_ids', [currentUser.id]);
+            .select('*, submissions(*, profiles(*))');
 
         if (error) {
             setError(error.message);

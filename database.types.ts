@@ -168,7 +168,17 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      link_auth_to_profile: {
+        Args: Record<string, never>
+        Returns: {
+          auth_id: string | null
+          avatar_url: string | null
+          email: string
+          id: string
+          name: string
+          role: Database["public"]["Enums"]["user_role"]
+        }[]
+      }
     }
     Enums: {
       incorrect_marking_type: "zero" | "penalty"

@@ -23,7 +23,6 @@ const App: React.FC = () => {
   const [loading, setLoading] = useState(true);
 
   const fetchAndSetProfile = async (user: Session['user']) => {
-    // Find profile by email, as it's the constant link.
     const { data: profileData, error: profileError } = await supabase
       .from('profiles')
       .select('*')
@@ -32,22 +31,24 @@ const App: React.FC = () => {
 
     if (profileError) {
       console.error("Could not fetch user profile:", profileError);
+      setCurrentUser(null);
       return null;
     }
 
-    // If profile exists, link the auth_id if it's not already linked.
     if (profileData && !profileData.auth_id) {
-      const { data: updatedProfile, error: updateError } = await supabase
-        .from('profiles')
-        .update({ auth_id: user.id })
-        .eq('id', profileData.id)
-        .select()
-        .single();
-      if (updateError) {
-        console.error("Error linking auth_id:", updateError);
-        setCurrentUser(profileData); // set with old data on failure
+      // The profile exists but isn't linked. Call the secure RPC function 
+      // to link them and return the updated profile in one atomic operation.
+      const { data: linkedProfile, error: rpcError } = await supabase
+        .rpc('link_auth_to_profile')
+        .single<Profile>();
+      
+      if (rpcError) {
+        console.error("Error linking auth_id via RPC:", rpcError);
+        // Fallback to the unlinked profile. The app may be in a degraded state.
+        setCurrentUser(profileData);
       } else {
-        setCurrentUser(updatedProfile);
+        // Use the profile returned directly from the function.
+        setCurrentUser(linkedProfile);
       }
     } else {
        setCurrentUser(profileData);

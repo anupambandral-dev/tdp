@@ -3,6 +3,7 @@
 
 
 
+
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Profile, SubChallenge, ResultTier, IncorrectMarking, Evaluation, EvaluationRules, SubmittedResult, SubChallengeWithSubmissions } from '../../types';
@@ -26,32 +27,11 @@ export const TraineeDashboard: React.FC<TraineeDashboardProps> = ({ currentUser 
   useEffect(() => {
     const fetchChallenges = async () => {
       setLoading(true);
-      // 1. Find overall challenges for this trainee
-      const { data: overallChallengesData, error: ocError } = await supabase
-        .from('overall_challenges')
-        .select('id')
-        .contains('trainee_ids', [currentUser.id]);
-
-      if (ocError) {
-        setError(ocError.message);
-        setLoading(false);
-        return;
-      }
-      
-      const overallChallenges = (overallChallengesData as unknown as { id: string }[]) || [];
-
-      if (overallChallenges.length === 0) {
-        setTraineeChallenges([]);
-        setLoading(false);
-        return;
-      }
-
-      // 2. Fetch sub-challenges related to those overall challenges
-      const challengeIds = overallChallenges.map(oc => oc.id);
+      // RLS policies on `sub_challenges` ensure we only get challenges this trainee is part of.
+      // The policy checks the parent `overall_challenge`'s `trainee_ids`.
       const { data, error: scError } = await supabase
         .from('sub_challenges')
-        .select('*, submissions(*, profiles(id, name, avatar_url, email, role))')
-        .in('overall_challenge_id', challengeIds);
+        .select('*, submissions(*, profiles(id, name, avatar_url, email, role))');
 
       if (scError) {
         setError(scError.message);
