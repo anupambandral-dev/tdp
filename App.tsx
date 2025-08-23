@@ -27,46 +27,43 @@ const App: React.FC = () => {
       setLoading(false);
       return;
     }
-    
+
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (_event, session) => {
-        if (session?.user) {
-          // A session exists. First, try the fast path for a returning user.
-          const { data: existingProfile } = await supabase
-            .from('profiles')
-            .select('*')
-            .eq('auth_id', session.user.id)
-            .single<Profile>();
+        try {
+          if (session?.user) {
+            // A session exists. Use a single RPC call to handle both returning users and first-time logins.
+            // This function finds the profile by email, links it if needed, and returns it.
+            // This is an atomic operation that prevents race conditions.
+            const { data: profileData, error } = await supabase.rpc('link_auth_to_profile');
 
-          if (existingProfile) {
-            // SUCCESS: Returning user found.
-            setCurrentUser(existingProfile);
-            setSession(session);
-            setLoading(false);
-          } else {
-            // User is logged in, but their profile isn't linked.
-            // This is the path for a first-time login. Call RPC to link and fetch.
-            console.log("No existing profile link found, attempting to link...");
-            const { data: linkedProfile, error: rpcError } = await supabase
-              .rpc('link_auth_to_profile')
-              .single<Profile>();
-
-            if (linkedProfile && !rpcError) {
-              // SUCCESS: Profile linked and fetched.
-              setCurrentUser(linkedProfile);
-              setSession(session);
-              setLoading(false);
-            } else {
-              // CRITICAL FAILURE: User is authenticated but we cannot get their profile.
-              // This session is invalid. Force logout.
-              console.error("Failed to link or fetch profile after login. Forcing logout.", rpcError);
-              await supabase.auth.signOut();
+            if (error) {
+              throw new Error(`Critical error fetching profile: ${error.message}`);
             }
+
+            if (profileData && profileData.length > 0) {
+              // SUCCESS: Profile fetched.
+              setCurrentUser(profileData[0] as Profile);
+              setSession(session);
+            } else {
+              // This case means a user is authenticated but has no profile in the system.
+              // This is an invalid state, so we should log them out.
+              throw new Error("Authentication successful, but no matching profile found in the database.");
+            }
+          } else {
+            // No session, user is logged out.
+            setCurrentUser(null);
+            setSession(null);
           }
-        } else {
-          // No session, user is logged out.
+        } catch (error) {
+          console.error(error);
+          if (session) {
+            // If there was an error with a valid session, the session is corrupted. Force logout.
+            await supabase.auth.signOut();
+          }
           setCurrentUser(null);
           setSession(null);
+        } finally {
           setLoading(false);
         }
       }
