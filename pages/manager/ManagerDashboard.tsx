@@ -1,4 +1,5 @@
 
+
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Profile, OverallChallenge } from '../../types';
@@ -42,10 +43,11 @@ export const ManagerDashboard: React.FC<ManagerDashboardProps> = ({ currentUser 
   useEffect(() => {
     const fetchChallenges = async () => {
       setLoading(true);
+      // Fetch all challenges. RLS policies will automatically filter the results
+      // to only show challenges this manager is assigned to.
       const { data, error } = await supabase
         .from('overall_challenges')
-        .select('*, sub_challenges(count)')
-        .contains('manager_ids', [currentUser.id]);
+        .select('*, sub_challenges(count)');
         
       if (error) {
         setError(error.message);
