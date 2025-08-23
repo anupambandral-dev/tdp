@@ -22,57 +22,54 @@ const App: React.FC = () => {
   const [currentUser, setCurrentUser] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
 
+  // Hook 1: Manages the session state. It's the single source of truth for authentication status.
   useEffect(() => {
-    if (initializationError) {
-      setLoading(false);
-      return;
-    }
+    // Check for an existing session on initial load.
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
+    });
 
+    // Listen for changes in authentication state (login, logout).
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (_event, session) => {
-        try {
-          if (session?.user) {
-            // A session exists. Use a single RPC call to handle both returning users and first-time logins.
-            // This function finds the profile by email, links it if needed, and returns it.
-            // This is an atomic operation that prevents race conditions.
-            const { data: profileData, error } = await supabase.rpc('link_auth_to_profile');
-
-            if (error) {
-              throw new Error(`Critical error fetching profile: ${error.message}`);
-            }
-
-            if (profileData && profileData.length > 0) {
-              // SUCCESS: Profile fetched.
-              setCurrentUser(profileData[0] as Profile);
-              setSession(session);
-            } else {
-              // This case means a user is authenticated but has no profile in the system.
-              // This is an invalid state, so we should log them out.
-              throw new Error("Authentication successful, but no matching profile found in the database.");
-            }
-          } else {
-            // No session, user is logged out.
-            setCurrentUser(null);
-            setSession(null);
-          }
-        } catch (error) {
-          console.error(error);
-          if (session) {
-            // If there was an error with a valid session, the session is corrupted. Force logout.
-            await supabase.auth.signOut();
-          }
-          setCurrentUser(null);
-          setSession(null);
-        } finally {
-          setLoading(false);
-        }
+      (_event, session) => {
+        setSession(session);
       }
     );
 
-    return () => {
-      subscription.unsubscribe();
-    };
+    // Cleanup the subscription when the component unmounts.
+    return () => subscription.unsubscribe();
   }, []);
+
+  // Hook 2: Manages the user profile based on the session state.
+  // This hook runs only when the session changes, cleanly separating concerns.
+  useEffect(() => {
+    // If a session exists, fetch the user's profile.
+    if (session?.user) {
+      const fetchProfile = async () => {
+        // This RPC is an atomic operation that gets the profile and links it on first login.
+        const { data, error } = await supabase.rpc('link_auth_to_profile');
+
+        if (error) {
+          console.error("Error fetching profile, signing out.", error);
+          await supabase.auth.signOut();
+          setCurrentUser(null);
+        } else if (data && data.length > 0) {
+          setCurrentUser(data[0] as Profile);
+        } else {
+          // This is a critical error: user is authenticated but has no profile.
+          console.error("Authenticated user has no profile, signing out.");
+          await supabase.auth.signOut();
+          setCurrentUser(null);
+        }
+        setLoading(false);
+      };
+      fetchProfile();
+    } else {
+      // If there is no session, ensure the user profile is cleared and stop loading.
+      setCurrentUser(null);
+      setLoading(false);
+    }
+  }, [session]);
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
