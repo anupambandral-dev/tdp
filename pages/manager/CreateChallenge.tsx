@@ -1,6 +1,6 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Profile, Role, OverallChallenge } from '../../types';
+import { Profile } from '../../types';
 import { supabase } from '../../supabaseClient';
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
@@ -10,79 +10,70 @@ interface CreateChallengeProps {
     currentUser: Profile;
 }
 
-const SearchIcon = () => (
-    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
-);
-
-
 export const CreateChallenge: React.FC<CreateChallengeProps> = ({ currentUser }) => {
     const navigate = useNavigate();
-    const [allEmployees, setAllEmployees] = useState<Profile[]>([]);
     const [challengeName, setChallengeName] = useState('');
-    const [selectedTraineeIds, setSelectedTraineeIds] = useState<Set<string>>(new Set());
-    const [selectedEvaluatorIds, setSelectedEvaluatorIds] = useState<Set<string>>(new Set());
-    const [loading, setLoading] = useState(false);
-
-    const [traineeSearch, setTraineeSearch] = useState('');
-    const [evaluatorSearch, setEvaluatorSearch] = useState('');
+    const [allProfiles, setAllProfiles] = useState<Profile[]>([]);
+    const [selectedTraineeIds, setSelectedTraineeIds] = useState<string[]>([]);
+    const [searchTerm, setSearchTerm] = useState('');
+    const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        const fetchEmployees = async () => {
-            const { data, error } = await supabase.from('profiles').select('*');
-            if (error) {
-                console.error('Error fetching employees:', error);
-            } else if (data) {
-                setAllEmployees(data as unknown as Profile[]);
+        const fetchProfiles = async () => {
+            setLoading(true);
+            const { data, error } = await supabase.from('profiles').select('*').order('name', { ascending: true });
+            if (data) {
+                setAllProfiles(data);
             }
+            if (error) {
+                console.error("Error fetching profiles:", error);
+                alert("Could not load user list.");
+            }
+            setLoading(false);
         };
-        fetchEmployees();
+        fetchProfiles();
     }, []);
-    
-    const trainees = useMemo(() => 
-        allEmployees.filter(e => e.role === Role.TRAINEE && e.name.toLowerCase().includes(traineeSearch.toLowerCase())),
-        [traineeSearch, allEmployees]
-    );
 
-    const evaluators = useMemo(() =>
-        allEmployees.filter(e => e.role === Role.EVALUATOR && e.name.toLowerCase().includes(evaluatorSearch.toLowerCase())),
-        [evaluatorSearch, allEmployees]
-    );
-
-    const handleToggleSelection = (id: string, selectionSet: Set<string>, setSelection: React.Dispatch<React.SetStateAction<Set<string>>>) => {
-        const newSet = new Set(selectionSet);
-        if (newSet.has(id)) {
-            newSet.delete(id);
-        } else {
-            newSet.add(id);
-        }
-        setSelection(newSet);
+    const handleToggleTrainee = (profileId: string) => {
+        setSelectedTraineeIds(prev =>
+            prev.includes(profileId) ? prev.filter(id => id !== profileId) : [...prev, profileId]
+        );
     };
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!challengeName || selectedTraineeIds.size === 0 || selectedEvaluatorIds.size === 0) {
-            alert('Please fill in all fields and select at least one trainee and one evaluator.');
+        if (!challengeName.trim()) {
+            alert('Please provide a challenge name.');
             return;
         }
+        if (selectedTraineeIds.length === 0) {
+            alert('Please select at least one trainee.');
+            return;
+        }
+
         setLoading(true);
 
         const newChallenge: TablesInsert<'overall_challenges'> = {
             name: challengeName,
             manager_ids: [currentUser.id],
-            trainee_ids: Array.from(selectedTraineeIds),
-            evaluator_ids: Array.from(selectedEvaluatorIds),
+            trainee_ids: selectedTraineeIds,
         };
-        
+
         const { error } = await supabase.from('overall_challenges').insert([newChallenge]);
 
         if (error) {
             alert(`Error creating challenge: ${error.message}`);
+            setLoading(false);
         } else {
             alert('New challenge created successfully!');
             navigate('/manager');
         }
-        setLoading(false);
     };
+
+    const filteredProfiles = allProfiles.filter(p =>
+        p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        p.email.toLowerCase().includes(searchTerm.toLowerCase())
+    );
 
     return (
         <div className="container mx-auto p-4 sm:p-6 lg:p-8 max-w-4xl">
@@ -91,85 +82,53 @@ export const CreateChallenge: React.FC<CreateChallengeProps> = ({ currentUser })
                 <h1 className="text-3xl font-bold mb-6">Create New Overall Challenge</h1>
                 <form onSubmit={handleSubmit} className="space-y-8">
                     <div>
-                        <label htmlFor="challengeName" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                            Challenge Name
-                        </label>
+                        <label htmlFor="challengeName" className="block text-sm font-medium text-gray-700 dark:text-gray-300">Challenge Name</label>
                         <input
-                            type="text"
-                            id="challengeName"
+                            type="text" id="challengeName"
                             className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 p-2"
-                            value={challengeName}
-                            onChange={(e) => setChallengeName(e.target.value)}
-                            placeholder="e.g., Tour de Prior Art - August 2024"
-                            required
+                            value={challengeName} onChange={(e) => setChallengeName(e.target.value)}
+                            placeholder="e.g., Tour de Prior Art - August 2024" required
                         />
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                        {/* Trainee Selection */}
-                        <div>
-                            <h2 className="font-semibold mb-2">Select Trainees ({selectedTraineeIds.size})</h2>
-                            <div className="relative">
-                                <SearchIcon />
-                                <input 
-                                    type="search"
-                                    placeholder="Search trainees..."
-                                    className="w-full pl-10 p-2 border rounded-md dark:bg-gray-700 dark:border-gray-600"
-                                    value={traineeSearch}
-                                    onChange={e => setTraineeSearch(e.target.value)}
-                                />
-                            </div>
-                            <div className="mt-2 border rounded-md max-h-60 overflow-y-auto p-2 space-y-1">
-                                {trainees.map(trainee => (
-                                    <label key={trainee.id} className="flex items-center space-x-3 p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md cursor-pointer">
-                                        <input 
-                                            type="checkbox"
-                                            className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                                            checked={selectedTraineeIds.has(trainee.id)}
-                                            onChange={() => handleToggleSelection(trainee.id, selectedTraineeIds, setSelectedTraineeIds)}
-                                        />
-                                        <img src={trainee.avatar_url} alt={trainee.name} className="h-8 w-8 rounded-full" />
-                                        <span>{trainee.name}</span>
-                                    </label>
-                                ))}
-                            </div>
+                    <div>
+                        <label htmlFor="search-trainees" className="block text-sm font-medium text-gray-700 dark:text-gray-300">Select Trainees</label>
+                        <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">Search by name or email to add trainees to this challenge.</p>
+                        <input
+                            id="search-trainees"
+                            type="text"
+                            placeholder="Search users..."
+                            value={searchTerm}
+                            onChange={e => setSearchTerm(e.target.value)}
+                            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 p-2"
+                        />
+                        <div className="mt-2 border rounded-md max-h-60 overflow-y-auto p-2 space-y-1 bg-gray-50 dark:bg-gray-800">
+                            {loading ? <p className="text-center p-4">Loading users...</p> : filteredProfiles.map(profile => (
+                                <label key={profile.id} className="flex items-center space-x-3 p-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer">
+                                    <input
+                                        type="checkbox"
+                                        className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                                        checked={selectedTraineeIds.includes(profile.id)}
+                                        onChange={() => handleToggleTrainee(profile.id)}
+                                    />
+                                    <img src={profile.avatar_url ?? ''} alt={profile.name} className="h-8 w-8 rounded-full" />
+                                    <div>
+                                        <p className="font-medium text-sm">{profile.name}</p>
+                                        <p className="text-xs text-gray-500 dark:text-gray-400">{profile.email}</p>
+                                    </div>
+                                </label>
+                            ))}
                         </div>
-
-                        {/* Evaluator Selection */}
-                        <div>
-                            <h2 className="font-semibold mb-2">Select Evaluators ({selectedEvaluatorIds.size})</h2>
-                            <div className="relative">
-                                <SearchIcon />
-                                <input 
-                                    type="search"
-                                    placeholder="Search evaluators..."
-                                    className="w-full pl-10 p-2 border rounded-md dark:bg-gray-700 dark:border-gray-600"
-                                    value={evaluatorSearch}
-                                    onChange={e => setEvaluatorSearch(e.target.value)}
-                                />
-                            </div>
-                            <div className="mt-2 border rounded-md max-h-60 overflow-y-auto p-2 space-y-1">
-                                {evaluators.map(evaluator => (
-                                    <label key={evaluator.id} className="flex items-center space-x-3 p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md cursor-pointer">
-                                        <input 
-                                            type="checkbox"
-                                            className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                                            checked={selectedEvaluatorIds.has(evaluator.id)}
-                                            onChange={() => handleToggleSelection(evaluator.id, selectedEvaluatorIds, setSelectedEvaluatorIds)}
-                                        />
-                                        <img src={evaluator.avatar_url} alt={evaluator.name} className="h-8 w-8 rounded-full" />
-                                        <span>{evaluator.name}</span>
-                                    </label>
-                                ))}
-                            </div>
-                        </div>
+                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">{selectedTraineeIds.length} trainee(s) selected.</p>
                     </div>
 
-                    <div className="flex justify-end space-x-4">
+                    <div className="flex justify-end space-x-4 pt-4 border-t dark:border-gray-700">
                         <Link to="/manager">
-                           <Button type="button" variant="secondary" disabled={loading}>Cancel</Button>
+                            <Button type="button" variant="secondary" disabled={loading}>Cancel</Button>
                         </Link>
-                        <Button type="submit" disabled={loading}>{loading ? 'Creating...' : 'Create Challenge'}</Button>
+                        <Button type="submit" disabled={loading}>
+                            {loading ? 'Creating...' : 'Create Challenge'}
+                        </Button>
                     </div>
                 </form>
             </Card>

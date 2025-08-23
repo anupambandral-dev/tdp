@@ -1,8 +1,3 @@
-
-
-
-
-
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Profile, SubChallenge, SubChallengeWithSubmissions } from '../../types';
@@ -22,35 +17,15 @@ export const EvaluatorDashboard: React.FC<EvaluatorDashboardProps> = ({ currentU
   useEffect(() => {
     const fetchChallenges = async () => {
         setLoading(true);
-        const { data: overallChallengesData, error: ocError } = await supabase
-          .from('overall_challenges')
-          .select('id')
-          .contains('evaluator_ids', [currentUser.id]);
-
-        if (ocError) {
-          setError(ocError.message);
-          setLoading(false);
-          return;
-        }
-
-        const overallChallenges = (overallChallengesData as unknown as { id: string }[]) || [];
-
-        if (overallChallenges.length === 0) {
-          setAssignedChallenges([]);
-          setLoading(false);
-          return;
-        }
-
-        const challengeIds = overallChallenges.map(oc => oc.id);
-        const { data: subChallenges, error: scError } = await supabase
+        const { data, error } = await supabase
             .from('sub_challenges')
             .select('*, submissions(*, profiles(*))')
-            .in('overall_challenge_id', challengeIds);
+            .contains('evaluator_ids', [currentUser.id]);
 
-        if (scError) {
-            setError(scError.message);
-        } else if (subChallenges) {
-            setAssignedChallenges(subChallenges as unknown as SubChallengeWithSubmissions[]);
+        if (error) {
+            setError(error.message);
+        } else if (data) {
+            setAssignedChallenges(data as unknown as SubChallengeWithSubmissions[]);
         }
         setLoading(false);
     };

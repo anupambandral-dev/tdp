@@ -12,7 +12,6 @@ export type Database = {
       overall_challenges: {
         Row: {
           created_at: string
-          evaluator_ids: string[]
           id: string
           manager_ids: string[]
           name: string
@@ -20,7 +19,6 @@ export type Database = {
         }
         Insert: {
           created_at?: string
-          evaluator_ids: string[]
           id?: string
           manager_ids: string[]
           name: string
@@ -28,7 +26,6 @@ export type Database = {
         }
         Update: {
           created_at?: string
-          evaluator_ids?: string[]
           id?: string
           manager_ids?: string[]
           name?: string
@@ -38,6 +35,7 @@ export type Database = {
       }
       profiles: {
         Row: {
+          auth_id: string | null
           avatar_url: string | null
           email: string
           id: string
@@ -45,13 +43,15 @@ export type Database = {
           role: Database["public"]["Enums"]["user_role"]
         }
         Insert: {
+          auth_id?: string | null
           avatar_url?: string | null
           email: string
-          id: string
+          id?: string
           name: string
-          role: Database["public"]["Enums"]["user_role"]
+          role?: Database["public"]["Enums"]["user_role"]
         }
         Update: {
+          auth_id?: string | null
           avatar_url?: string | null
           email?: string
           id?: string
@@ -60,8 +60,8 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "profiles_id_fkey"
-            columns: ["id"]
+            foreignKeyName: "profiles_auth_id_fkey"
+            columns: ["auth_id"]
             isOneToOne: true
             referencedRelation: "users"
             referencedColumns: ["id"]
@@ -73,6 +73,7 @@ export type Database = {
           claim_focus: string | null
           created_at: string
           evaluation_rules: Json
+          evaluator_ids: string[] | null
           id: string
           overall_challenge_id: string
           patent_number: string | null
@@ -84,6 +85,7 @@ export type Database = {
           claim_focus?: string | null
           created_at?: string
           evaluation_rules: Json
+          evaluator_ids?: string[] | null
           id?: string
           overall_challenge_id: string
           patent_number?: string | null
@@ -95,6 +97,7 @@ export type Database = {
           claim_focus?: string | null
           created_at?: string
           evaluation_rules?: Json
+          evaluator_ids?: string[] | null
           id?: string
           overall_challenge_id?: string
           patent_number?: string | null

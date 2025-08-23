@@ -38,7 +38,7 @@ export const UserManagement: React.FC = () => {
       
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         <div className="lg:col-span-2">
-            <h2 className="text-2xl font-semibold mb-4">All Employees</h2>
+            <h2 className="text-2xl font-semibold mb-4">All Organization Members</h2>
              <Card>
                 {loading && <p>Loading users...</p>}
                 {error && <p className="text-red-500">Error: {error}</p>}
@@ -57,13 +57,17 @@ export const UserManagement: React.FC = () => {
                                 <tr key={profile.id}>
                                     <td className="px-6 py-4 whitespace-nowrap">
                                         <div className="flex items-center">
-                                            <img className="h-8 w-8 rounded-full" src={profile.avatar_url} alt={profile.name} />
+                                            <img className="h-8 w-8 rounded-full" src={profile.avatar_url ?? ''} alt={profile.name} />
                                             <div className="ml-3">{profile.name}</div>
                                         </div>
                                     </td>
                                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">{profile.email}</td>
                                     <td className="px-6 py-4 whitespace-nowrap">
-                                        <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">{profile.role}</span>
+                                        <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                                            profile.role === 'Manager' ? 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200' :
+                                            profile.role === 'Evaluator' ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200' :
+                                            'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200'
+                                        }`}>{profile.role}</span>
                                     </td>
                                 </tr>
                                 ))}
@@ -74,31 +78,33 @@ export const UserManagement: React.FC = () => {
              </Card>
         </div>
         <div>
-            <h2 className="text-2xl font-semibold mb-4">Add & Manage Users</h2>
+            <h2 className="text-2xl font-semibold mb-4">Setup Instructions</h2>
             <Card className="space-y-6">
                 <div>
-                    <h3 className="font-semibold text-lg">Invitation Workflow</h3>
+                    <h3 className="font-semibold text-lg">Managing Your Organization's Users</h3>
                     <p className="text-sm text-gray-600 dark:text-gray-400 mt-2">
-                        To add new users, you must invite them via the Supabase dashboard. They will receive an email with a magic link to sign in for the first time.
+                        This system is designed to be pre-loaded with a master list of your organization's members. Follow these steps for initial setup and ongoing management.
                     </p>
-                    <ol className="list-decimal list-inside text-sm space-y-2 mt-2">
-                        <li>Go to your Supabase project dashboard.</li>
-                        <li>Navigate to the **Authentication** section and click the **"Invite user"** button.</li>
-                        <li>Enter the employee's email address. Their profile will be automatically created with the default role of **'Trainee'**.</li>
+                    <ol className="list-decimal list-inside text-sm space-y-3 mt-4">
                         <li>
-                            To change a user's role, go to the **Table Editor**, select the `profiles` table, and edit the `role` for that user to `Evaluator` or `Manager` as needed.
+                            <strong>Initial Data Import:</strong> Use your database management tool (like the Supabase dashboard) to import a CSV file with all employee `name` and `email` information into the `profiles` table. This only needs to be done once.
+                        </li>
+                        <li>
+                           <strong>Assign Managers:</strong> After importing, manually edit the `role` field in the `profiles` table for any user who needs to be a Manager. Change their role from 'Trainee' to 'Manager'.
+                        </li>
+                        <li>
+                           <strong>Invite Managers:</strong> Use your database provider's authentication system to send login invitations *only* to the users you designated as Managers. They are the only ones who need initial access.
+                        </li>
+                         <li>
+                           <strong>Evaluator Roles:</strong> A user's role is automatically promoted to 'Evaluator' when a Manager assigns them to a sub-challenge. You do not need to set this manually.
                         </li>
                     </ol>
                 </div>
-                <div className="p-4 bg-blue-50 dark:bg-gray-700 rounded-lg">
-                     <h4 className="font-bold text-md text-blue-800 dark:text-blue-200">First-Time Admin Setup</h4>
-                     <p className="text-sm text-blue-700 dark:text-blue-300 mt-1">
-                        To get your own 'Manager' account, you must invite yourself using the process above. After your first login, follow step 4 for your own account to grant yourself 'Manager' privileges.
-                     </p>
+                 <div className="pt-4 border-t dark:border-gray-600">
+                    <p className="text-xs text-gray-500 dark:text-gray-400">
+                        Once managers are invited, they can log in and begin creating challenges. They will be able to select any user from the master list you imported.
+                    </p>
                 </div>
-                 <a href="https://supabase.com/docs/guides/auth/managing-users" target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline text-sm block pt-2 border-t dark:border-gray-600">
-                    Learn more about user management &rarr;
-                </a>
             </Card>
         </div>
       </div>

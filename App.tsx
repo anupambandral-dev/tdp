@@ -22,6 +22,41 @@ const App: React.FC = () => {
   const [currentUser, setCurrentUser] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
 
+  const fetchAndSetProfile = async (user: Session['user']) => {
+    // Find profile by email, as it's the constant link.
+    const { data: profileData, error: profileError } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('email', user.email)
+      .single<Profile>();
+
+    if (profileError) {
+      console.error("Could not fetch user profile:", profileError);
+      return null;
+    }
+
+    // If profile exists, link the auth_id if it's not already linked.
+    if (profileData && !profileData.auth_id) {
+      const { data: updatedProfile, error: updateError } = await supabase
+        .from('profiles')
+        .update({ auth_id: user.id })
+        .eq('id', profileData.id)
+        .select()
+        .single();
+      if (updateError) {
+        console.error("Error linking auth_id:", updateError);
+        setCurrentUser(profileData); // set with old data on failure
+      } else {
+        setCurrentUser(updatedProfile);
+      }
+    } else {
+       setCurrentUser(profileData);
+    }
+    
+    return profileData;
+  };
+
+
   useEffect(() => {
     if (initializationError) {
         setLoading(false);
@@ -36,13 +71,7 @@ const App: React.FC = () => {
         setSession(session);
 
         if (session?.user) {
-          const { data: profile, error: profileError } = await supabase
-            .from('profiles')
-            .select('*')
-            .eq('id', session.user.id)
-            .single<Profile>();
-          if (profileError) throw profileError;
-          setCurrentUser(profile);
+          await fetchAndSetProfile(session.user);
         } else {
           setCurrentUser(null);
         }
@@ -61,16 +90,10 @@ const App: React.FC = () => {
       async (_event, session) => {
         setSession(session);
         if(session?.user) {
-          const { data: profile } = await supabase
-            .from('profiles')
-            .select('*')
-            .eq('id', session.user.id)
-            .single<Profile>();
-          if (profile) setCurrentUser(profile);
+          await fetchAndSetProfile(session.user);
         } else {
           setCurrentUser(null);
         }
-        // No need to set loading to false here as the initial load is what matters.
       }
     );
 
@@ -105,7 +128,7 @@ const App: React.FC = () => {
             <h1 className="text-2xl font-bold mb-4">Application Configuration Error</h1>
             <p className="mb-4">The application cannot start because it's missing essential configuration.</p>
             <p className="bg-red-200 dark:bg-red-800 p-4 rounded-lg font-mono text-sm text-left">{initializationError}</p>
-             <p className="mt-4 text-sm">Please ensure you have correctly set up your environment variables in the Netlify dashboard.</p>
+             <p className="mt-4 text-sm">Please ensure you have correctly set up your environment variables.</p>
           </div>
         </div>
     );
