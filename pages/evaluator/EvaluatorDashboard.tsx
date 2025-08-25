@@ -18,7 +18,8 @@ export const EvaluatorDashboard: React.FC<EvaluatorDashboardProps> = ({ currentU
     const fetchChallenges = async () => {
         const { data, error } = await supabase
             .from('sub_challenges')
-            .select('*, submissions(*, profiles(*))');
+            .select('*, submissions(*, profiles(*))')
+            .contains('evaluator_ids', [currentUser.id]);
 
         if (error) {
             setError(error.message);

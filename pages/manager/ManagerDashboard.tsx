@@ -125,23 +125,18 @@ export const ManagerDashboard: React.FC<ManagerDashboardProps> = ({ currentUser 
                   </div>
                   <div className="flex items-center">
                     <UsersIcon />
-                    <span>{challenge.trainee_ids.length} Trainees</span>
+                    <span>{challenge.trainee_ids.length} Participants</span>
                   </div>
                 </div>
-                <div className="mt-6">
+                <div className="mt-auto pt-4 border-t dark:border-gray-700">
                   <Link to={`/manager/challenge/${challenge.id}`}>
-                    <Button className="w-full">Manage Challenge</Button>
+                    <Button className="w-full">View Details</Button>
                   </Link>
                 </div>
               </div>
             </Card>
           ))}
         </div>
-      )}
-      {!loading && challenges.length === 0 && (
-          <Card className="text-center py-10">
-              <p className="text-gray-500">You haven't created or been assigned to any challenges yet.</p>
-          </Card>
       )}
     </div>
   );

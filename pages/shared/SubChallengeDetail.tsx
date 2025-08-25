@@ -6,6 +6,10 @@ import { Card } from '../../components/ui/Card';
 import { BackButton } from '../../components/ui/BackButton';
 import { Button } from '../../components/ui/Button';
 
+interface SubChallengeDetailProps {
+    currentUser: Profile;
+}
+
 const getTotalScore = (submission: Submission, subChallenge: SubChallenge) => {
     const evaluation = submission.evaluation as unknown as Evaluation | null;
     const results = submission.results as unknown as SubmittedResult[] | null;
@@ -184,10 +188,6 @@ const TraineeView: React.FC<TraineeViewProps> = ({ subChallenge, overallChalleng
         </div>
     );
 };
-
-interface SubChallengeDetailProps {
-    currentUser: Profile;
-}
 
 export const SubChallengeDetail: React.FC<SubChallengeDetailProps> = ({ currentUser }) => {
     const { subChallengeId } = useParams<{ subChallengeId: string }>();

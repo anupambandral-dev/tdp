@@ -10,7 +10,7 @@ interface TraineeDashboardProps {
 }
 
 const ClockIcon = () => (
-    <svg xmlns="http://www.w.org/2000/svg" width="24" height="24" viewBox="0 0 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4 mr-1"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4 mr-1"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
 );
 
 export const TraineeDashboard: React.FC<TraineeDashboardProps> = ({ currentUser }) => {
@@ -20,9 +20,30 @@ export const TraineeDashboard: React.FC<TraineeDashboardProps> = ({ currentUser 
 
   useEffect(() => {
     const fetchChallenges = async () => {
+      // Fetch overall challenges the trainee is part of
+      const { data: overallChallenges, error: ocError } = await supabase
+        .from('overall_challenges')
+        .select('id')
+        .contains('trainee_ids', [currentUser.id]);
+
+      if (ocError) {
+        setError(ocError.message);
+        return;
+      }
+
+      const challengeIds = overallChallenges.map(oc => oc.id);
+
+      if (challengeIds.length === 0) {
+        setTraineeChallenges([]);
+        setLoading(false);
+        return;
+      }
+
+      // Fetch sub-challenges belonging to those overall challenges
       const { data, error: scError } = await supabase
         .from('sub_challenges')
-        .select('*, submissions(*, profiles(id, name, email, role)), overall_challenges(id, ended_at)');
+        .select('*, submissions(*, profiles(id, name, email, role)), overall_challenges(id, ended_at)')
+        .in('overall_challenge_id', challengeIds);
 
       if (scError) {
         setError(scError.message);
