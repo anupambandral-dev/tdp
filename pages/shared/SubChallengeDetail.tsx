@@ -5,10 +5,9 @@ import { supabase } from '../../supabaseClient';
 import { Card } from '../../components/ui/Card';
 import { BackButton } from '../../components/ui/BackButton';
 import { Button } from '../../components/ui/Button';
+import { useAuth } from '../../contexts/AuthContext';
 
-interface SubChallengeDetailProps {
-    currentUser: Profile;
-}
+interface SubChallengeDetailProps {}
 
 const getTotalScore = (submission: Submission, subChallenge: SubChallenge) => {
     const evaluation = submission.evaluation as unknown as Evaluation | null;
@@ -40,7 +39,6 @@ const getTotalScore = (submission: Submission, subChallenge: SubChallenge) => {
     return { score: Math.round(totalScore) };
 }
 
-// Manager's view of all submissions
 const ManagerView: React.FC<{ subChallenge: SubChallengeWithSubmissions }> = ({ subChallenge }) => {
     return (
         <div>
@@ -88,11 +86,12 @@ const ManagerView: React.FC<{ subChallenge: SubChallengeWithSubmissions }> = ({ 
 interface TraineeViewProps {
     subChallenge: SubChallengeWithSubmissions;
     overallChallenge: OverallChallenge;
-    currentUser: Profile;
 }
 
-// Trainee's view of their own submission
-const TraineeView: React.FC<TraineeViewProps> = ({ subChallenge, overallChallenge, currentUser }) => {
+const TraineeView: React.FC<TraineeViewProps> = ({ subChallenge, overallChallenge }) => {
+    const { currentUser } = useAuth();
+    if (!currentUser) return null;
+
     const submission = subChallenge.submissions?.find(s => s.trainee_id === currentUser.id);
     
     const isChallengeActive = !overallChallenge.ended_at && new Date(subChallenge.submission_end_time) > new Date();
@@ -123,7 +122,6 @@ const TraineeView: React.FC<TraineeViewProps> = ({ subChallenge, overallChalleng
     const results = submission.results as unknown as SubmittedResult[] | null;
     const reportFile = submission.report_file as { name: string; path: string; } | null;
     const rules = subChallenge.evaluation_rules as unknown as EvaluationRules;
-
 
     return (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
@@ -189,7 +187,8 @@ const TraineeView: React.FC<TraineeViewProps> = ({ subChallenge, overallChalleng
     );
 };
 
-export const SubChallengeDetail: React.FC<SubChallengeDetailProps> = ({ currentUser }) => {
+export const SubChallengeDetail: React.FC<SubChallengeDetailProps> = () => {
+    const { currentUser } = useAuth();
     const { subChallengeId } = useParams<{ subChallengeId: string }>();
     const [subChallenge, setSubChallenge] = useState<SubChallengeWithSubmissions | null>(null);
     const [overallChallenge, setOverallChallenge] = useState<OverallChallenge | null>(null);
@@ -245,7 +244,7 @@ export const SubChallengeDetail: React.FC<SubChallengeDetailProps> = ({ currentU
     }, [subChallengeId]);
 
 
-    if (loading) return <div className="p-8">Loading details...</div>;
+    if (loading || !currentUser) return <div className="p-8">Loading details...</div>;
     if (!subChallenge || !overallChallenge) {
         return <div className="text-center p-8">Challenge not found.</div>;
     }
@@ -289,7 +288,7 @@ export const SubChallengeDetail: React.FC<SubChallengeDetailProps> = ({ currentU
             </Card>
 
             {currentUser.role === Role.MANAGER && <ManagerView subChallenge={subChallenge} />}
-            {currentUser.role === Role.TRAINEE && <TraineeView subChallenge={subChallenge} overallChallenge={overallChallenge} currentUser={currentUser} />}
+            {currentUser.role === Role.TRAINEE && <TraineeView subChallenge={subChallenge} overallChallenge={overallChallenge} />}
         </div>
     );
 };

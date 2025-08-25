@@ -4,13 +4,13 @@ import { supabase } from '../../supabaseClient';
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { BackButton } from '../../components/ui/BackButton';
-import { ResultTier, IncorrectMarking, OverallChallenge, SubChallenge, Profile, Submission, OverallChallengeWithSubChallenges, EvaluationRules, SubmittedResult, Evaluation, ResultType } from '../../types';
+import { ResultTier, IncorrectMarking, Profile, OverallChallengeWithSubChallenges, EvaluationRules, SubmittedResult, Evaluation, ResultType } from '../../types';
+import { useAuth } from '../../contexts/AuthContext';
 
-interface ChallengeDetailProps {
-  currentUser: Profile;
-}
+interface ChallengeDetailProps {}
 
-export const ChallengeDetail: React.FC<ChallengeDetailProps> = ({ currentUser }) => {
+export const ChallengeDetail: React.FC<ChallengeDetailProps> = () => {
+    const { currentUser } = useAuth();
     const { challengeId } = useParams();
     const navigate = useNavigate();
     const [challenge, setChallenge] = useState<OverallChallengeWithSubChallenges | null>(null);
@@ -72,7 +72,6 @@ export const ChallengeDetail: React.FC<ChallengeDetailProps> = ({ currentUser })
                 alert(`Error ending challenge: ${error.message}`);
             } else {
                 alert('Challenge ended successfully.');
-                // Refetch to get the updated status
                 fetchChallengeDetails();
             }
             setLoading(false);
@@ -140,7 +139,7 @@ export const ChallengeDetail: React.FC<ChallengeDetailProps> = ({ currentUser })
 
     if (loading) return <div className="p-8">Loading challenge details...</div>;
     if (error) return <div className="p-8 text-red-500">Error: {error}</div>;
-    if (!challenge) return <div className="text-center p-8">Challenge not found.</div>;
+    if (!challenge || !currentUser) return <div className="text-center p-8">Challenge not found.</div>;
 
     const isChallengeEnded = !!challenge.ended_at;
     const isAssignedManager = challenge.manager_ids.includes(currentUser.id);

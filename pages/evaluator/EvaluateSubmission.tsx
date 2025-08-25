@@ -1,16 +1,16 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { useParams, Link, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '../../supabaseClient';
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { BackButton } from '../../components/ui/BackButton';
-import { Profile, ResultEvaluation, ResultTier, SubmittedResult, IncorrectMarking, SubChallenge, Submission, Evaluation, EvaluationRules, SubmissionWithProfile, SubChallengeWithSubmissions, Json, ResultType } from '../../types';
+import { ResultEvaluation, ResultTier, SubmittedResult, IncorrectMarking, SubChallengeWithSubmissions, Json, ResultType, Evaluation, EvaluationRules } from '../../types';
+import { useAuth } from '../../contexts/AuthContext';
 
-interface EvaluateSubmissionProps {
-    currentUser: Profile;
-}
+interface EvaluateSubmissionProps {}
 
-export const EvaluateSubmission: React.FC<EvaluateSubmissionProps> = ({ currentUser }) => {
+export const EvaluateSubmission: React.FC<EvaluateSubmissionProps> = () => {
+    const { currentUser } = useAuth();
     const { challengeId } = useParams();
     const navigate = useNavigate();
     const [challenge, setChallenge] = useState<SubChallengeWithSubmissions | null>(null);
@@ -65,7 +65,7 @@ export const EvaluateSubmission: React.FC<EvaluateSubmissionProps> = ({ currentU
         }
     }, [selectedSubmission]);
 
-    if (loading) return <div className="p-8">Loading submission data...</div>;
+    if (loading || !currentUser) return <div className="p-8">Loading submission data...</div>;
     if (!challenge) return <div className="text-center p-8">Challenge not found.</div>;
 
     const rules = challenge.evaluation_rules as unknown as EvaluationRules;

@@ -1,26 +1,26 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Profile, ResultTier, IncorrectMarking, Evaluation, EvaluationRules, SubmittedResult, Submission, SubChallengeWithOverallChallenge, ResultType } from '../../types';
+import { ResultTier, IncorrectMarking, Evaluation, EvaluationRules, SubmittedResult, Submission, SubChallengeWithOverallChallenge, ResultType } from '../../types';
 import { supabase } from '../../supabaseClient';
 import { Card } from '../../components/ui/Card';
-import { Button } from '../../components/ui/Button';
+import { useAuth } from '../../contexts/AuthContext';
 
-interface TraineeDashboardProps {
-  currentUser: Profile;
-}
+interface TraineeDashboardProps {}
 
 const ClockIcon = () => (
     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4 mr-1"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
 );
 
-export const TraineeDashboard: React.FC<TraineeDashboardProps> = ({ currentUser }) => {
+export const TraineeDashboard: React.FC<TraineeDashboardProps> = () => {
+  const { currentUser } = useAuth();
   const [traineeChallenges, setTraineeChallenges] = useState<SubChallengeWithOverallChallenge[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    if (!currentUser) return;
+
     const fetchChallenges = async () => {
-      // Fetch overall challenges the trainee is part of
       const { data: overallChallenges, error: ocError } = await supabase
         .from('overall_challenges')
         .select('id')
@@ -39,7 +39,6 @@ export const TraineeDashboard: React.FC<TraineeDashboardProps> = ({ currentUser 
         return;
       }
 
-      // Fetch sub-challenges belonging to those overall challenges
       const { data, error: scError } = await supabase
         .from('sub_challenges')
         .select('*, submissions(*, profiles(id, name, email, role)), overall_challenges(id, ended_at)')
@@ -86,7 +85,9 @@ export const TraineeDashboard: React.FC<TraineeDashboardProps> = ({ currentUser 
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [currentUser.id]);
+  }, [currentUser]);
+
+  if (!currentUser) return null;
 
   const getStatus = (challenge: SubChallengeWithOverallChallenge) => {
     const endTime = new Date(challenge.submission_end_time);

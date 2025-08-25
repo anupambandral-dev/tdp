@@ -6,17 +6,17 @@ import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { BackButton } from '../../components/ui/BackButton';
 import { TablesInsert } from '../../database.types';
+import { useAuth } from '../../contexts/AuthContext';
 
-interface CreateChallengeProps {
-    currentUser: Profile;
-}
+interface CreateChallengeProps {}
 
-export const CreateChallenge: React.FC<CreateChallengeProps> = ({ currentUser }) => {
+export const CreateChallenge: React.FC<CreateChallengeProps> = () => {
+    const { currentUser } = useAuth();
     const navigate = useNavigate();
     const [challengeName, setChallengeName] = useState('');
     const [allProfiles, setAllProfiles] = useState<Profile[]>([]);
     const [selectedTraineeIds, setSelectedTraineeIds] = useState<string[]>([]);
-    const [selectedManagerIds, setSelectedManagerIds] = useState<string[]>([currentUser.id]);
+    const [selectedManagerIds, setSelectedManagerIds] = useState<string[]>(currentUser ? [currentUser.id] : []);
     const [traineeSearchTerm, setTraineeSearchTerm] = useState('');
     const [managerSearchTerm, setManagerSearchTerm] = useState('');
     const [loading, setLoading] = useState(true);
@@ -44,8 +44,7 @@ export const CreateChallenge: React.FC<CreateChallengeProps> = ({ currentUser })
     };
 
     const handleToggleManager = (profileId: string) => {
-        // The challenge creator must always be a manager and cannot be removed.
-        if (profileId === currentUser.id) return;
+        if (currentUser && profileId === currentUser.id) return;
 
         setSelectedManagerIds(prev =>
             prev.includes(profileId) ? prev.filter(id => id !== profileId) : [...prev, profileId]
@@ -66,7 +65,6 @@ export const CreateChallenge: React.FC<CreateChallengeProps> = ({ currentUser })
             alert('At least one manager must be assigned.');
             return;
         }
-
 
         setLoading(true);
 
@@ -98,6 +96,8 @@ export const CreateChallenge: React.FC<CreateChallengeProps> = ({ currentUser })
         p.name.toLowerCase().includes(managerSearchTerm.toLowerCase()) ||
         p.email.toLowerCase().includes(managerSearchTerm.toLowerCase())
     );
+    
+    if (!currentUser) return null;
 
     return (
         <div className="container mx-auto p-4 sm:p-6 lg:p-8 max-w-4xl">
