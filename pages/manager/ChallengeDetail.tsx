@@ -1,13 +1,19 @@
+
 import React, { useState, useEffect } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import { supabase } from '../../supabaseClient';
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { BackButton } from '../../components/ui/BackButton';
 import { ResultTier, IncorrectMarking, OverallChallenge, SubChallenge, Profile, Submission, OverallChallengeWithSubChallenges, EvaluationRules, SubmittedResult, Evaluation } from '../../types';
 
-export const ChallengeDetail: React.FC = () => {
+interface ChallengeDetailProps {
+  currentUser: Profile;
+}
+
+export const ChallengeDetail: React.FC<ChallengeDetailProps> = ({ currentUser }) => {
     const { challengeId } = useParams();
+    const navigate = useNavigate();
     const [challenge, setChallenge] = useState<OverallChallengeWithSubChallenges | null>(null);
     const [trainees, setTrainees] = useState<Profile[]>([]);
     const [loading, setLoading] = useState(true);
@@ -74,6 +80,31 @@ export const ChallengeDetail: React.FC = () => {
         }
     };
 
+    const handleDeleteChallenge = async () => {
+        if (!challengeId) return;
+
+        const isConfirmed = window.confirm(
+            'WARNING: Are you sure you want to permanently delete this challenge? This will also delete all of its sub-challenges and submissions. This action cannot be undone.'
+        );
+
+        if (isConfirmed) {
+            setLoading(true);
+            const { error } = await supabase
+                .from('overall_challenges')
+                .delete()
+                .eq('id', challengeId);
+
+            if (error) {
+                setError(error.message);
+                alert(`Error deleting challenge: ${error.message}`);
+                setLoading(false);
+            } else {
+                alert('Challenge deleted successfully.');
+                navigate('/manager');
+            }
+        }
+    };
+
     const getTraineeScore = (traineeId: string) => {
         if (!challenge) return 0;
         let totalScore = 0;
@@ -110,6 +141,7 @@ export const ChallengeDetail: React.FC = () => {
     if (!challenge) return <div className="text-center p-8">Challenge not found.</div>;
 
     const isChallengeEnded = !!challenge.ended_at;
+    const isAssignedManager = challenge.manager_ids.includes(currentUser.id);
 
     return (
         <div className="container mx-auto p-4 sm:p-6 lg:p-8">
@@ -126,15 +158,20 @@ export const ChallengeDetail: React.FC = () => {
                     )}
                 </div>
                 <div className="flex items-center space-x-2">
-                    {!isChallengeEnded && (
+                    {!isChallengeEnded && isAssignedManager && (
                         <>
+                            <Button variant="danger-outline" onClick={handleDeleteChallenge} disabled={loading}>
+                                Delete Challenge
+                            </Button>
                             <Button variant="danger" onClick={handleEndChallenge} disabled={loading}>
                                 End Challenge
                             </Button>
-                            <Link to={`/manager/challenge/${challenge.id}/create-sub-challenge`}>
-                                <Button>+ Add Sub-Challenge</Button>
-                            </Link>
                         </>
+                    )}
+                    {!isChallengeEnded && (
+                        <Link to={`/manager/challenge/${challenge.id}/create-sub-challenge`}>
+                            <Button>+ Add Sub-Challenge</Button>
+                        </Link>
                     )}
                 </div>
             </div>
