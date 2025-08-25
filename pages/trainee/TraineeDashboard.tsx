@@ -123,41 +123,35 @@ export const TraineeDashboard: React.FC<TraineeDashboardProps> = ({ currentUser 
             const status = getStatus(challenge);
             const score = getScore(challenge);
             return (
-              <Card key={challenge.id}>
-                <div className="flex justify-between items-start">
-                    <h2 className="text-xl font-semibold">{challenge.title}</h2>
-                    <span className={`px-2 py-1 text-xs font-semibold rounded-full ${
-                        status === 'Active' ? 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200' :
-                        status === 'Submitted' ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' :
-                        'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200'
-                    }`}>
-                        {status}
-                    </span>
-                </div>
-                <p className="text-gray-600 dark:text-gray-400 mt-2 text-sm">Patent: {challenge.patent_number}</p>
-                <div className="mt-4 text-sm text-gray-500 dark:text-gray-300 flex items-center">
-                    <ClockIcon />
-                    Ends: {new Date(challenge.submission_end_time).toLocaleString()}
-                </div>
-                <div className="mt-2 text-sm text-gray-500 dark:text-gray-300 flex items-center">
-                  Score: <span className="font-bold ml-2">{score}</span>
-                </div>
-                <div className="mt-6">
-                  {status === 'Active' ? (
-                    <Link to={`/trainee/challenge/${challenge.id}/submit`}>
-                      <Button className="w-full">Submit Results</Button>
-                    </Link>
-                  ) : status === 'Submitted' ? (
-                     <Link to={`/trainee/sub-challenge/${challenge.id}`}>
-                      <Button className="w-full" variant="secondary">View Submission</Button>
-                    </Link>
-                  ) : (
-                    <Button className="w-full" disabled>
-                      Submission Closed
-                    </Button>
-                  )}
-                </div>
-              </Card>
+               <Link to={`/trainee/sub-challenge/${challenge.id}`} key={challenge.id} className="block">
+                <Card className="h-full flex flex-col hover:shadow-xl transition-shadow duration-200">
+                  <div className="flex-grow">
+                    <div className="flex justify-between items-start">
+                        <h2 className="text-xl font-semibold">{challenge.title}</h2>
+                        <span className={`px-2 py-1 text-xs font-semibold rounded-full ${
+                            status === 'Active' ? 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200' :
+                            status === 'Submitted' ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' :
+                            'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200'
+                        }`}>
+                            {status}
+                        </span>
+                    </div>
+                    <p className="text-gray-600 dark:text-gray-400 mt-2 text-sm">Patent: {challenge.patent_number}</p>
+                    <div className="mt-4 text-sm text-gray-500 dark:text-gray-300 flex items-center">
+                        <ClockIcon />
+                        Ends: {new Date(challenge.submission_end_time).toLocaleString()}
+                    </div>
+                    <div className="mt-2 text-sm text-gray-500 dark:text-gray-300 flex items-center">
+                      Score: <span className="font-bold ml-2">{score}</span>
+                    </div>
+                  </div>
+                  <div className="mt-6">
+                    <div className="w-full text-center py-2 px-4 rounded-md font-semibold bg-gray-200 text-gray-800 dark:bg-gray-700 dark:text-gray-200">
+                        View Details
+                    </div>
+                  </div>
+                </Card>
+              </Link>
             );
           })}
         </div>
