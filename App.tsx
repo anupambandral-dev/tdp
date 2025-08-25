@@ -1,4 +1,5 @@
 
+
 import React, { useState, useEffect } from 'react';
 import { HashRouter, Routes, Route, Navigate, Outlet } from 'react-router-dom';
 import { Profile, Role } from './types';
@@ -17,6 +18,7 @@ import { TraineePerforma } from './pages/manager/TraineePerforma';
 import { supabase, initializationError } from './supabaseClient';
 import { Session } from '@supabase/supabase-js';
 import { UserManagement } from './pages/manager/UserManagement';
+import { ImportUsers } from './pages/manager/ImportUsers';
 
 const App: React.FC = () => {
   const [session, setSession] = useState<Session | null>(null);
@@ -123,6 +125,7 @@ const App: React.FC = () => {
             <Route element={<ProtectedRoute allowedRoles={[Role.MANAGER]} />}>
               <Route path="/manager" element={currentUser ? <ManagerDashboard currentUser={currentUser} /> : null} />
                <Route path="/manager/users" element={<UserManagement />} />
+               <Route path="/manager/import-users" element={<ImportUsers />} />
               <Route path="/manager/challenge/:challengeId" element={currentUser ? <ChallengeDetail currentUser={currentUser} /> : null} />
               <Route path="/manager/challenge/:challengeId/trainee/:traineeId" element={<TraineePerforma />} />
               <Route path="/manager/create-challenge" element={currentUser ? <CreateChallenge currentUser={currentUser} /> : null} />

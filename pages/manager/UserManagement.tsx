@@ -4,6 +4,12 @@ import { Profile } from '../../types';
 import { supabase } from '../../supabaseClient';
 import { Card } from '../../components/ui/Card';
 import { BackButton } from '../../components/ui/BackButton';
+import { Button } from '../../components/ui/Button';
+
+const UploadIcon = () => (
+    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5 mr-2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+);
+
 
 export const UserManagement: React.FC = () => {
   const [profiles, setProfiles] = useState<Profile[]>([]);
@@ -76,32 +82,35 @@ export const UserManagement: React.FC = () => {
              </Card>
         </div>
         <div>
-            <h2 className="text-2xl font-semibold mb-4">Setup Instructions</h2>
+            <h2 className="text-2xl font-semibold mb-4">Manage Members</h2>
             <Card className="space-y-6">
                 <div>
-                    <h3 className="font-semibold text-lg">Managing Your Organization's Users</h3>
+                    <h3 className="font-semibold text-lg">Import Users from CSV</h3>
                     <p className="text-sm text-gray-600 dark:text-gray-400 mt-2">
-                        This system is designed to be pre-loaded with a master list of your organization's members. Follow these steps for initial setup and ongoing management.
+                        To add new members or update existing ones, use the CSV import tool. This will populate the master list of users available for challenges.
                     </p>
-                    <ol className="list-decimal list-inside text-sm space-y-3 mt-4">
-                        <li>
-                            <strong>Initial Data Import:</strong> Use your database management tool (like the Supabase dashboard) to import a CSV file with all employee `name` and `email` information into the `profiles` table. This only needs to be done once.
-                        </li>
-                        <li>
-                           <strong>Assign Managers:</strong> After importing, manually edit the `role` field in the `profiles` table for any user who needs to be a Manager. Change their role from 'Trainee' to 'Manager'.
-                        </li>
-                        <li>
-                           <strong>Invite Managers:</strong> Use your database provider's authentication system to send login invitations *only* to the users you designated as Managers. They are the only ones who need initial access.
-                        </li>
-                         <li>
-                           <strong>Evaluator Roles:</strong> A user's role is automatically promoted to 'Evaluator' when a Manager assigns them to a sub-challenge. You do not need to set this manually.
-                        </li>
-                    </ol>
+                    <div className="mt-4">
+                        <Link to="/manager/import-users">
+                            <Button><UploadIcon />Import from CSV</Button>
+                        </Link>
+                    </div>
                 </div>
                  <div className="pt-4 border-t dark:border-gray-600">
-                    <p className="text-xs text-gray-500 dark:text-gray-400">
-                        Once managers are invited, they can log in and begin creating challenges. They will be able to select any user from the master list you imported.
-                    </p>
+                    <h3 className="font-semibold text-lg">How It Works</h3>
+                     <ol className="list-decimal list-inside text-sm space-y-3 mt-2 text-gray-600 dark:text-gray-400">
+                        <li>
+                            <strong>Prepare CSV:</strong> Create a CSV file with two columns: `name` and `email`.
+                        </li>
+                        <li>
+                           <strong>Import:</strong> Use the import tool to upload your file. New users will be added, and existing users will have their names updated if needed.
+                        </li>
+                        <li>
+                           <strong>Assign Managers:</strong> After importing, you can manually assign Manager roles by editing their profiles in the Supabase dashboard.
+                        </li>
+                         <li>
+                           <strong>Invite Managers:</strong> Use your Supabase dashboard to send login invitations *only* to users with the 'Manager' role.
+                        </li>
+                    </ol>
                 </div>
             </Card>
         </div>
