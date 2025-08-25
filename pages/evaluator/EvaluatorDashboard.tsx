@@ -1,7 +1,6 @@
-
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Profile, SubChallenge, SubChallengeWithSubmissions } from '../../types';
+import { Profile, SubChallengeForEvaluator } from '../../types';
 import { supabase } from '../../supabaseClient';
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
@@ -11,7 +10,7 @@ interface EvaluatorDashboardProps {
 }
 
 export const EvaluatorDashboard: React.FC<EvaluatorDashboardProps> = ({ currentUser }) => {
-  const [assignedChallenges, setAssignedChallenges] = useState<SubChallengeWithSubmissions[]>([]);
+  const [assignedChallenges, setAssignedChallenges] = useState<SubChallengeForEvaluator[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -24,7 +23,7 @@ export const EvaluatorDashboard: React.FC<EvaluatorDashboardProps> = ({ currentU
         if (error) {
             setError(error.message);
         } else if (data) {
-            setAssignedChallenges(data as unknown as SubChallengeWithSubmissions[]);
+            setAssignedChallenges(data as unknown as SubChallengeForEvaluator[]);
         }
     };
     
@@ -63,7 +62,7 @@ export const EvaluatorDashboard: React.FC<EvaluatorDashboardProps> = ({ currentU
     };
   }, [currentUser.id]);
 
-  const getEvaluationStats = (challenge: SubChallengeWithSubmissions) => {
+  const getEvaluationStats = (challenge: SubChallengeForEvaluator) => {
     const totalSubmissions = challenge.submissions?.length || 0;
     const evaluatedSubmissions = challenge.submissions?.filter(s => !!s.evaluation).length || 0;
     return { totalSubmissions, evaluatedSubmissions };
@@ -81,12 +80,13 @@ export const EvaluatorDashboard: React.FC<EvaluatorDashboardProps> = ({ currentU
           {assignedChallenges.map((challenge) => {
               const { totalSubmissions, evaluatedSubmissions } = getEvaluationStats(challenge);
               const progress = totalSubmissions > 0 ? (evaluatedSubmissions / totalSubmissions) * 100 : 0;
+              const endTime = challenge.submission_end_time;
               return (
               <Card key={challenge.id}>
                 <div className="md:flex justify-between items-center">
                   <div>
                     <h2 className="text-xl font-semibold">{challenge.title}</h2>
-                    <p className="text-sm text-gray-500 dark:text-gray-400">Due: {new Date(challenge.submission_end_time).toLocaleDateString()}</p>
+                    {endTime && <p className="text-sm text-gray-500 dark:text-gray-400">Submissions Ended: {new Date(endTime).toLocaleDateString()}</p>}
                   </div>
                   <div className="mt-4 md:mt-0 flex items-center space-x-4">
                       <div className="w-48">

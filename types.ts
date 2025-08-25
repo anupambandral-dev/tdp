@@ -96,6 +96,8 @@ export type OverallChallengeWithSubChallenges = OverallChallenge & {
 };
 
 export type SubChallengeWithOverallChallenge = SubChallenge & {
-  overall_challenges: Pick<OverallChallenge, 'id' | 'ended_at'> | null;
+  overall_challenges: Pick<OverallChallenge, 'id' | 'ended_at' > | null;
   submissions: SubmissionWithProfile[];
 };
+
+export type SubChallengeForEvaluator = SubChallengeWithSubmissions;

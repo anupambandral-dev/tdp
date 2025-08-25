@@ -164,16 +164,16 @@ export const CreateSubChallenge: React.FC = () => {
                         </div>
                     </div>
                     <div>
+                        <label htmlFor="submissionEndTime">Submission End Time</label>
+                        <input id="submissionEndTime" type="datetime-local" value={submissionEndTime} onChange={e => setSubmissionEndTime(e.target.value)} required className="input" />
+                    </div>
+                    <div>
                         <label htmlFor="summary">Summary</label>
                         <textarea id="summary" value={summary} onChange={e => setSummary(e.target.value)} rows={3} className="input" />
                     </div>
                     <div>
                         <label htmlFor="claimFocus">Claim Focus</label>
                         <textarea id="claimFocus" value={claimFocus} onChange={e => setClaimFocus(e.target.value)} rows={2} className="input" />
-                    </div>
-                    <div>
-                        <label htmlFor="submissionEndTime">Submission End Time</label>
-                        <input id="submissionEndTime" type="datetime-local" value={submissionEndTime} onChange={e => setSubmissionEndTime(e.target.value)} required className="input" />
                     </div>
                     
                     <div>

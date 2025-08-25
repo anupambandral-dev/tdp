@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { supabase } from '../../supabaseClient';
@@ -190,7 +189,7 @@ export const ChallengeDetail: React.FC<ChallengeDetailProps> = ({ currentUser })
                                 <p className="mt-2 text-gray-700 dark:text-gray-300">{sc.summary}</p>
                                 <div className="mt-4 flex justify-between items-center text-sm">
                                     <p>Submissions: {sc.submissions?.length || 0} / {challenge.trainee_ids.length}</p>
-                                    <p>End Time: {new Date(sc.submission_end_time).toLocaleString()}</p>
+                                    <p className="text-gray-500 dark:text-gray-400">Deadline: {new Date(sc.submission_end_time).toLocaleString()}</p>
                                 </div>
                             </Card>
                         </Link>

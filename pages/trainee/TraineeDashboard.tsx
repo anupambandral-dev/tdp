@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Profile, SubChallenge, ResultTier, IncorrectMarking, Evaluation, EvaluationRules, SubmittedResult, Submission, SubChallengeWithOverallChallenge, ResultType } from '../../types';
+import { Profile, ResultTier, IncorrectMarking, Evaluation, EvaluationRules, SubmittedResult, Submission, SubChallengeWithOverallChallenge, ResultType } from '../../types';
 import { supabase } from '../../supabaseClient';
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
@@ -10,7 +10,7 @@ interface TraineeDashboardProps {
 }
 
 const ClockIcon = () => (
-    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4 mr-1"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+    <svg xmlns="http://www.w.org/2000/svg" width="24" height="24" viewBox="0 0 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4 mr-1"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
 );
 
 export const TraineeDashboard: React.FC<TraineeDashboardProps> = ({ currentUser }) => {
@@ -122,6 +122,7 @@ export const TraineeDashboard: React.FC<TraineeDashboardProps> = ({ currentUser 
           {traineeChallenges.map((challenge) => {
             const status = getStatus(challenge);
             const score = getScore(challenge);
+            const endTime = challenge.submission_end_time;
             return (
                <Link to={`/trainee/sub-challenge/${challenge.id}`} key={challenge.id} className="block">
                 <Card className="h-full flex flex-col hover:shadow-xl transition-shadow duration-200">
@@ -137,10 +138,12 @@ export const TraineeDashboard: React.FC<TraineeDashboardProps> = ({ currentUser 
                         </span>
                     </div>
                     <p className="text-gray-600 dark:text-gray-400 mt-2 text-sm">Patent: {challenge.patent_number}</p>
+                    {endTime && (
                     <div className="mt-4 text-sm text-gray-500 dark:text-gray-300 flex items-center">
                         <ClockIcon />
-                        Ends: {new Date(challenge.submission_end_time).toLocaleString()}
+                        Ends: {new Date(endTime).toLocaleString()}
                     </div>
+                    )}
                     <div className="mt-2 text-sm text-gray-500 dark:text-gray-300 flex items-center">
                       Score: <span className="font-bold ml-2">{score}</span>
                     </div>
