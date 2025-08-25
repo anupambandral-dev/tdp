@@ -4,7 +4,7 @@ import { supabase } from '../../supabaseClient';
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { BackButton } from '../../components/ui/BackButton';
-import { EvaluationRules, ResultTier, IncorrectMarking, OverallChallenge, Json, Profile, Role } from '../../types';
+import { EvaluationRules, ResultTier, IncorrectMarking, OverallChallenge, Json, Profile, Role, ResultType } from '../../types';
 import { TablesInsert } from '../../database.types';
 
 export const CreateSubChallenge: React.FC = () => {
@@ -24,9 +24,16 @@ export const CreateSubChallenge: React.FC = () => {
     const [submissionEndTime, setSubmissionEndTime] = useState('');
     const [rules, setRules] = useState<EvaluationRules>({
         tierScores: {
-            [ResultTier.TIER_1]: 20,
-            [ResultTier.TIER_2]: 10,
-            [ResultTier.TIER_3]: 5,
+            [ResultType.PATENT]: {
+                [ResultTier.TIER_1]: 20,
+                [ResultTier.TIER_2]: 10,
+                [ResultTier.TIER_3]: 5,
+            },
+            [ResultType.NON_PATENT]: {
+                [ResultTier.TIER_1]: 15,
+                [ResultTier.TIER_2]: 8,
+                [ResultTier.TIER_3]: 3,
+            },
         },
         incorrectMarking: IncorrectMarking.ZERO,
         incorrectPenalty: 0,
@@ -66,6 +73,19 @@ export const CreateSubChallenge: React.FC = () => {
         setSelectedEvaluatorIds(prev =>
             prev.includes(profileId) ? prev.filter(id => id !== profileId) : [...prev, profileId]
         );
+    };
+
+    const handleScoreChange = (resultType: ResultType, tier: ResultTier, value: number) => {
+        setRules(prev => ({
+            ...prev,
+            tierScores: {
+                ...prev.tierScores,
+                [resultType]: {
+                    ...prev.tierScores[resultType],
+                    [tier]: value
+                }
+            }
+        }));
     };
 
     const handleSubmit = async (e: React.FormEvent) => {
@@ -188,17 +208,25 @@ export const CreateSubChallenge: React.FC = () => {
 
                     <div className="pt-4 border-t dark:border-gray-700">
                         <h2 className="text-xl font-semibold">Evaluation Rules</h2>
-                         <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-6">
-                            <div>
-                                <h3 className="font-medium mb-2">Tier Scores</h3>
-                                <div className="space-y-2">
-                                    {Object.values(ResultTier).map(tier => (
-                                        <div key={tier} className="flex items-center gap-4">
-                                            <label htmlFor={`tier_${tier}`} className="w-20">{tier}</label>
-                                            <input id={`tier_${tier}`} type="number" value={rules.tierScores[tier]} onChange={e => setRules(prev => ({...prev, tierScores: {...prev.tierScores, [tier]: Number(e.target.value)}}))} className="input w-full" />
+                         <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-8">
+                            <div className="grid grid-cols-2 gap-x-6 gap-y-4">
+                                <h3 className="font-medium col-span-2">Tier Scores</h3>
+                                
+                                <div className="font-semibold text-sm">Patent</div>
+                                <div className="font-semibold text-sm">NPL</div>
+
+                                {Object.values(ResultTier).map(tier => (
+                                    <React.Fragment key={tier}>
+                                        <div className="flex items-center gap-2">
+                                            <label htmlFor={`patent_tier_${tier}`} className="w-16 text-sm">{tier}</label>
+                                            <input id={`patent_tier_${tier}`} type="number" value={rules.tierScores[ResultType.PATENT][tier]} onChange={e => handleScoreChange(ResultType.PATENT, tier, Number(e.target.value))} className="input w-full" />
                                         </div>
-                                    ))}
-                                </div>
+                                        <div className="flex items-center gap-2">
+                                            <label htmlFor={`npl_tier_${tier}`} className="sr-only">{tier} NPL</label>
+                                            <input id={`npl_tier_${tier}`} type="number" value={rules.tierScores[ResultType.NON_PATENT][tier]} onChange={e => handleScoreChange(ResultType.NON_PATENT, tier, Number(e.target.value))} className="input w-full" />
+                                        </div>
+                                    </React.Fragment>
+                                ))}
                             </div>
                             <div>
                                 <h3 className="font-medium mb-2">Incorrect Result Marking</h3>
@@ -212,20 +240,20 @@ export const CreateSubChallenge: React.FC = () => {
                                         <input id="penalty" type="number" value={rules.incorrectPenalty} onChange={e => setRules(prev => ({...prev, incorrectPenalty: Number(e.target.value)}))} className="input w-full" />
                                     </div>
                                 )}
-                            </div>
-                        </div>
-                        <div className="mt-6">
-                            <h3 className="font-medium mb-2">Report Evaluation</h3>
-                            <label className="flex items-center space-x-2">
-                                <input type="checkbox" checked={rules.report.enabled} onChange={e => setRules(prev => ({...prev, report: {...prev.report, enabled: e.target.checked}}))} />
-                                <span>Enable report submission and scoring</span>
-                            </label>
-                             {rules.report.enabled && (
-                                <div className="mt-2">
-                                    <label htmlFor="maxScore">Report Max Score</label>
-                                    <input id="maxScore" type="number" value={rules.report.maxScore} onChange={e => setRules(prev => ({...prev, report: {...prev.report, maxScore: Number(e.target.value)}}))} className="input w-full" />
+                                <div className="mt-6">
+                                    <h3 className="font-medium mb-2">Report Evaluation</h3>
+                                    <label className="flex items-center space-x-2">
+                                        <input type="checkbox" checked={rules.report.enabled} onChange={e => setRules(prev => ({...prev, report: {...prev.report, enabled: e.target.checked}}))} />
+                                        <span>Enable report submission and scoring</span>
+                                    </label>
+                                     {rules.report.enabled && (
+                                        <div className="mt-2">
+                                            <label htmlFor="maxScore">Report Max Score</label>
+                                            <input id="maxScore" type="number" value={rules.report.maxScore} onChange={e => setRules(prev => ({...prev, report: {...prev.report, maxScore: Number(e.target.value)}}))} className="input w-full" />
+                                        </div>
+                                    )}
                                 </div>
-                            )}
+                            </div>
                         </div>
                     </div>
 

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Profile, SubChallenge, ResultTier, IncorrectMarking, Evaluation, EvaluationRules, SubmittedResult, Submission, SubChallengeWithOverallChallenge } from '../../types';
+import { Profile, SubChallenge, ResultTier, IncorrectMarking, Evaluation, EvaluationRules, SubmittedResult, Submission, SubChallengeWithOverallChallenge, ResultType } from '../../types';
 import { supabase } from '../../supabaseClient';
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
@@ -91,7 +91,10 @@ export const TraineeDashboard: React.FC<TraineeDashboardProps> = ({ currentUser 
       const resultEvaluation = evaluation.result_evaluations.find(re => re.result_id === result.id);
       if (resultEvaluation) {
         if (result.trainee_tier === resultEvaluation.evaluator_tier) {
-          totalScore += rules.tierScores[result.trainee_tier as ResultTier] || 0;
+          const resultTypeScores = rules.tierScores[result.type as ResultType];
+          if (resultTypeScores) {
+              totalScore += resultTypeScores[result.trainee_tier as ResultTier] || 0;
+          }
         } else {
           if (rules.incorrectMarking === IncorrectMarking.PENALTY) {
             totalScore += rules.incorrectPenalty;

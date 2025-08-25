@@ -3,7 +3,7 @@ import { useParams, Link } from 'react-router-dom';
 import { supabase } from '../../supabaseClient';
 import { Card } from '../../components/ui/Card';
 import { BackButton } from '../../components/ui/BackButton';
-import { SubChallenge, Submission, IncorrectMarking, ResultTier, OverallChallenge, Profile, EvaluationRules, SubmittedResult, Evaluation } from '../../types';
+import { SubChallenge, Submission, IncorrectMarking, ResultTier, OverallChallenge, Profile, EvaluationRules, SubmittedResult, Evaluation, ResultType } from '../../types';
 
 const getTotalScore = (submission: Submission, subChallenge: SubChallenge) => {
     const evaluation = submission.evaluation as unknown as Evaluation | null;
@@ -17,7 +17,10 @@ const getTotalScore = (submission: Submission, subChallenge: SubChallenge) => {
         const resultEvaluation = evaluation.result_evaluations.find(re => re.result_id === result.id);
         if (resultEvaluation) {
             if (result.trainee_tier === resultEvaluation.evaluator_tier) {
-                totalScore += rules.tierScores[result.trainee_tier as ResultTier] || 0;
+                const resultTypeScores = rules.tierScores[result.type as ResultType];
+                if (resultTypeScores) {
+                    totalScore += resultTypeScores[result.trainee_tier as ResultTier] || 0;
+                }
             } else {
                 if (rules.incorrectMarking === IncorrectMarking.PENALTY) {
                     totalScore += rules.incorrectPenalty;

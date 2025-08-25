@@ -5,7 +5,7 @@ import { supabase } from '../../supabaseClient';
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { BackButton } from '../../components/ui/BackButton';
-import { ResultTier, IncorrectMarking, OverallChallenge, SubChallenge, Profile, Submission, OverallChallengeWithSubChallenges, EvaluationRules, SubmittedResult, Evaluation } from '../../types';
+import { ResultTier, IncorrectMarking, OverallChallenge, SubChallenge, Profile, Submission, OverallChallengeWithSubChallenges, EvaluationRules, SubmittedResult, Evaluation, ResultType } from '../../types';
 
 interface ChallengeDetailProps {
   currentUser: Profile;
@@ -119,7 +119,10 @@ export const ChallengeDetail: React.FC<ChallengeDetailProps> = ({ currentUser })
                     const resultEval = evaluation.result_evaluations.find((re) => re.result_id === result.id);
                     if (resultEval) {
                         if (result.trainee_tier === resultEval.evaluator_tier) {
-                            totalScore += rules.tierScores[result.trainee_tier as ResultTier] || 0;
+                            const resultTypeScores = rules.tierScores[result.type as ResultType];
+                            if (resultTypeScores) {
+                                totalScore += resultTypeScores[result.trainee_tier as ResultTier] || 0;
+                            }
                         } else {
                             if (rules.incorrectMarking === IncorrectMarking.PENALTY) {
                                 totalScore += rules.incorrectPenalty;

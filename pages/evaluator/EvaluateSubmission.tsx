@@ -4,7 +4,7 @@ import { supabase } from '../../supabaseClient';
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { BackButton } from '../../components/ui/BackButton';
-import { Profile, ResultEvaluation, ResultTier, SubmittedResult, IncorrectMarking, SubChallenge, Submission, Evaluation, EvaluationRules, SubmissionWithProfile, SubChallengeWithSubmissions, Json } from '../../types';
+import { Profile, ResultEvaluation, ResultTier, SubmittedResult, IncorrectMarking, SubChallenge, Submission, Evaluation, EvaluationRules, SubmissionWithProfile, SubChallengeWithSubmissions, Json, ResultType } from '../../types';
 
 interface EvaluateSubmissionProps {
     currentUser: Profile;
@@ -78,7 +78,9 @@ export const EvaluateSubmission: React.FC<EvaluateSubmissionProps> = ({ currentU
       const evaluation = resultEvals.find(re => re.result_id === result.id);
       if (evaluation) {
         if (result.trainee_tier === evaluation.evaluator_tier) {
-          return { score: rules.tierScores[result.trainee_tier as ResultTier] || 0, status: 'Correct' };
+          const resultTypeScores = rules.tierScores[result.type as ResultType];
+          const score = resultTypeScores ? resultTypeScores[result.trainee_tier as ResultTier] || 0 : 0;
+          return { score, status: 'Correct' };
         } else {
             const traineeTierIndex = Object.values(ResultTier).indexOf(result.trainee_tier);
             const evaluatorTierIndex = Object.values(ResultTier).indexOf(evaluation.evaluator_tier);

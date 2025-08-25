@@ -40,9 +40,16 @@ export enum IncorrectMarking {
 // Type for the 'evaluation_rules' JSONB column in 'sub_challenges'
 export interface EvaluationRules {
   tierScores: {
-    [ResultTier.TIER_1]: number;
-    [ResultTier.TIER_2]: number;
-    [ResultTier.TIER_3]: number;
+    [ResultType.PATENT]: {
+      [ResultTier.TIER_1]: number;
+      [ResultTier.TIER_2]: number;
+      [ResultTier.TIER_3]: number;
+    };
+    [ResultType.NON_PATENT]: {
+      [ResultTier.TIER_1]: number;
+      [ResultTier.TIER_2]: number;
+      [ResultTier.TIER_3]: number;
+    };
   };
   incorrectMarking: IncorrectMarking;
   incorrectPenalty: number;
