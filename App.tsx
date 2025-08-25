@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { HashRouter, Routes, Route, Navigate, Outlet } from 'react-router-dom';
 import { Profile, Role } from './types';
@@ -122,7 +123,7 @@ const App: React.FC = () => {
             <Route element={<ProtectedRoute allowedRoles={[Role.MANAGER]} />}>
               <Route path="/manager" element={currentUser ? <ManagerDashboard currentUser={currentUser} /> : null} />
                <Route path="/manager/users" element={<UserManagement />} />
-              <Route path="/manager/challenge/:challengeId" element={<ChallengeDetail />} />
+              <Route path="/manager/challenge/:challengeId" element={currentUser ? <ChallengeDetail currentUser={currentUser} /> : null} />
               <Route path="/manager/challenge/:challengeId/trainee/:traineeId" element={<TraineePerforma />} />
               <Route path="/manager/create-challenge" element={currentUser ? <CreateChallenge currentUser={currentUser} /> : null} />
               <Route path="/manager/challenge/:challengeId/create-sub-challenge" element={<CreateSubChallenge />} />
