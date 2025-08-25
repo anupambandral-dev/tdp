@@ -4,6 +4,7 @@ import { Profile, Role, SubChallenge, OverallChallenge, Submission, IncorrectMar
 import { supabase } from '../../supabaseClient';
 import { Card } from '../../components/ui/Card';
 import { BackButton } from '../../components/ui/BackButton';
+import { Button } from '../../components/ui/Button';
 
 const getTotalScore = (submission: Submission, subChallenge: SubChallenge) => {
     const evaluation = submission.evaluation as unknown as Evaluation | null;
@@ -80,13 +81,37 @@ const ManagerView: React.FC<{ subChallenge: SubChallengeWithSubmissions }> = ({ 
     );
 };
 
+interface TraineeViewProps {
+    subChallenge: SubChallengeWithSubmissions;
+    overallChallenge: OverallChallenge;
+    currentUser: Profile;
+}
 
 // Trainee's view of their own submission
-const TraineeView: React.FC<{ subChallenge: SubChallengeWithSubmissions, currentUser: Profile }> = ({ subChallenge, currentUser }) => {
+const TraineeView: React.FC<TraineeViewProps> = ({ subChallenge, overallChallenge, currentUser }) => {
     const submission = subChallenge.submissions?.find(s => s.trainee_id === currentUser.id);
+    
+    const isChallengeActive = !overallChallenge.ended_at && new Date(subChallenge.submission_end_time) > new Date();
 
     if (!submission) {
-        return <Card><p className="text-center">You have not made a submission for this challenge.</p></Card>;
+        if (isChallengeActive) {
+            return (
+                <Card className="text-center py-10">
+                    <h2 className="text-xl font-semibold mb-2">Ready to start?</h2>
+                    <p className="text-gray-600 dark:text-gray-400 mb-6">You have not made a submission for this challenge yet.</p>
+                    <Link to={`/trainee/challenge/${subChallenge.id}/submit`}>
+                        <Button>Submit Your Results Now</Button>
+                    </Link>
+                </Card>
+            );
+        } else {
+            return (
+                <Card className="text-center py-10">
+                    <h2 className="text-xl font-semibold mb-2">Submission Closed</h2>
+                    <p className="text-gray-600 dark:text-gray-400">You did not make a submission for this challenge before the deadline.</p>
+                </Card>
+            );
+        }
     }
     
     const { score } = getTotalScore(submission, subChallenge);
@@ -264,7 +289,7 @@ export const SubChallengeDetail: React.FC<SubChallengeDetailProps> = ({ currentU
             </Card>
 
             {currentUser.role === Role.MANAGER && <ManagerView subChallenge={subChallenge} />}
-            {currentUser.role === Role.TRAINEE && <TraineeView subChallenge={subChallenge} currentUser={currentUser} />}
+            {currentUser.role === Role.TRAINEE && <TraineeView subChallenge={subChallenge} overallChallenge={overallChallenge} currentUser={currentUser} />}
         </div>
     );
 };
