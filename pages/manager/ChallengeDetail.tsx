@@ -162,18 +162,18 @@ export const ChallengeDetail: React.FC<ChallengeDetailProps> = ({ currentUser })
                 <div className="flex items-center space-x-2">
                     {!isChallengeEnded && isAssignedManager && (
                         <>
-                            <Button variant="danger-outline" onClick={handleDeleteChallenge} disabled={loading}>
-                                Delete Challenge
-                            </Button>
                             <Button variant="danger" onClick={handleEndChallenge} disabled={loading}>
                                 End Challenge
                             </Button>
+                            <Link to={`/manager/challenge/${challenge.id}/create-sub-challenge`}>
+                                <Button>+ Add Sub-Challenge</Button>
+                            </Link>
                         </>
                     )}
-                    {!isChallengeEnded && (
-                        <Link to={`/manager/challenge/${challenge.id}/create-sub-challenge`}>
-                            <Button>+ Add Sub-Challenge</Button>
-                        </Link>
+                    {isAssignedManager && (
+                        <Button variant="danger-outline" onClick={handleDeleteChallenge} disabled={loading}>
+                            Delete Challenge
+                        </Button>
                     )}
                 </div>
             </div>
