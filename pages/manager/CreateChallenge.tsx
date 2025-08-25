@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Profile } from '../../types';
+import { Profile, Role } from '../../types';
 import { supabase } from '../../supabaseClient';
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
@@ -16,7 +16,9 @@ export const CreateChallenge: React.FC<CreateChallengeProps> = ({ currentUser })
     const [challengeName, setChallengeName] = useState('');
     const [allProfiles, setAllProfiles] = useState<Profile[]>([]);
     const [selectedTraineeIds, setSelectedTraineeIds] = useState<string[]>([]);
-    const [searchTerm, setSearchTerm] = useState('');
+    const [selectedManagerIds, setSelectedManagerIds] = useState<string[]>([currentUser.id]);
+    const [traineeSearchTerm, setTraineeSearchTerm] = useState('');
+    const [managerSearchTerm, setManagerSearchTerm] = useState('');
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
@@ -41,6 +43,15 @@ export const CreateChallenge: React.FC<CreateChallengeProps> = ({ currentUser })
         );
     };
 
+    const handleToggleManager = (profileId: string) => {
+        // The challenge creator must always be a manager and cannot be removed.
+        if (profileId === currentUser.id) return;
+
+        setSelectedManagerIds(prev =>
+            prev.includes(profileId) ? prev.filter(id => id !== profileId) : [...prev, profileId]
+        );
+    };
+
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!challengeName.trim()) {
@@ -51,12 +62,17 @@ export const CreateChallenge: React.FC<CreateChallengeProps> = ({ currentUser })
             alert('Please select at least one trainee.');
             return;
         }
+        if (selectedManagerIds.length === 0) {
+            alert('At least one manager must be assigned.');
+            return;
+        }
+
 
         setLoading(true);
 
         const newChallenge: TablesInsert<'overall_challenges'> = {
             name: challengeName,
-            manager_ids: [currentUser.id],
+            manager_ids: selectedManagerIds,
             trainee_ids: selectedTraineeIds,
         };
 
@@ -70,10 +86,17 @@ export const CreateChallenge: React.FC<CreateChallengeProps> = ({ currentUser })
             navigate('/manager');
         }
     };
+    
+    const allManagers = allProfiles.filter(p => p.role === Role.MANAGER);
 
     const filteredProfiles = allProfiles.filter(p =>
-        p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        p.email.toLowerCase().includes(searchTerm.toLowerCase())
+        p.name.toLowerCase().includes(traineeSearchTerm.toLowerCase()) ||
+        p.email.toLowerCase().includes(traineeSearchTerm.toLowerCase())
+    );
+    
+    const filteredManagers = allManagers.filter(p =>
+        p.name.toLowerCase().includes(managerSearchTerm.toLowerCase()) ||
+        p.email.toLowerCase().includes(managerSearchTerm.toLowerCase())
     );
 
     return (
@@ -91,6 +114,37 @@ export const CreateChallenge: React.FC<CreateChallengeProps> = ({ currentUser })
                             placeholder="e.g., Tour de Prior Art - August 2024" required
                         />
                     </div>
+                    
+                    <div>
+                        <label htmlFor="search-managers" className="block text-sm font-medium text-gray-700 dark:text-gray-300">Assign Managers</label>
+                        <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">Assign other managers to help manage this challenge. You are automatically included.</p>
+                        <input
+                            id="search-managers"
+                            type="text"
+                            placeholder="Search managers by name or email..."
+                            value={managerSearchTerm}
+                            onChange={e => setManagerSearchTerm(e.target.value)}
+                            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 p-2"
+                        />
+                        <div className="mt-2 border rounded-md max-h-48 overflow-y-auto p-2 space-y-1 bg-gray-50 dark:bg-gray-800">
+                            {loading ? <p className="text-center p-4">Loading users...</p> : filteredManagers.map(profile => (
+                                <label key={profile.id} className="flex items-center space-x-3 p-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer">
+                                    <input
+                                        type="checkbox"
+                                        className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                                        checked={selectedManagerIds.includes(profile.id)}
+                                        onChange={() => handleToggleManager(profile.id)}
+                                        disabled={profile.id === currentUser.id}
+                                    />
+                                    <div>
+                                        <p className="font-medium text-sm">{profile.name}</p>
+                                        <p className="text-xs text-gray-500 dark:text-gray-400">{profile.email}</p>
+                                    </div>
+                                </label>
+                            ))}
+                        </div>
+                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">{selectedManagerIds.length} manager(s) assigned.</p>
+                    </div>
 
                     <div>
                         <label htmlFor="search-trainees" className="block text-sm font-medium text-gray-700 dark:text-gray-300">Select Trainees</label>
@@ -99,8 +153,8 @@ export const CreateChallenge: React.FC<CreateChallengeProps> = ({ currentUser })
                             id="search-trainees"
                             type="text"
                             placeholder="Search users..."
-                            value={searchTerm}
-                            onChange={e => setSearchTerm(e.target.value)}
+                            value={traineeSearchTerm}
+                            onChange={e => setTraineeSearchTerm(e.target.value)}
                             className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 p-2"
                         />
                         <div className="mt-2 border rounded-md max-h-60 overflow-y-auto p-2 space-y-1 bg-gray-50 dark:bg-gray-800">
