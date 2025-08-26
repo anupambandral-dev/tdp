@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Profile, SubChallengeForEvaluator } from '../../types';
+import { Profile, SubChallengeForEvaluator, Role } from '../../types';
 import { supabase } from '../../supabaseClient';
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
@@ -16,15 +16,52 @@ export const EvaluatorDashboard: React.FC<EvaluatorDashboardProps> = ({ currentU
 
   useEffect(() => {
     const fetchChallenges = async () => {
-        const { data, error } = await supabase
-            .from('sub_challenges')
-            .select('*, submissions(*, profiles(*))')
-            .contains('evaluator_ids', [currentUser.id]);
+        if (currentUser.role === Role.MANAGER) {
+            const { data: managedChallenges, error: mcError } = await supabase
+                .from('overall_challenges')
+                .select('id')
+                .contains('manager_ids', [currentUser.id]);
+            
+            if (mcError) {
+                setError(mcError.message);
+                return;
+            }
+            if (!managedChallenges || managedChallenges.length === 0) {
+                setAssignedChallenges([]);
+                return;
+            }
+            const managedChallengeIds = managedChallenges.map(c => c.id);
 
-        if (error) {
-            setError(error.message);
-        } else if (data) {
-            setAssignedChallenges(data as unknown as SubChallengeForEvaluator[]);
+            const { data: potentialChallenges, error: scError } = await supabase
+                .from('sub_challenges')
+                .select('*, submissions(*, profiles(*))')
+                .or(`evaluator_ids.cs.{${currentUser.id}},overall_challenge_id.in.(${managedChallengeIds.join(',')})`);
+            
+            if (scError) {
+                setError(scError.message);
+                return;
+            }
+
+            if (potentialChallenges) {
+                const challengesForManager = potentialChallenges.filter(sc => {
+                    const isExplicitlyAssigned = sc.evaluator_ids?.includes(currentUser.id);
+                    const isImplicitlyAssigned = (!sc.evaluator_ids || sc.evaluator_ids.length === 0) && managedChallengeIds.includes(sc.overall_challenge_id);
+                    return isExplicitlyAssigned || isImplicitlyAssigned;
+                });
+                setAssignedChallenges(challengesForManager as unknown as SubChallengeForEvaluator[]);
+            }
+
+        } else { // Role.EVALUATOR
+            const { data, error } = await supabase
+                .from('sub_challenges')
+                .select('*, submissions(*, profiles(*))')
+                .contains('evaluator_ids', [currentUser.id]);
+
+            if (error) {
+                setError(error.message);
+            } else if (data) {
+                setAssignedChallenges(data as unknown as SubChallengeForEvaluator[]);
+            }
         }
     };
     
@@ -36,24 +73,17 @@ export const EvaluatorDashboard: React.FC<EvaluatorDashboardProps> = ({ currentU
     initialFetch();
 
     // Set up real-time subscription
-    // Listen for new sub-challenges being assigned, or submissions being added/updated.
     const channel = supabase
       .channel('evaluator-dashboard-challenges')
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'sub_challenges' },
-        (payload) => {
-          console.log('Change received on sub_challenges!', payload);
-          fetchChallenges();
-        }
+        () => fetchChallenges()
       )
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'submissions' },
-        (payload) => {
-          console.log('Change received on submissions!', payload);
-          fetchChallenges();
-        }
+        () => fetchChallenges()
       )
       .subscribe();
 
@@ -61,7 +91,7 @@ export const EvaluatorDashboard: React.FC<EvaluatorDashboardProps> = ({ currentU
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [currentUser.id]);
+  }, [currentUser.id, currentUser.role]);
 
   const getEvaluationStats = (challenge: SubChallengeForEvaluator) => {
     const totalSubmissions = challenge.submissions?.length || 0;

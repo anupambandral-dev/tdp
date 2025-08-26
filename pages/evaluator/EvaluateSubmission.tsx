@@ -25,6 +25,7 @@ export const EvaluateSubmission: React.FC<EvaluateSubmissionProps> = ({ currentU
     const [resultEvals, setResultEvals] = useState<ResultEvaluation[]>([]);
     const [reportScore, setReportScore] = useState<number | string>('');
     const [feedback, setFeedback] = useState<string>('');
+    const [reportUrl, setReportUrl] = useState<string | null>(null);
     
     useEffect(() => {
         const fetchChallenge = async () => {
@@ -55,6 +56,24 @@ export const EvaluateSubmission: React.FC<EvaluateSubmissionProps> = ({ currentU
     }, [challengeId]);
 
     useEffect(() => {
+        const generateUrl = async () => {
+            if (selectedSubmission?.report_file) {
+                const reportPath = (selectedSubmission.report_file as { path: string }).path;
+                const { data, error } = await supabase.storage
+                    .from('reports')
+                    .createSignedUrl(reportPath, 60 * 5); // URL valid for 5 minutes
+                
+                if (error) {
+                    console.error("Error creating signed URL:", error);
+                    setReportUrl(null);
+                } else {
+                    setReportUrl(data.signedUrl);
+                }
+            } else {
+                setReportUrl(null);
+            }
+        };
+
         if (selectedSubmission) {
             const currentEval = selectedSubmission.evaluation as unknown as Evaluation | null;
             const currentResults = selectedSubmission.results as unknown as SubmittedResult[] | null;
@@ -62,6 +81,7 @@ export const EvaluateSubmission: React.FC<EvaluateSubmissionProps> = ({ currentU
             setResultEvals(currentEval?.result_evaluations || currentResults?.map(r => ({ result_id: r.id, evaluator_tier: r.trainee_tier })) || []);
             setReportScore(currentEval?.report_score ?? '');
             setFeedback(currentEval?.feedback || '');
+            generateUrl();
         }
     }, [selectedSubmission]);
 
@@ -206,7 +226,7 @@ export const EvaluateSubmission: React.FC<EvaluateSubmissionProps> = ({ currentU
                             <div>
                                 <label htmlFor="reportScore" className="flex justify-between items-center text-sm font-medium text-gray-700 dark:text-gray-300">
                                     <span>Report Evaluation</span>
-                                    {(selectedSubmission.report_file as { path: string, name: string } | null)?.path && <a href={supabase.storage.from('reports').getPublicUrl((selectedSubmission.report_file as any).path).data.publicUrl} className="text-blue-600 hover:underline" target="_blank" rel="noopener noreferrer">View Report: {(selectedSubmission.report_file as any)?.name}</a>}
+                                    {reportUrl && <a href={reportUrl} className="text-blue-600 hover:underline" target="_blank" rel="noopener noreferrer">View Report: {(selectedSubmission.report_file as any)?.name}</a>}
                                 </label>
                                 <input 
                                     type="number" 

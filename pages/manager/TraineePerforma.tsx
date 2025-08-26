@@ -39,6 +39,37 @@ interface FetchedOverallChallenge extends OverallChallenge {
     sub_challenges: (SubChallenge & { submissions: Submission[] })[];
 }
 
+const ReportLink: React.FC<{ reportFile: { name: string; path: string } | null }> = ({ reportFile }) => {
+    const [url, setUrl] = useState<string | null>(null);
+
+    useEffect(() => {
+        if (reportFile?.path) {
+            const getUrl = async () => {
+                const { data, error } = await supabase.storage
+                    .from('reports')
+                    .createSignedUrl(reportFile.path, 60 * 5); // 5 minutes
+                if (error) {
+                    console.error("Error creating signed URL:", error);
+                } else {
+                    setUrl(data.signedUrl);
+                }
+            };
+            getUrl();
+        }
+    }, [reportFile]);
+
+    if (!reportFile) return null;
+
+    if (!url) return <p className="text-gray-500 text-sm">Generating secure link...</p>;
+
+    return (
+        <a href={url} className="text-blue-600 dark:text-blue-400 hover:underline text-sm" target="_blank" rel="noopener noreferrer">
+            {reportFile.name}
+        </a>
+    );
+};
+
+
 export const TraineePerforma: React.FC = () => {
     const { challengeId, traineeId } = useParams<{ challengeId: string; traineeId: string }>();
     const [overallChallenge, setOverallChallenge] = useState<FetchedOverallChallenge | null>(null);
@@ -136,7 +167,7 @@ export const TraineePerforma: React.FC = () => {
                                             {reportFile && (
                                                 <div>
                                                     <p className="text-sm font-medium text-gray-700 dark:text-gray-300">Report File:</p>
-                                                    <a href={supabase.storage.from('reports').getPublicUrl(reportFile.path).data.publicUrl} className="text-blue-600 dark:text-blue-400 hover:underline text-sm" target="_blank" rel="noopener noreferrer">{reportFile.name}</a>
+                                                    <ReportLink reportFile={reportFile} />
                                                 </div>
                                             )}
                                         </div>

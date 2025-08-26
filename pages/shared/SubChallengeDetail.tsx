@@ -94,6 +94,26 @@ interface TraineeViewProps {
 // Trainee's view of their own submission
 const TraineeView: React.FC<TraineeViewProps> = ({ subChallenge, overallChallenge, currentUser }) => {
     const submission = subChallenge.submissions?.find(s => s.trainee_id === currentUser.id);
+    const [reportUrl, setReportUrl] = useState<string | null>(null);
+
+    useEffect(() => {
+        const generateUrl = async () => {
+            if (submission?.report_file) {
+                const reportPath = (submission.report_file as { path: string }).path;
+                const { data, error } = await supabase.storage
+                    .from('reports')
+                    .createSignedUrl(reportPath, 60 * 5); // URL valid for 5 minutes
+
+                if (error) {
+                    console.error("Error creating signed URL:", error);
+                } else {
+                    setReportUrl(data.signedUrl);
+                }
+            }
+        };
+
+        generateUrl();
+    }, [submission]);
     
     const isChallengeActive = !overallChallenge.ended_at && new Date(subChallenge.submission_end_time) > new Date();
 
@@ -139,7 +159,11 @@ const TraineeView: React.FC<TraineeViewProps> = ({ subChallenge, overallChalleng
                   {reportFile && (
                       <div>
                           <h3 className="font-semibold text-md">Submitted Report</h3>
-                          <a href={supabase.storage.from('reports').getPublicUrl(reportFile.path).data.publicUrl} className="text-blue-600 dark:text-blue-400 hover:underline" target="_blank" rel="noopener noreferrer">{reportFile.name}</a>
+                           {reportUrl ? (
+                               <a href={reportUrl} className="text-blue-600 dark:text-blue-400 hover:underline" target="_blank" rel="noopener noreferrer">{reportFile.name}</a>
+                           ) : (
+                               <p className="text-gray-500 text-sm">Generating secure link...</p>
+                           )}
                       </div>
                   )}
                 </Card>

@@ -191,6 +191,7 @@ export const CreateSubChallenge: React.FC = () => {
                     <div>
                         <label htmlFor="search-evaluators" className="block text-sm font-medium text-gray-700 dark:text-gray-300">Assign Evaluators</label>
                         <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">Select users to evaluate submissions for this sub-challenge. If a user is not an 'Evaluator', their role will be updated automatically.</p>
+                        <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">If no evaluators are assigned, the challenge managers will be responsible for evaluation.</p>
                         <input
                             id="search-evaluators"
                             type="text"
