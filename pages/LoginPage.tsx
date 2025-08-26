@@ -15,15 +15,19 @@ const LogoIcon = () => (
 );
 
 export const LoginPage: React.FC = () => {
+    const [isSigningUp, setIsSigningUp] = useState(false);
+    const [name, setName] = useState('');
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
+    const [message, setMessage] = useState('');
 
     const handleLogin = async (e: React.FormEvent) => {
         e.preventDefault();
         setLoading(true);
         setError('');
+        setMessage('');
 
         const { error } = await supabase.auth.signInWithPassword({
             email: email,
@@ -36,6 +40,31 @@ export const LoginPage: React.FC = () => {
         setLoading(false);
     };
 
+    const handleSignUp = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setLoading(true);
+        setError('');
+        setMessage('');
+
+        const { error } = await supabase.auth.signUp({
+            email: email,
+            password: password,
+            options: {
+                data: {
+                    name: name,
+                },
+            },
+        });
+
+        if (error) {
+            setError(error.message);
+        } else {
+            setMessage('Account created! Please check your email for a verification link.');
+            setIsSigningUp(false); // Switch back to login view
+        }
+        setLoading(false);
+    };
+
     return (
         <div className="min-h-screen flex items-center justify-center p-4 bg-gray-100 dark:bg-gray-900">
             <Card className="w-full max-w-md">
@@ -43,11 +72,27 @@ export const LoginPage: React.FC = () => {
                     <div className="flex justify-center mb-4"><LogoIcon /></div>
                     <h1 className="text-3xl font-bold text-gray-800 dark:text-white">Tour de Prior Art</h1>
                     <p className="text-gray-600 dark:text-gray-400 mt-2">
-                        Sign in to your account
+                        {isSigningUp ? 'Create your new account' : 'Sign in to your account'}
                     </p>
                 </div>
 
-                <form onSubmit={handleLogin} className="space-y-6">
+                <form onSubmit={isSigningUp ? handleSignUp : handleLogin} className="space-y-6">
+                    {isSigningUp && (
+                        <div>
+                            <label htmlFor="name" className="block text-sm font-medium text-gray-700 dark:text-gray-200">Full Name</label>
+                            <input
+                                id="name"
+                                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 p-2"
+                                type="text"
+                                placeholder="Your Name"
+                                value={name}
+                                onChange={(e) => setName(e.target.value)}
+                                required
+                                disabled={loading}
+                                autoComplete="name"
+                            />
+                        </div>
+                    )}
                     <div>
                         <label htmlFor="email" className="block text-sm font-medium text-gray-700 dark:text-gray-200">Email address</label>
                         <input
@@ -73,18 +118,25 @@ export const LoginPage: React.FC = () => {
                             onChange={(e) => setPassword(e.target.value)}
                             required
                             disabled={loading}
-                            autoComplete="current-password"
+                            autoComplete={isSigningUp ? 'new-password' : 'current-password'}
                         />
+                         {isSigningUp && <p className="text-xs text-gray-500 mt-1">Password should be at least 6 characters.</p>}
                     </div>
                     <div>
                         <Button type="submit" className="w-full" disabled={loading}>
-                            {loading ? 'Signing In...' : 'Sign In'}
+                            {loading ? (isSigningUp ? 'Creating Account...' : 'Signing In...') : (isSigningUp ? 'Create Account' : 'Sign In')}
                         </Button>
                     </div>
                 </form>
 
                 {error && <p className="mt-4 text-center text-sm text-red-600 dark:text-red-400">{error}</p>}
+                {message && <p className="mt-4 text-center text-sm text-green-600 dark:text-green-400">{message}</p>}
 
+                <div className="mt-6 text-center">
+                    <button onClick={() => { setIsSigningUp(!isSigningUp); setError(''); setMessage(''); }} className="text-sm text-blue-600 hover:underline dark:text-blue-400">
+                        {isSigningUp ? 'Already have an account? Sign In' : "Don't have an account? Create one"}
+                    </button>
+                </div>
             </Card>
         </div>
     );

@@ -6,11 +6,6 @@ import { Card } from '../../components/ui/Card';
 import { BackButton } from '../../components/ui/BackButton';
 import { Button } from '../../components/ui/Button';
 
-const UploadIcon = () => (
-    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5 mr-2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-);
-
-
 export const UserManagement: React.FC = () => {
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [loading, setLoading] = useState(true);
@@ -84,31 +79,20 @@ export const UserManagement: React.FC = () => {
         <div>
             <h2 className="text-2xl font-semibold mb-4">Manage Members</h2>
             <Card className="space-y-6">
-                <div>
-                    <h3 className="font-semibold text-lg">Import Users from CSV</h3>
-                    <p className="text-sm text-gray-600 dark:text-gray-400 mt-2">
-                        To add new members or update existing ones, use the CSV import tool. This will populate the master list of users available for challenges.
-                    </p>
-                    <div className="mt-4">
-                        <Link to="/manager/import-users">
-                            <Button><UploadIcon />Import from CSV</Button>
-                        </Link>
-                    </div>
-                </div>
-                 <div className="pt-4 border-t dark:border-gray-600">
-                    <h3 className="font-semibold text-lg">How It Works</h3>
+                <Link to="/manager/import-users">
+                    <Button className="w-full">Import Users from CSV</Button>
+                </Link>
+                 <div>
+                    <h3 className="font-semibold text-lg">User Onboarding Workflow</h3>
                      <ol className="list-decimal list-inside text-sm space-y-3 mt-2 text-gray-600 dark:text-gray-400">
                         <li>
-                            <strong>Prepare CSV:</strong> Create a CSV file with two columns: `name` and `email`.
+                            <strong>Import Profiles:</strong> Use the "Import Users from CSV" button to create a master list of participants in the system. This action only creates their profile, not their login.
                         </li>
                         <li>
-                           <strong>Import:</strong> Use the import tool to upload your file. New users will be added, and existing users will have their names updated if needed.
+                           <strong>Account Activation:</strong> Direct participants to the application link. They must use the "Create Account" form with the **same email address** you imported. This allows them to set their own password and activates their account.
                         </li>
                         <li>
-                           <strong>Assign Managers:</strong> After importing, you can manually assign Manager roles by editing their profiles in the Supabase dashboard.
-                        </li>
-                         <li>
-                           <strong>Invite Managers:</strong> Use your Supabase dashboard to send login invitations *only* to users with the 'Manager' role.
+                           <strong>Role Management:</strong> After a user's profile exists, you can promote them to 'Manager' or 'Evaluator' by editing their role directly in your Supabase dashboard (`profiles` table).
                         </li>
                     </ol>
                 </div>

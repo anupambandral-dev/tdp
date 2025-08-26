@@ -49,20 +49,47 @@ const App: React.FC = () => {
     // If a session exists, fetch the user's profile.
     if (session?.user) {
       const fetchProfile = async () => {
-        // This RPC is an atomic operation that gets the profile and links it on first login.
-        const { data, error } = await supabase.rpc('link_auth_to_profile');
+        // First, try to get the profile the standard way (already linked).
+        const { data: profileData, error: profileError } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('auth_id', session.user.id)
+          .single();
 
-        if (error) {
-          console.error("Error fetching profile, signing out.", error);
-          await supabase.auth.signOut();
-          setCurrentUser(null);
-        } else if (data && data.length > 0) {
-          setCurrentUser(data[0] as Profile);
-        } else {
-          // This is a critical error: user is authenticated but has no profile.
-          console.error("Authenticated user has no profile, signing out.");
-          await supabase.auth.signOut();
-          setCurrentUser(null);
+        // Case 1: Profile found successfully.
+        if (profileData) {
+          setCurrentUser(profileData as Profile);
+          setLoading(false);
+          return;
+        }
+
+        // Case 2: An actual error occurred (not just 'no rows found').
+        if (profileError && profileError.code !== 'PGRST116') {
+            console.error("Error fetching profile:", profileError);
+            await supabase.auth.signOut();
+            setCurrentUser(null);
+            setLoading(false);
+            return;
+        }
+        
+        // Case 3: No profile found (PGRST116), which means this is the first login.
+        // Call the RPC to link the auth user to their profile via email.
+        if (!profileData) {
+            console.log('No profile linked yet. Attempting to link now...');
+            const { data: linkedProfile, error: rpcError } = await supabase.rpc('link_auth_to_profile');
+
+            if (rpcError) {
+                console.error('Error linking profile:', rpcError);
+                await supabase.auth.signOut();
+                setCurrentUser(null);
+            } else if (linkedProfile && linkedProfile.length > 0) {
+                console.log('Profile successfully linked.');
+                setCurrentUser(linkedProfile[0] as Profile);
+            } else {
+                console.error("Could not find a profile to link for this user. The manager may not have imported this user's profile yet. Signing out.");
+                await supabase.auth.signOut();
+                setCurrentUser(null);
+            }
         }
         setLoading(false);
       };
