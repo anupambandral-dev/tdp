@@ -4,7 +4,7 @@ import { Button } from '../components/ui/Button';
 import { supabase } from '../supabaseClient';
 
 const LogoIcon = () => (
-    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-16 w-16 text-blue-500">
+    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-16 w-16 text-blue-500">
         <path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/>
         <path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/>
         <path d="M4 22h16"/>
@@ -15,39 +15,23 @@ const LogoIcon = () => (
 );
 
 export const LoginPage: React.FC = () => {
-    const [isSignUp, setIsSignUp] = useState(false);
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [loading, setLoading] = useState(false);
-    const [message, setMessage] = useState('');
     const [error, setError] = useState('');
 
-    const handleSubmit = async (e: React.FormEvent) => {
+    const handleLogin = async (e: React.FormEvent) => {
         e.preventDefault();
         setLoading(true);
         setError('');
-        setMessage('');
 
-        if (isSignUp) {
-            const { error } = await supabase.auth.signUp({
-                email: email,
-                password: password,
-            });
+        const { error } = await supabase.auth.signInWithPassword({
+            email: email,
+            password: password,
+        });
 
-            if (error) {
-                setError(error.message);
-            } else {
-                setMessage('Account created! Please check your email for a confirmation link.');
-            }
-        } else {
-            const { error } = await supabase.auth.signInWithPassword({
-                email: email,
-                password: password,
-            });
-
-            if (error) {
-                setError(error.message);
-            }
+        if (error) {
+            setError(error.message);
         }
         setLoading(false);
     };
@@ -59,11 +43,11 @@ export const LoginPage: React.FC = () => {
                     <div className="flex justify-center mb-4"><LogoIcon /></div>
                     <h1 className="text-3xl font-bold text-gray-800 dark:text-white">Tour de Prior Art</h1>
                     <p className="text-gray-600 dark:text-gray-400 mt-2">
-                        {isSignUp ? 'Create a new account' : 'Sign in to your account'}
+                        Sign in to your account
                     </p>
                 </div>
 
-                <form onSubmit={handleSubmit} className="space-y-6">
+                <form onSubmit={handleLogin} className="space-y-6">
                     <div>
                         <label htmlFor="email" className="block text-sm font-medium text-gray-700 dark:text-gray-200">Email address</label>
                         <input
@@ -89,24 +73,18 @@ export const LoginPage: React.FC = () => {
                             onChange={(e) => setPassword(e.target.value)}
                             required
                             disabled={loading}
-                            autoComplete={isSignUp ? "new-password" : "current-password"}
+                            autoComplete="current-password"
                         />
                     </div>
                     <div>
                         <Button type="submit" className="w-full" disabled={loading}>
-                            {loading ? (isSignUp ? 'Creating...' : 'Signing In...') : (isSignUp ? 'Create Account' : 'Sign In')}
+                            {loading ? 'Signing In...' : 'Sign In'}
                         </Button>
                     </div>
                 </form>
 
                 {error && <p className="mt-4 text-center text-sm text-red-600 dark:text-red-400">{error}</p>}
-                {message && <p className="mt-4 text-center text-sm text-green-600 dark:text-green-400">{message}</p>}
 
-                <div className="mt-6 text-center">
-                    <button onClick={() => setIsSignUp(!isSignUp)} className="text-sm text-blue-600 dark:text-blue-400 hover:underline">
-                        {isSignUp ? 'Already have an account? Sign In' : "Don't have an account? Create one"}
-                    </button>
-                </div>
             </Card>
         </div>
     );

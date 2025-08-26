@@ -22,6 +22,7 @@ export const CreateSubChallenge: React.FC = () => {
     const [summary, setSummary] = useState('');
     const [claimFocus, setClaimFocus] = useState('');
     const [submissionEndTime, setSubmissionEndTime] = useState('');
+    const [reportEndTime, setReportEndTime] = useState('');
     const [rules, setRules] = useState<EvaluationRules>({
         tierScores: {
             [ResultType.PATENT]: {
@@ -92,7 +93,17 @@ export const CreateSubChallenge: React.FC = () => {
         e.preventDefault();
         
         if (!submissionEndTime || new Date(submissionEndTime) <= new Date()) {
-            alert('Submission end time must be set and must be in the future.');
+            alert('Results submission end time must be set and must be in the future.');
+            return;
+        }
+
+        if (rules.report.enabled && (!reportEndTime || new Date(reportEndTime) <= new Date())) {
+            alert('If reports are enabled, the report end time must be set and must be in the future.');
+            return;
+        }
+
+        if (rules.report.enabled && new Date(reportEndTime) < new Date(submissionEndTime)) {
+            alert('Report end time cannot be before the results submission end time.');
             return;
         }
 
@@ -121,6 +132,7 @@ export const CreateSubChallenge: React.FC = () => {
             summary,
             claim_focus: claimFocus,
             submission_end_time: new Date(submissionEndTime).toISOString(),
+            report_end_time: rules.report.enabled ? new Date(reportEndTime).toISOString() : null,
             evaluation_rules: rules as unknown as Json,
             evaluator_ids: selectedEvaluatorIds,
         };
@@ -164,7 +176,7 @@ export const CreateSubChallenge: React.FC = () => {
                         </div>
                     </div>
                     <div>
-                        <label htmlFor="submissionEndTime">Submission End Time</label>
+                        <label htmlFor="submissionEndTime">Results Submission End Time</label>
                         <input id="submissionEndTime" type="datetime-local" value={submissionEndTime} onChange={e => setSubmissionEndTime(e.target.value)} required className="input" />
                     </div>
                     <div>
@@ -247,10 +259,16 @@ export const CreateSubChallenge: React.FC = () => {
                                         <span>Enable report submission and scoring</span>
                                     </label>
                                      {rules.report.enabled && (
-                                        <div className="mt-2">
-                                            <label htmlFor="maxScore">Report Max Score</label>
-                                            <input id="maxScore" type="number" value={rules.report.maxScore} onChange={e => setRules(prev => ({...prev, report: {...prev.report, maxScore: Number(e.target.value)}}))} className="input w-full" />
-                                        </div>
+                                        <>
+                                            <div className="mt-2">
+                                                <label htmlFor="maxScore">Report Max Score</label>
+                                                <input id="maxScore" type="number" value={rules.report.maxScore} onChange={e => setRules(prev => ({...prev, report: {...prev.report, maxScore: Number(e.target.value)}}))} className="input w-full" />
+                                            </div>
+                                            <div className="mt-4">
+                                                <label htmlFor="reportEndTime">Report Submission End Time</label>
+                                                <input id="reportEndTime" type="datetime-local" value={reportEndTime} onChange={e => setReportEndTime(e.target.value)} required={rules.report.enabled} className="input w-full" />
+                                            </div>
+                                        </>
                                     )}
                                 </div>
                             </div>

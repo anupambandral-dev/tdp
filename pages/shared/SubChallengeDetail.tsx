@@ -5,9 +5,10 @@ import { supabase } from '../../supabaseClient';
 import { Card } from '../../components/ui/Card';
 import { BackButton } from '../../components/ui/BackButton';
 import { Button } from '../../components/ui/Button';
-import { useAuth } from '../../contexts/AuthContext';
 
-interface SubChallengeDetailProps {}
+interface SubChallengeDetailProps {
+    currentUser: Profile;
+}
 
 const getTotalScore = (submission: Submission, subChallenge: SubChallenge) => {
     const evaluation = submission.evaluation as unknown as Evaluation | null;
@@ -39,6 +40,7 @@ const getTotalScore = (submission: Submission, subChallenge: SubChallenge) => {
     return { score: Math.round(totalScore) };
 }
 
+// Manager's view of all submissions
 const ManagerView: React.FC<{ subChallenge: SubChallengeWithSubmissions }> = ({ subChallenge }) => {
     return (
         <div>
@@ -86,12 +88,11 @@ const ManagerView: React.FC<{ subChallenge: SubChallengeWithSubmissions }> = ({ 
 interface TraineeViewProps {
     subChallenge: SubChallengeWithSubmissions;
     overallChallenge: OverallChallenge;
+    currentUser: Profile;
 }
 
-const TraineeView: React.FC<TraineeViewProps> = ({ subChallenge, overallChallenge }) => {
-    const { currentUser } = useAuth();
-    if (!currentUser) return null;
-
+// Trainee's view of their own submission
+const TraineeView: React.FC<TraineeViewProps> = ({ subChallenge, overallChallenge, currentUser }) => {
     const submission = subChallenge.submissions?.find(s => s.trainee_id === currentUser.id);
     
     const isChallengeActive = !overallChallenge.ended_at && new Date(subChallenge.submission_end_time) > new Date();
@@ -122,6 +123,7 @@ const TraineeView: React.FC<TraineeViewProps> = ({ subChallenge, overallChalleng
     const results = submission.results as unknown as SubmittedResult[] | null;
     const reportFile = submission.report_file as { name: string; path: string; } | null;
     const rules = subChallenge.evaluation_rules as unknown as EvaluationRules;
+
 
     return (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
@@ -187,8 +189,7 @@ const TraineeView: React.FC<TraineeViewProps> = ({ subChallenge, overallChalleng
     );
 };
 
-export const SubChallengeDetail: React.FC<SubChallengeDetailProps> = () => {
-    const { currentUser } = useAuth();
+export const SubChallengeDetail: React.FC<SubChallengeDetailProps> = ({ currentUser }) => {
     const { subChallengeId } = useParams<{ subChallengeId: string }>();
     const [subChallenge, setSubChallenge] = useState<SubChallengeWithSubmissions | null>(null);
     const [overallChallenge, setOverallChallenge] = useState<OverallChallenge | null>(null);
@@ -244,7 +245,7 @@ export const SubChallengeDetail: React.FC<SubChallengeDetailProps> = () => {
     }, [subChallengeId]);
 
 
-    if (loading || !currentUser) return <div className="p-8">Loading details...</div>;
+    if (loading) return <div className="p-8">Loading details...</div>;
     if (!subChallenge || !overallChallenge) {
         return <div className="text-center p-8">Challenge not found.</div>;
     }
@@ -259,7 +260,17 @@ export const SubChallengeDetail: React.FC<SubChallengeDetailProps> = () => {
             <Card className="mb-8">
                 <h1 className="text-3xl font-bold">{subChallenge.title}</h1>
                 <p className="text-gray-500 dark:text-gray-400">Part of "{overallChallenge.name}"</p>
-                <div className="mt-4 border-t dark:border-gray-700 pt-4 grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+                <div className="mt-4 border-t dark:border-gray-700 pt-4 grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                    <div>
+                        <p className="font-semibold">Results Deadline</p>
+                        <p>{new Date(subChallenge.submission_end_time).toLocaleString()}</p>
+                    </div>
+                    {subChallenge.report_end_time && (
+                        <div>
+                            <p className="font-semibold">Report Deadline</p>
+                            <p>{new Date(subChallenge.report_end_time).toLocaleString()}</p>
+                        </div>
+                    )}
                     <div>
                         <p className="font-semibold">Patent Number</p>
                         <p>{subChallenge.patent_number}</p>
@@ -288,7 +299,7 @@ export const SubChallengeDetail: React.FC<SubChallengeDetailProps> = () => {
             </Card>
 
             {currentUser.role === Role.MANAGER && <ManagerView subChallenge={subChallenge} />}
-            {currentUser.role === Role.TRAINEE && <TraineeView subChallenge={subChallenge} overallChallenge={overallChallenge} />}
+            {currentUser.role === Role.TRAINEE && <TraineeView subChallenge={subChallenge} overallChallenge={overallChallenge} currentUser={currentUser} />}
         </div>
     );
 };

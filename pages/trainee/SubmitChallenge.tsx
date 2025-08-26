@@ -5,18 +5,18 @@ import { supabase } from '../../supabaseClient';
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { BackButton } from '../../components/ui/BackButton';
-import { SubmittedResult, ResultType, ResultTier, Submission, SubChallenge, OverallChallenge, Json } from '../../types';
+import { SubmittedResult, ResultType, ResultTier, Profile, Submission, SubChallenge, OverallChallenge, Json, EvaluationRules } from '../../types';
 import { TablesInsert, TablesUpdate } from '../../database.types';
-import { useAuth } from '../../contexts/AuthContext';
 
 const TrashIcon = () => (
-    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5 text-gray-500 hover:text-red-500"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2-2h-4"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>
+    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 B24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5 text-gray-500 hover:text-red-500"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2-2h-4"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>
 );
 
-interface SubmitChallengeProps {}
+interface SubmitChallengeProps {
+    currentUser: Profile;
+}
 
-export const SubmitChallenge: React.FC<SubmitChallengeProps> = () => {
-    const { currentUser } = useAuth();
+export const SubmitChallenge: React.FC<SubmitChallengeProps> = ({ currentUser }) => {
     const { challengeId: subChallengeId } = useParams<{ challengeId: string }>();
     const navigate = useNavigate();
 
@@ -34,24 +34,32 @@ export const SubmitChallenge: React.FC<SubmitChallengeProps> = () => {
 
     const [loading, setLoading] = useState(true);
     const [submitting, setSubmitting] = useState(false);
-    const [timeLeft, setTimeLeft] = useState('');
+    const [timeLeft, setTimeLeft] = useState({ results: '', report: '' });
 
     const calculateTimeLeft = useCallback(() => {
-        if (!subChallenge) return 'Calculating...';
-        const difference = +new Date(subChallenge.submission_end_time) - +new Date();
-        let timeLeftString = '';
+        if (!subChallenge) return { results: '', report: '' };
+        
+        const rules = subChallenge.evaluation_rules as unknown as EvaluationRules;
 
-        if (difference > 0) {
-            const days = Math.floor(difference / (1000 * 60 * 60 * 24));
-            const hours = Math.floor((difference / (1000 * 60 * 60)) % 24);
-            const minutes = Math.floor((difference / 1000 / 60) % 60);
-            const seconds = Math.floor((difference / 1000) % 60);
-            timeLeftString = `${days}d ${hours}h ${minutes}m ${seconds}s remaining`;
-        } else {
-            timeLeftString = 'Deadline has passed';
-        }
-        return timeLeftString;
+        const calculate = (endTime: string | null) => {
+            if (!endTime) return 'Not set';
+            const difference = +new Date(endTime) - +new Date();
+            if (difference > 0) {
+                const days = Math.floor(difference / (1000 * 60 * 60 * 24));
+                const hours = Math.floor((difference / (1000 * 60 * 60)) % 24);
+                const minutes = Math.floor((difference / 1000 / 60) % 60);
+                const seconds = Math.floor((difference / 1000) % 60);
+                return `${days}d ${hours}h ${minutes}m ${seconds}s remaining`;
+            }
+            return 'Deadline has passed';
+        };
+        
+        const resultsTimeLeft = calculate(subChallenge.submission_end_time);
+        const reportTimeLeft = rules.report.enabled ? calculate(subChallenge.report_end_time) : 'Not applicable';
+
+        return { results: resultsTimeLeft, report: reportTimeLeft };
     }, [subChallenge]);
+
 
     useEffect(() => {
         const timer = setInterval(() => {
@@ -63,7 +71,7 @@ export const SubmitChallenge: React.FC<SubmitChallengeProps> = () => {
 
     useEffect(() => {
         const fetchData = async () => {
-            if (!subChallengeId || !currentUser) return;
+            if (!subChallengeId) return;
             setLoading(true);
 
             const { data: scData, error: scError } = await supabase
@@ -106,14 +114,14 @@ export const SubmitChallenge: React.FC<SubmitChallengeProps> = () => {
                     setExistingReportName(report.name);
                 }
             }
-            if (submissionError && submissionError.code !== 'PGRST116') { 
+            if (submissionError && submissionError.code !== 'PGRST116') { // Ignore 'single row not found' error
                 console.error("Error fetching existing submission:", submissionError);
             }
 
             setLoading(false);
         };
         fetchData();
-    }, [subChallengeId, currentUser]);
+    }, [subChallengeId, currentUser.id]);
     
     const handleAddResult = () => {
         if (!newResultValue.trim()) return;
@@ -139,8 +147,6 @@ export const SubmitChallenge: React.FC<SubmitChallengeProps> = () => {
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!currentUser) return;
-        
         setSubmitting(true);
 
         let reportFileData: { path: string; name: string } | null = existingSubmission?.report_file as any;
@@ -186,12 +192,19 @@ export const SubmitChallenge: React.FC<SubmitChallengeProps> = () => {
         setSubmitting(false);
     };
 
-    if (loading || !currentUser) return <div className="p-8">Loading submission form...</div>;
+    if (loading) return <div className="p-8">Loading submission form...</div>;
     if (!subChallenge || !overallChallenge) return <div className="p-8 text-center">Challenge not found.</div>;
     
-    const isDeadlinePassed = new Date(subChallenge.submission_end_time) < new Date();
+    const rules = subChallenge.evaluation_rules as unknown as EvaluationRules;
     const isChallengeEnded = !!overallChallenge.ended_at;
-    const isSubmissionDisabled = isDeadlinePassed || isChallengeEnded || submitting;
+
+    const isResultsDeadlinePassed = new Date(subChallenge.submission_end_time) < new Date();
+    const isResultsDisabled = isResultsDeadlinePassed || isChallengeEnded || submitting;
+
+    const isReportDeadlinePassed = !rules.report.enabled || !subChallenge.report_end_time || new Date(subChallenge.report_end_time) < new Date();
+    const isReportDisabled = isReportDeadlinePassed || isChallengeEnded || submitting;
+    
+    const isSubmitButtonDisabled = (isResultsDisabled && isReportDisabled) || submitting;
     
     return (
         <div className="container mx-auto p-4 sm:p-6 lg:p-8 max-w-4xl">
@@ -200,12 +213,26 @@ export const SubmitChallenge: React.FC<SubmitChallengeProps> = () => {
                 <div className="border-b pb-4 mb-6 dark:border-gray-700">
                     <h1 className="text-3xl font-bold">{subChallenge.title}</h1>
                     <p className="text-gray-500 dark:text-gray-400">Submission Form</p>
-                    <div className={`mt-2 font-semibold ${isDeadlinePassed || isChallengeEnded ? 'text-red-500' : 'text-green-600'}`}>
-                        {timeLeft}
+                    <div className="mt-2 space-y-1 text-sm">
+                        <p>
+                            Results Deadline: 
+                            <span className={`font-semibold ml-2 ${timeLeft.results.includes('passed') ? 'text-red-500' : 'text-green-600'}`}>
+                                {timeLeft.results}
+                            </span>
+                        </p>
+                        {rules.report.enabled && (
+                            <p>
+                                Report Deadline: 
+                                <span className={`font-semibold ml-2 ${timeLeft.report.includes('passed') ? 'text-red-500' : 'text-green-600'}`}>
+                                    {timeLeft.report}
+                                </span>
+                            </p>
+                        )}
                     </div>
                 </div>
 
                 <form onSubmit={handleSubmit} className="space-y-8">
+                    {/* Add/Edit Results Section */}
                     <div>
                         <h2 className="text-xl font-semibold mb-4">Prior Art Results</h2>
                         <div className="space-y-4 mb-6">
@@ -215,36 +242,36 @@ export const SubmitChallenge: React.FC<SubmitChallengeProps> = () => {
                                         <p className="font-mono text-sm">{result.value}</p>
                                         <p className="text-xs text-gray-500 dark:text-gray-400">{result.type} - {result.trainee_tier}</p>
                                     </div>
-                                    <button type="button" onClick={() => handleRemoveResult(result.id)} disabled={isSubmissionDisabled}>
+                                    <button type="button" onClick={() => handleRemoveResult(result.id)} disabled={isResultsDisabled}>
                                         <TrashIcon />
                                     </button>
                                 </div>
                             ))}
                         </div>
 
-                        <div className="p-4 border-t dark:border-gray-700">
+                        <div className={`p-4 border-t dark:border-gray-700 ${isResultsDisabled ? 'opacity-50' : ''}`}>
                              <h3 className="font-medium mb-4">Add New Result</h3>
                              <div className="space-y-4">
                                 <div>
                                     <label htmlFor="newResultValue">Result (e.g., Patent Number, URL)</label>
-                                    <input id="newResultValue" type="text" value={newResultValue} onChange={e => setNewResultValue(e.target.value)} placeholder="US-1234567-B2" className="input" disabled={isSubmissionDisabled} />
+                                    <input id="newResultValue" type="text" value={newResultValue} onChange={e => setNewResultValue(e.target.value)} placeholder="US-1234567-B2" className="input" disabled={isResultsDisabled} />
                                 </div>
                                 <div className="grid grid-cols-2 gap-4">
                                     <div>
                                         <label htmlFor="newResultType">Result Type</label>
-                                        <select id="newResultType" value={newResultType} onChange={e => setNewResultType(e.target.value as ResultType)} className="input" disabled={isSubmissionDisabled}>
+                                        <select id="newResultType" value={newResultType} onChange={e => setNewResultType(e.target.value as ResultType)} className="input" disabled={isResultsDisabled}>
                                             {Object.values(ResultType).map(type => <option key={type} value={type}>{type}</option>)}
                                         </select>
                                     </div>
                                     <div>
                                         <label htmlFor="newResultTier">Tier Category</label>
-                                        <select id="newResultTier" value={newResultTier} onChange={e => setNewResultTier(e.target.value as ResultTier)} className="input" disabled={isSubmissionDisabled}>
+                                        <select id="newResultTier" value={newResultTier} onChange={e => setNewResultTier(e.target.value as ResultTier)} className="input" disabled={isResultsDisabled}>
                                             {Object.values(ResultTier).map(tier => <option key={tier} value={tier}>{tier}</option>)}
                                         </select>
                                     </div>
                                 </div>
                                 <div className="text-right">
-                                    <Button type="button" variant="secondary" onClick={handleAddResult} disabled={isSubmissionDisabled || !newResultValue.trim()}>
+                                    <Button type="button" variant="secondary" onClick={handleAddResult} disabled={isResultsDisabled || !newResultValue.trim()}>
                                         + Add Result
                                     </Button>
                                 </div>
@@ -252,34 +279,38 @@ export const SubmitChallenge: React.FC<SubmitChallengeProps> = () => {
                         </div>
                     </div>
 
-                    <div>
-                        <h2 className="text-xl font-semibold mb-4">Search Report</h2>
-                        <div className="p-4 border rounded-lg dark:border-gray-700">
-                            {existingReportName && !reportFile && (
-                                <p className="mb-2 text-sm text-gray-600 dark:text-gray-300">
-                                    Current file: <span className="font-semibold">{existingReportName}</span>
-                                </p>
-                            )}
-                            <label htmlFor="reportFile" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                                {existingReportName ? 'Upload a new file to replace the old one' : 'Upload your report (optional)'}
-                            </label>
-                            <input 
-                                id="reportFile" 
-                                type="file" 
-                                onChange={handleFileChange} 
-                                className="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 dark:file:bg-blue-900/20 dark:file:text-blue-300 dark:hover:file:bg-blue-800/30"
-                                disabled={isSubmissionDisabled}
-                            />
-                             {reportFile && (
-                                <p className="mt-2 text-sm text-green-600 dark:text-green-400">
-                                    New file selected: <span className="font-semibold">{reportFile.name}</span>
-                                </p>
-                            )}
+                    {/* Report Upload Section */}
+                    {rules.report.enabled && (
+                        <div>
+                            <h2 className="text-xl font-semibold mb-4">Search Report</h2>
+                            <div className={`p-4 border rounded-lg dark:border-gray-700 ${isReportDisabled ? 'opacity-50' : ''}`}>
+                                {existingReportName && !reportFile && (
+                                    <p className="mb-2 text-sm text-gray-600 dark:text-gray-300">
+                                        Current file: <span className="font-semibold">{existingReportName}</span>
+                                    </p>
+                                )}
+                                <label htmlFor="reportFile" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                                    {existingReportName ? 'Upload a new file to replace the old one' : 'Upload your report'}
+                                </label>
+                                <input 
+                                    id="reportFile" 
+                                    type="file" 
+                                    onChange={handleFileChange} 
+                                    className="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 dark:file:bg-blue-900/20 dark:file:text-blue-300 dark:hover:file:bg-blue-800/30"
+                                    disabled={isReportDisabled}
+                                />
+                                {reportFile && (
+                                    <p className="mt-2 text-sm text-green-600 dark:text-green-400">
+                                        New file selected: <span className="font-semibold">{reportFile.name}</span>
+                                    </p>
+                                )}
+                            </div>
                         </div>
-                    </div>
+                    )}
 
+                    {/* Final Submit Button */}
                     <div className="pt-6 border-t dark:border-gray-700 flex justify-end">
-                        <Button type="submit" disabled={isSubmissionDisabled}>
+                        <Button type="submit" disabled={isSubmitButtonDisabled}>
                             {submitting ? 'Submitting...' : (existingSubmission ? 'Update Submission' : 'Submit')}
                         </Button>
                     </div>

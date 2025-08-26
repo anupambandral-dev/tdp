@@ -1,10 +1,15 @@
+
+
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { OverallChallenge } from '../../types';
+import { Profile, OverallChallenge } from '../../types';
 import { supabase } from '../../supabaseClient';
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
-import { useAuth } from '../../contexts/AuthContext';
+
+interface ManagerDashboardProps {
+  currentUser: Profile;
+}
 
 const PlusIcon = () => (
     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5 mr-2"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
@@ -30,8 +35,7 @@ interface ChallengeWithSubChallengeCount extends OverallChallenge {
 }
 
 
-export const ManagerDashboard: React.FC = () => {
-  const { currentUser } = useAuth();
+export const ManagerDashboard: React.FC<ManagerDashboardProps> = ({ currentUser }) => {
   const [challenges, setChallenges] = useState<ChallengeWithCounts[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -63,23 +67,25 @@ export const ManagerDashboard: React.FC = () => {
     
     initialFetch();
 
+    // Set up real-time subscription
     const channel = supabase
       .channel('manager-dashboard-challenges')
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'overall_challenges' },
         (payload) => {
+          console.log('Change received on overall_challenges!', payload);
+          // Re-fetch without setting loading state to avoid UI flicker
           fetchChallenges(); 
         }
       )
       .subscribe();
 
+    // Cleanup subscription on component unmount
     return () => {
       supabase.removeChannel(channel);
     };
-  }, []);
-  
-  if (!currentUser) return null; // Should be handled by ProtectedRoute, but good practice.
+  }, [currentUser.id]);
   
   return (
     <div className="container mx-auto p-4 sm:p-6 lg:p-8">

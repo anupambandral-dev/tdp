@@ -1,26 +1,26 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { ResultTier, IncorrectMarking, Evaluation, EvaluationRules, SubmittedResult, Submission, SubChallengeWithOverallChallenge, ResultType } from '../../types';
+import { Profile, ResultTier, IncorrectMarking, Evaluation, EvaluationRules, SubmittedResult, Submission, SubChallengeWithOverallChallenge, ResultType } from '../../types';
 import { supabase } from '../../supabaseClient';
 import { Card } from '../../components/ui/Card';
-import { useAuth } from '../../contexts/AuthContext';
+import { Button } from '../../components/ui/Button';
 
-interface TraineeDashboardProps {}
+interface TraineeDashboardProps {
+  currentUser: Profile;
+}
 
 const ClockIcon = () => (
     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4 mr-1"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
 );
 
-export const TraineeDashboard: React.FC<TraineeDashboardProps> = () => {
-  const { currentUser } = useAuth();
+export const TraineeDashboard: React.FC<TraineeDashboardProps> = ({ currentUser }) => {
   const [traineeChallenges, setTraineeChallenges] = useState<SubChallengeWithOverallChallenge[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!currentUser) return;
-
     const fetchChallenges = async () => {
+      // Fetch overall challenges the trainee is part of
       const { data: overallChallenges, error: ocError } = await supabase
         .from('overall_challenges')
         .select('id')
@@ -39,6 +39,7 @@ export const TraineeDashboard: React.FC<TraineeDashboardProps> = () => {
         return;
       }
 
+      // Fetch sub-challenges belonging to those overall challenges
       const { data, error: scError } = await supabase
         .from('sub_challenges')
         .select('*, submissions(*, profiles(id, name, email, role)), overall_challenges(id, ended_at)')
@@ -85,18 +86,23 @@ export const TraineeDashboard: React.FC<TraineeDashboardProps> = () => {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [currentUser]);
-
-  if (!currentUser) return null;
+  }, [currentUser.id]);
 
   const getStatus = (challenge: SubChallengeWithOverallChallenge) => {
-    const endTime = new Date(challenge.submission_end_time);
     const submission = challenge.submissions?.find(s => s.trainee_id === currentUser.id);
+    const rules = challenge.evaluation_rules as unknown as EvaluationRules;
+
+    const resultsEndTime = new Date(challenge.submission_end_time);
+    const reportEndTime = (rules.report.enabled && challenge.report_end_time) ? new Date(challenge.report_end_time) : null;
+    const now = new Date();
     
     if (challenge.overall_challenges?.ended_at) return 'Ended';
     if (submission) return 'Submitted';
-    if (endTime < new Date()) return 'Ended';
-    return 'Active';
+
+    if (resultsEndTime > now) return 'Active';
+    if (reportEndTime && reportEndTime > now) return 'Report Due';
+
+    return 'Ended';
   };
   
   const getScore = (challenge: SubChallengeWithOverallChallenge) => {
@@ -132,6 +138,21 @@ export const TraineeDashboard: React.FC<TraineeDashboardProps> = () => {
     return `${Math.round(totalScore)}`;
   }
 
+  const getDeadlineDisplay = (challenge: SubChallengeWithOverallChallenge) => {
+    const resultsEndTime = new Date(challenge.submission_end_time);
+    const rules = challenge.evaluation_rules as unknown as EvaluationRules;
+    const reportEndTime = (rules.report.enabled && challenge.report_end_time) ? new Date(challenge.report_end_time) : null;
+    const now = new Date();
+
+    if (resultsEndTime > now) {
+        return `Results Due: ${resultsEndTime.toLocaleString()}`;
+    }
+    if (reportEndTime && reportEndTime > now) {
+        return `Report Due: ${reportEndTime.toLocaleString()}`;
+    }
+    return `Ended: ${resultsEndTime.toLocaleString()}`;
+  };
+
   return (
     <div className="container mx-auto p-4 sm:p-6 lg:p-8">
       <h1 className="text-3xl font-bold mb-6">Trainee Dashboard</h1>
@@ -144,7 +165,7 @@ export const TraineeDashboard: React.FC<TraineeDashboardProps> = () => {
           {traineeChallenges.map((challenge) => {
             const status = getStatus(challenge);
             const score = getScore(challenge);
-            const endTime = challenge.submission_end_time;
+            const deadlineDisplay = getDeadlineDisplay(challenge);
             return (
                <Link to={`/trainee/sub-challenge/${challenge.id}`} key={challenge.id} className="block">
                 <Card className="h-full flex flex-col hover:shadow-xl transition-shadow duration-200">
@@ -154,18 +175,17 @@ export const TraineeDashboard: React.FC<TraineeDashboardProps> = () => {
                         <span className={`px-2 py-1 text-xs font-semibold rounded-full ${
                             status === 'Active' ? 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200' :
                             status === 'Submitted' ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' :
+                            status === 'Report Due' ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200' :
                             'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200'
                         }`}>
                             {status}
                         </span>
                     </div>
                     <p className="text-gray-600 dark:text-gray-400 mt-2 text-sm">Patent: {challenge.patent_number}</p>
-                    {endTime && (
                     <div className="mt-4 text-sm text-gray-500 dark:text-gray-300 flex items-center">
                         <ClockIcon />
-                        Ends: {new Date(endTime).toLocaleString()}
+                        {deadlineDisplay}
                     </div>
-                    )}
                     <div className="mt-2 text-sm text-gray-500 dark:text-gray-300 flex items-center">
                       Score: <span className="font-bold ml-2">{score}</span>
                     </div>

@@ -1,22 +1,20 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { SubChallengeForEvaluator } from '../../types';
+import { Profile, SubChallengeForEvaluator } from '../../types';
 import { supabase } from '../../supabaseClient';
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
-import { useAuth } from '../../contexts/AuthContext';
 
-interface EvaluatorDashboardProps {}
+interface EvaluatorDashboardProps {
+  currentUser: Profile;
+}
 
-export const EvaluatorDashboard: React.FC<EvaluatorDashboardProps> = () => {
-  const { currentUser } = useAuth();
+export const EvaluatorDashboard: React.FC<EvaluatorDashboardProps> = ({ currentUser }) => {
   const [assignedChallenges, setAssignedChallenges] = useState<SubChallengeForEvaluator[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!currentUser) return;
-    
     const fetchChallenges = async () => {
         const { data, error } = await supabase
             .from('sub_challenges')
@@ -37,26 +35,33 @@ export const EvaluatorDashboard: React.FC<EvaluatorDashboardProps> = () => {
     }
     initialFetch();
 
+    // Set up real-time subscription
+    // Listen for new sub-challenges being assigned, or submissions being added/updated.
     const channel = supabase
       .channel('evaluator-dashboard-challenges')
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'sub_challenges' },
-        () => fetchChallenges()
+        (payload) => {
+          console.log('Change received on sub_challenges!', payload);
+          fetchChallenges();
+        }
       )
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'submissions' },
-        () => fetchChallenges()
+        (payload) => {
+          console.log('Change received on submissions!', payload);
+          fetchChallenges();
+        }
       )
       .subscribe();
 
+    // Cleanup subscription on component unmount
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [currentUser]);
-
-  if (!currentUser) return null;
+  }, [currentUser.id]);
 
   const getEvaluationStats = (challenge: SubChallengeForEvaluator) => {
     const totalSubmissions = challenge.submissions?.length || 0;

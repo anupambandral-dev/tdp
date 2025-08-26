@@ -80,6 +80,7 @@ export type Database = {
           id: string
           overall_challenge_id: string
           patent_number: string | null
+          report_end_time: string | null
           submission_end_time: string
           summary: string | null
           title: string
@@ -92,6 +93,7 @@ export type Database = {
           id?: string
           overall_challenge_id: string
           patent_number?: string | null
+          report_end_time?: string | null
           submission_end_time: string
           summary?: string | null
           title: string
@@ -104,6 +106,7 @@ export type Database = {
           id?: string
           overall_challenge_id?: string
           patent_number?: string | null
+          report_end_time?: string | null
           submission_end_time?: string
           summary?: string | null
           title?: string
