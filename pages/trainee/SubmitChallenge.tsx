@@ -9,7 +9,7 @@ import { SubmittedResult, ResultType, ResultTier, Profile, Submission, SubChalle
 import { TablesInsert, TablesUpdate } from '../../database.types';
 
 const TrashIcon = () => (
-    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 B24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5 text-gray-500 hover:text-red-500"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2-2h-4"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>
+    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5 text-gray-500 hover:text-red-500"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2-2h-4"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>
 );
 
 interface SubmitChallengeProps {
@@ -35,6 +35,8 @@ export const SubmitChallenge: React.FC<SubmitChallengeProps> = ({ currentUser })
     const [loading, setLoading] = useState(true);
     const [submitting, setSubmitting] = useState(false);
     const [timeLeft, setTimeLeft] = useState({ results: '', report: '' });
+    const [successMessage, setSuccessMessage] = useState<string | null>(null);
+    const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
     const calculateTimeLeft = useCallback(() => {
         if (!subChallenge) return { results: '', report: '' };
@@ -68,6 +70,35 @@ export const SubmitChallenge: React.FC<SubmitChallengeProps> = ({ currentUser })
         return () => clearInterval(timer);
     }, [calculateTimeLeft]);
 
+    const fetchSubmission = useCallback(async () => {
+        if (!subChallengeId || !currentUser.id) return;
+        const { data: submissionData, error: submissionError } = await supabase
+            .from('submissions')
+            .select('*')
+            .eq('sub_challenge_id', subChallengeId)
+            .eq('trainee_id', currentUser.id)
+            .single();
+
+        if (submissionData) {
+            setExistingSubmission(submissionData);
+            setResults((submissionData.results as unknown as SubmittedResult[]) || []);
+            const report = submissionData.report_file as { name: string; path: string } | null;
+            if (report) {
+                setExistingReportName(report.name);
+            } else {
+                setExistingReportName(null);
+            }
+        } else {
+            setExistingSubmission(null);
+            setResults([]);
+            setExistingReportName(null);
+        }
+        if (submissionError && submissionError.code !== 'PGRST116') { // Ignore 'single row not found' error
+            console.error("Error fetching existing submission:", submissionError);
+            setErrorMessage("Could not fetch latest submission data.");
+        }
+    }, [subChallengeId, currentUser.id]);
+
 
     useEffect(() => {
         const fetchData = async () => {
@@ -99,29 +130,11 @@ export const SubmitChallenge: React.FC<SubmitChallengeProps> = ({ currentUser })
                 setOverallChallenge(ocData);
             }
 
-            const { data: submissionData, error: submissionError } = await supabase
-                .from('submissions')
-                .select('*')
-                .eq('sub_challenge_id', subChallengeId)
-                .eq('trainee_id', currentUser.id)
-                .single();
-            
-            if (submissionData) {
-                setExistingSubmission(submissionData);
-                setResults((submissionData.results as unknown as SubmittedResult[]) || []);
-                const report = submissionData.report_file as { name: string, path: string } | null;
-                if (report) {
-                    setExistingReportName(report.name);
-                }
-            }
-            if (submissionError && submissionError.code !== 'PGRST116') { // Ignore 'single row not found' error
-                console.error("Error fetching existing submission:", submissionError);
-            }
-
+            await fetchSubmission();
             setLoading(false);
         };
         fetchData();
-    }, [subChallengeId, currentUser.id]);
+    }, [subChallengeId, currentUser.id, fetchSubmission]);
     
     const handleAddResult = () => {
         if (!newResultValue.trim()) return;
@@ -148,6 +161,8 @@ export const SubmitChallenge: React.FC<SubmitChallengeProps> = ({ currentUser })
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setSubmitting(true);
+        setSuccessMessage(null);
+        setErrorMessage(null);
 
         let reportFileData: { path: string; name: string } | null = existingSubmission?.report_file as any;
 
@@ -163,7 +178,7 @@ export const SubmitChallenge: React.FC<SubmitChallengeProps> = ({ currentUser })
                 .upload(filePath, reportFile);
 
             if (uploadError) {
-                alert(`Error uploading report: ${uploadError.message}`);
+                setErrorMessage(`Error uploading report: ${uploadError.message}`);
                 setSubmitting(false);
                 return;
             }
@@ -184,10 +199,12 @@ export const SubmitChallenge: React.FC<SubmitChallengeProps> = ({ currentUser })
             .upsert(submissionData, { onConflict: 'trainee_id, sub_challenge_id' });
 
         if (upsertError) {
-            alert(`Error saving submission: ${upsertError.message}`);
+            setErrorMessage(`Error saving submission: ${upsertError.message}`);
         } else {
-            alert('Submission saved successfully!');
-            navigate(`/trainee/sub-challenge/${subChallengeId}`);
+            setSuccessMessage('Submission saved successfully!');
+            setReportFile(null); // Clear the file input state
+            await fetchSubmission(); // Refresh component state with latest data
+            setTimeout(() => setSuccessMessage(null), 5000);
         }
         setSubmitting(false);
     };
@@ -231,6 +248,18 @@ export const SubmitChallenge: React.FC<SubmitChallengeProps> = ({ currentUser })
                     </div>
                 </div>
 
+                {successMessage && (
+                    <div className="mb-4 p-3 rounded-md bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-200 text-sm" role="alert">
+                        {successMessage}
+                    </div>
+                )}
+                {errorMessage && (
+                    <div className="mb-4 p-3 rounded-md bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-200 text-sm" role="alert">
+                        {errorMessage}
+                    </div>
+                )}
+
+
                 <form onSubmit={handleSubmit} className="space-y-8">
                     {/* Add/Edit Results Section */}
                     <div>
@@ -242,7 +271,7 @@ export const SubmitChallenge: React.FC<SubmitChallengeProps> = ({ currentUser })
                                         <p className="font-mono text-sm">{result.value}</p>
                                         <p className="text-xs text-gray-500 dark:text-gray-400">{result.type} - {result.trainee_tier}</p>
                                     </div>
-                                    <button type="button" onClick={() => handleRemoveResult(result.id)} disabled={isResultsDisabled}>
+                                    <button type="button" onClick={() => handleRemoveResult(result.id)} disabled={isResultsDisabled} aria-label={`Remove result ${result.value}`}>
                                         <TrashIcon />
                                     </button>
                                 </div>
