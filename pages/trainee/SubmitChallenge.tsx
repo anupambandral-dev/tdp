@@ -167,12 +167,21 @@ export const SubmitChallenge: React.FC<SubmitChallengeProps> = ({ currentUser })
         let reportFileData: { path: string; name: string } | null = existingSubmission?.report_file as any;
 
         if (reportFile) {
-            if (existingSubmission?.report_file) {
-                 const oldPath = (existingSubmission.report_file as {path: string}).path;
-                 await supabase.storage.from('reports').remove([oldPath]);
+            if (!currentUser.auth_id) {
+                setErrorMessage("Authentication error: User ID could not be found. Please try logging out and in again.");
+                setSubmitting(false);
+                return;
             }
 
-            const filePath = `${currentUser.id}/${subChallengeId}/${uuidv4()}-${reportFile.name}`;
+            if (existingSubmission?.report_file) {
+                 const oldPath = (existingSubmission.report_file as {path: string}).path;
+                 const { error: removeError } = await supabase.storage.from('reports').remove([oldPath]);
+                 if (removeError) {
+                    console.warn(`Could not remove the old report file at path: ${oldPath}. It may be orphaned. Error: ${removeError.message}`);
+                 }
+            }
+
+            const filePath = `${currentUser.auth_id}/${subChallengeId}/${uuidv4()}-${reportFile.name}`;
             const { error: uploadError } = await supabase.storage
                 .from('reports')
                 .upload(filePath, reportFile);
