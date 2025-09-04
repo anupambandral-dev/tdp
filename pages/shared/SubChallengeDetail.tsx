@@ -154,33 +154,45 @@ const TraineeView: React.FC<TraineeViewProps> = ({ subChallenge, overallChalleng
 
     return (
         <div className="space-y-6">
-            {isChallengeActive && (
-                <div className="flex justify-end">
-                    <Link to={`/trainee/challenge/${subChallenge.id}/submit`}>
-                        <Button>{canSubmitMore ? 'Add / Edit Results' : 'Edit Submission'}</Button>
-                    </Link>
-                </div>
-            )}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                 <div>
-                    <h2 className="text-2xl font-semibold mb-4">Your Submission</h2>
-                    <Card className="space-y-4">
-                      {results?.map(result => (
-                        <div key={result.id} className="p-2 border-b dark:border-gray-700">
-                          <p className="font-mono text-sm">{result.value}</p>
-                          <p className="text-xs text-gray-500">{result.type} - Submitted as {result.trainee_tier}</p>
+                     <div className="flex justify-between items-center mb-4 flex-wrap gap-2">
+                        <h2 className="text-2xl font-semibold">Your Submission</h2>
+                        {isChallengeActive && (
+                            <Link to={`/trainee/challenge/${subChallenge.id}/submit`}>
+                                <Button>{canSubmitMore ? 'Add / Edit Results' : 'Edit Submission'}</Button>
+                            </Link>
+                        )}
+                    </div>
+                    <Card>
+                        <div className="space-y-4">
+                            {(!results || results.length === 0) && !reportFile && (
+                                <p className="text-center text-gray-500 py-4">No results or report submitted yet.</p>
+                            )}
+                            {results && results.length > 0 && (
+                                <div>
+                                    <h3 className="text-md font-semibold text-gray-700 dark:text-gray-300">Submitted Results ({results.length}/{MAX_RESULTS})</h3>
+                                    <div className="mt-2 space-y-2">
+                                        {results.map(result => (
+                                        <div key={result.id} className="p-2 border-b dark:border-gray-700 last:border-b-0">
+                                            <p className="font-mono text-sm">{result.value}</p>
+                                            <p className="text-xs text-gray-500">{result.type} - Submitted as {result.trainee_tier}</p>
+                                        </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+                            {reportFile && (
+                                <div className="pt-4 border-t dark:border-gray-700">
+                                    <h3 className="font-semibold text-md text-gray-700 dark:text-gray-300">Submitted Report</h3>
+                                    {reportUrl ? (
+                                        <a href={reportUrl} className="text-blue-600 dark:text-blue-400 hover:underline" target="_blank" rel="noopener noreferrer">{reportFile.name}</a>
+                                    ) : (
+                                        <p className="text-gray-500 text-sm">Generating secure link...</p>
+                                    )}
+                                </div>
+                            )}
                         </div>
-                      ))}
-                      {reportFile && (
-                          <div>
-                              <h3 className="font-semibold text-md">Submitted Report</h3>
-                               {reportUrl ? (
-                                   <a href={reportUrl} className="text-blue-600 dark:text-blue-400 hover:underline" target="_blank" rel="noopener noreferrer">{reportFile.name}</a>
-                               ) : (
-                                   <p className="text-gray-500 text-sm">Generating secure link...</p>
-                               )}
-                          </div>
-                      )}
                     </Card>
                 </div>
                 <div>
@@ -217,7 +229,7 @@ const TraineeView: React.FC<TraineeViewProps> = ({ subChallenge, overallChalleng
                                 </div>
                              )}
                              <h3 className="text-lg font-semibold mb-2">Evaluator Feedback</h3>
-                             <p className="text-gray-600 dark:text-gray-300 bg-gray-100 dark:bg-gray-900 p-3 rounded-md">{evaluation.feedback}</p>
+                             <p className="text-gray-600 dark:text-gray-300 bg-gray-100 dark:bg-gray-900 p-3 rounded-md">{evaluation.feedback || "No feedback provided."}</p>
                         </Card>
                     ) : (
                         <Card className="text-center py-10">
