@@ -78,7 +78,18 @@ export const EvaluateSubmission: React.FC<EvaluateSubmissionProps> = ({ currentU
             const currentEval = selectedSubmission.evaluation as unknown as Evaluation | null;
             const currentResults = selectedSubmission.results as unknown as SubmittedResult[] | null;
 
-            setResultEvals(currentEval?.result_evaluations || currentResults?.map(r => ({ result_id: r.id, evaluator_tier: r.trainee_tier as unknown as EvaluationResultTier })) || []);
+            // FIX: Ensure resultEvals state is always synchronized with all submitted results,
+            // merging existing evaluation data where available. This fixes the bug where
+            // newly added results were not evaluatable if a submission was already partially evaluated.
+            const initialEvals = currentResults?.map(result => {
+                const existingEval = currentEval?.result_evaluations.find(e => e.result_id === result.id);
+                return {
+                    result_id: result.id,
+                    evaluator_tier: existingEval?.evaluator_tier || (result.trainee_tier as unknown as EvaluationResultTier)
+                };
+            }) || [];
+
+            setResultEvals(initialEvals);
             setReportScore(currentEval?.report_score ?? '');
             setFeedback(currentEval?.feedback || '');
             generateUrl();
