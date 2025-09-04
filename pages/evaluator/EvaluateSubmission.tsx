@@ -4,7 +4,7 @@ import { supabase } from '../../supabaseClient';
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { BackButton } from '../../components/ui/BackButton';
-import { Profile, ResultEvaluation, SubmittedResult, SubChallenge, Submission, Evaluation, EvaluationRules, SubmissionWithProfile, SubChallengeWithSubmissions, Json, EvaluationResultTier } from '../../types';
+import { Profile, ResultEvaluation, SubmittedResult, SubChallenge, Submission, Evaluation, EvaluationRules, SubmissionWithProfile, SubChallengeWithSubmissions, Json, EvaluationResultTier, OverallChallenge } from '../../types';
 
 const DuplicateCheckView: React.FC<{ submissions: SubmissionWithProfile[] }> = ({ submissions }) => {
     const duplicateResults = useMemo(() => {
@@ -69,10 +69,14 @@ interface EvaluateSubmissionProps {
     currentUser: Profile;
 }
 
+type SubChallengeForEvaluation = SubChallengeWithSubmissions & {
+    overall_challenges: Pick<OverallChallenge, 'ended_at'> | null;
+};
+
 export const EvaluateSubmission: React.FC<EvaluateSubmissionProps> = ({ currentUser }) => {
     const { challengeId } = useParams<{ challengeId: string }>();
     const navigate = useNavigate();
-    const [challenge, setChallenge] = useState<SubChallengeWithSubmissions | null>(null);
+    const [challenge, setChallenge] = useState<SubChallengeForEvaluation | null>(null);
     const [loading, setLoading] = useState(true);
 
     const [selectedTraineeId, setSelectedTraineeId] = useState<string | null>(null);
@@ -104,9 +108,9 @@ export const EvaluateSubmission: React.FC<EvaluateSubmissionProps> = ({ currentU
         setLoading(true);
         const { data, error } = await supabase
             .from('sub_challenges')
-            .select('*, submissions(*, profiles(id, name, avatar_url, email, role))')
+            .select('*, submissions(*, profiles(id, name, avatar_url, email, role)), overall_challenges(ended_at)')
             .eq('id', challengeId)
-            .single<SubChallengeWithSubmissions>();
+            .single<SubChallengeForEvaluation>();
         
         if (error) {
             console.error(error);
@@ -285,6 +289,7 @@ export const EvaluateSubmission: React.FC<EvaluateSubmissionProps> = ({ currentU
     // FIX: Cast to unknown first to safely convert from Json type to SubmittedResult[]
     const submittedResults = (selectedSubmission?.results as unknown as SubmittedResult[]) || [];
     const rules = challenge.evaluation_rules as unknown as EvaluationRules;
+    const isChallengeEnded = !!challenge.overall_challenges?.ended_at;
 
     return (
         <div className="container mx-auto p-4 sm:p-6 lg:p-8">
@@ -332,6 +337,12 @@ export const EvaluateSubmission: React.FC<EvaluateSubmissionProps> = ({ currentU
                                         <h2 className="text-2xl font-semibold">Evaluating: {selectedSubmission.profiles?.name}</h2>
                                         <p className="text-sm text-gray-500 dark:text-gray-400">Submitted at: {new Date(selectedSubmission.submitted_at).toLocaleString()}</p>
                                     </div>
+
+                                    {isChallengeEnded && (
+                                        <div className="mb-4 p-3 rounded-md bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-200 text-sm" role="status">
+                                            This challenge has ended. Evaluations are now read-only and cannot be modified.
+                                        </div>
+                                    )}
                                     
                                     {error && <div className="mb-4 p-3 rounded-md bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-200 text-sm" role="alert">{error}</div>}
                                     {success && <div className="mb-4 p-3 rounded-md bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-200 text-sm" role="alert">{success}</div>}
@@ -356,12 +367,13 @@ export const EvaluateSubmission: React.FC<EvaluateSubmissionProps> = ({ currentU
                                                                 setResultEvals(prev => prev.map(re => re.result_id === result.id ? { ...re, evaluator_tier: newTier } : re));
                                                             }}
                                                             className="input w-40"
+                                                            disabled={isChallengeEnded}
                                                         >
                                                             {Object.values(EvaluationResultTier).map(tier => <option key={tier} value={tier}>{tier}</option>)}
                                                         </select>
                                                         <Button 
                                                             onClick={() => handleSaveResult(result.id)} 
-                                                            disabled={!isResultDirty(result.id) || isSaving[result.id]}
+                                                            disabled={!isResultDirty(result.id) || isSaving[result.id] || isChallengeEnded}
                                                             className="w-28"
                                                         >
                                                             {isSaving[result.id] ? 'Saving...' : savedInSession[result.id] ? '✓ Saved' : 'Save'}
@@ -376,7 +388,7 @@ export const EvaluateSubmission: React.FC<EvaluateSubmissionProps> = ({ currentU
                                                 <div className="flex flex-col sm:flex-row sm:items-start sm:space-x-4">
                                                     <div className="flex-grow">
                                                         <label htmlFor="reportScore">Report Score (Max: {rules.report.maxScore})</label>
-                                                        <input id="reportScore" type="number" max={rules.report.maxScore} min="0" value={reportScore} onChange={e => setReportScore(e.target.value)} className="input" />
+                                                        <input id="reportScore" type="number" max={rules.report.maxScore} min="0" value={reportScore} onChange={e => setReportScore(e.target.value)} className="input" disabled={isChallengeEnded} />
                                                         {reportUrl && (
                                                             <a href={reportUrl} target="_blank" rel="noopener noreferrer" className="text-sm text-blue-600 dark:text-blue-400 hover:underline mt-1 block">
                                                                 View Submitted Report
@@ -385,12 +397,12 @@ export const EvaluateSubmission: React.FC<EvaluateSubmissionProps> = ({ currentU
                                                     </div>
                                                     <div className="flex-grow-[2] mt-4 sm:mt-0">
                                                         <label htmlFor="feedback">Overall Feedback</label>
-                                                        <textarea id="feedback" value={feedback} onChange={e => setFeedback(e.target.value)} rows={4} className="input" />
+                                                        <textarea id="feedback" value={feedback} onChange={e => setFeedback(e.target.value)} rows={4} className="input" disabled={isChallengeEnded} />
                                                     </div>
                                                     <div className="self-end mt-4 sm:mt-0">
                                                         <Button 
                                                             onClick={handleSaveReport}
-                                                            disabled={!isReportDirty() || isSaving['report']}
+                                                            disabled={!isReportDirty() || isSaving['report'] || isChallengeEnded}
                                                             className="w-full sm:w-auto"
                                                         >
                                                             {isSaving['report'] ? 'Saving...' : savedInSession['report'] ? '✓ Saved' : 'Save Report & Feedback'}
@@ -402,7 +414,7 @@ export const EvaluateSubmission: React.FC<EvaluateSubmissionProps> = ({ currentU
                                     </div>
 
                                     <div className="pt-6 mt-6 border-t dark:border-gray-700 flex justify-end">
-                                        <Button onClick={handleSubmitAllAndNext} disabled={isSaving['final']}>
+                                        <Button onClick={handleSubmitAllAndNext} disabled={isSaving['final'] || isChallengeEnded}>
                                             {isSaving['final'] ? 'Submitting...' : 'Submit Complete Evaluation & Next'}
                                         </Button>
                                     </div>
