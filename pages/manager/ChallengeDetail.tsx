@@ -117,7 +117,8 @@ export const ChallengeDetail: React.FC<ChallengeDetailProps> = ({ currentUser })
                 results.forEach((result) => {
                     const resultEval = evaluation.result_evaluations.find((re) => re.result_id === result.id);
                     if (resultEval) {
-                        if (result.trainee_tier === resultEval.evaluator_tier) {
+                        // FIX: Cast for enum comparison
+                        if (result.trainee_tier === (resultEval.evaluator_tier as any)) {
                             const resultTypeScores = rules.tierScores[result.type as ResultType];
                             if (resultTypeScores) {
                                 totalScore += resultTypeScores[result.trainee_tier as ResultTier] || 0;

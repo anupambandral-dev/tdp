@@ -16,7 +16,8 @@ const getTotalScore = (submission: Submission, subChallenge: SubChallenge) => {
     results.forEach(result => {
         const resultEvaluation = evaluation.result_evaluations.find(re => re.result_id === result.id);
         if (resultEvaluation) {
-            if (result.trainee_tier === resultEvaluation.evaluator_tier) {
+            // FIX: Cast for enum comparison
+            if (result.trainee_tier === (resultEvaluation.evaluator_tier as any)) {
                 const resultTypeScores = rules.tierScores[result.type as ResultType];
                 if (resultTypeScores) {
                     totalScore += resultTypeScores[result.trainee_tier as ResultTier] || 0;
@@ -184,7 +185,8 @@ export const TraineePerforma: React.FC = () => {
                                                     {evaluation.result_evaluations.map(re => {
                                                         const result = results?.find(r => r.id === re.result_id);
                                                         if (!result) return null;
-                                                        const isCorrect = result.trainee_tier === re.evaluator_tier;
+                                                        // FIX: Cast for enum comparison
+                                                        const isCorrect = result.trainee_tier === (re.evaluator_tier as any);
                                                         return (
                                                         <li key={re.result_id} className="flex justify-between p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700">
                                                             <span className="font-mono text-xs truncate w-3/5">{result.value}</span>

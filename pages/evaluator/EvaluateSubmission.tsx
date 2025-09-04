@@ -4,7 +4,7 @@ import { supabase } from '../../supabaseClient';
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { BackButton } from '../../components/ui/BackButton';
-import { Profile, ResultEvaluation, ResultTier, SubmittedResult, IncorrectMarking, SubChallenge, Submission, Evaluation, EvaluationRules, SubmissionWithProfile, SubChallengeWithSubmissions, Json, ResultType } from '../../types';
+import { Profile, ResultEvaluation, ResultTier, SubmittedResult, IncorrectMarking, SubChallenge, Submission, Evaluation, EvaluationRules, SubmissionWithProfile, SubChallengeWithSubmissions, Json, ResultType, EvaluationResultTier } from '../../types';
 
 interface EvaluateSubmissionProps {
     currentUser: Profile;
@@ -78,7 +78,7 @@ export const EvaluateSubmission: React.FC<EvaluateSubmissionProps> = ({ currentU
             const currentEval = selectedSubmission.evaluation as unknown as Evaluation | null;
             const currentResults = selectedSubmission.results as unknown as SubmittedResult[] | null;
 
-            setResultEvals(currentEval?.result_evaluations || currentResults?.map(r => ({ result_id: r.id, evaluator_tier: r.trainee_tier })) || []);
+            setResultEvals(currentEval?.result_evaluations || currentResults?.map(r => ({ result_id: r.id, evaluator_tier: r.trainee_tier as unknown as EvaluationResultTier })) || []);
             setReportScore(currentEval?.report_score ?? '');
             setFeedback(currentEval?.feedback || '');
             generateUrl();
@@ -90,21 +90,32 @@ export const EvaluateSubmission: React.FC<EvaluateSubmissionProps> = ({ currentU
 
     const rules = challenge.evaluation_rules as unknown as EvaluationRules;
 
-    const handleEvalChange = (resultId: string, evaluatorTier: ResultTier) => {
+    const handleEvalChange = (resultId: string, evaluatorTier: EvaluationResultTier) => {
         setResultEvals(prev => prev.map(e => e.result_id === resultId ? {...e, evaluator_tier: evaluatorTier} : e));
     };
     
     const getScoreForResult = (result: SubmittedResult) => {
       const evaluation = resultEvals.find(re => re.result_id === result.id);
       if (evaluation) {
-        if (result.trainee_tier === evaluation.evaluator_tier) {
+        // FIX: Cast for enum comparison
+        if (result.trainee_tier === (evaluation.evaluator_tier as any)) {
           const resultTypeScores = rules.tierScores[result.type as ResultType];
           const score = resultTypeScores ? resultTypeScores[result.trainee_tier as ResultTier] || 0 : 0;
           return { score, status: 'Correct' };
         } else {
             const traineeTierIndex = Object.values(ResultTier).indexOf(result.trainee_tier);
-            const evaluatorTierIndex = Object.values(ResultTier).indexOf(evaluation.evaluator_tier);
-            const status = evaluatorTierIndex < traineeTierIndex ? 'Upgraded' : 'Downgraded';
+            // FIX: Cast array of enum values to string array for `includes` check.
+            const isEvalTierInStandardTiers = (Object.values(ResultTier) as string[]).includes(evaluation.evaluator_tier);
+            
+            let status = 'Incorrect';
+            if (isEvalTierInStandardTiers) {
+                // FIX: Cast array of enum values to string array for `indexOf` check.
+                const evaluatorTierIndex = (Object.values(ResultTier) as string[]).indexOf(evaluation.evaluator_tier);
+                status = evaluatorTierIndex < traineeTierIndex ? 'Upgraded' : 'Downgraded';
+            } else {
+                status = evaluation.evaluator_tier; // 'Not Tier-3' or 'Invalid'
+            }
+
             if (rules.incorrectMarking === IncorrectMarking.PENALTY) {
                 return { score: rules.incorrectPenalty, status };
             }
@@ -211,8 +222,8 @@ export const EvaluateSubmission: React.FC<EvaluateSubmissionProps> = ({ currentU
                                       <p>Trainee categorized as: <span className="font-semibold">{result.trainee_tier}</span> ({result.type})</p>
                                       <div className="flex items-center gap-2">
                                         <label>Correct Tier:</label>
-                                        <select value={evalTier} onChange={e => handleEvalChange(result.id, e.target.value as ResultTier)} className="input !py-1">
-                                          {Object.values(ResultTier).map(tier => <option key={tier} value={tier}>{tier}</option>)}
+                                        <select value={evalTier} onChange={e => handleEvalChange(result.id, e.target.value as EvaluationResultTier)} className="input !py-1">
+                                          {Object.values(EvaluationResultTier).map(tier => <option key={tier} value={tier}>{tier}</option>)}
                                         </select>
                                       </div>
                                   </div>

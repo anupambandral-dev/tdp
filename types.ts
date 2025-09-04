@@ -32,6 +32,15 @@ export enum ResultTier {
   TIER_3 = 'Tier-3',
 }
 
+export enum EvaluationResultTier {
+  TIER_1 = 'Tier-1',
+  TIER_2 = 'Tier-2',
+  TIER_3 = 'Tier-3',
+  NOT_TIER_3 = 'Not Tier-3',
+  INVALID = 'Invalid',
+}
+
+
 export enum IncorrectMarking {
   ZERO = 'zero',
   PENALTY = 'penalty',
@@ -70,7 +79,7 @@ export interface SubmittedResult {
 // Types for the 'evaluation' JSONB column in 'submissions'
 export interface ResultEvaluation {
   result_id: string;
-  evaluator_tier: ResultTier;
+  evaluator_tier: EvaluationResultTier;
 }
 
 export interface Evaluation {
