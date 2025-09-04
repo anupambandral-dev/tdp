@@ -359,6 +359,7 @@ export const SubmitChallenge: React.FC<SubmitChallengeProps> = ({ currentUser })
                                     <div className="flex-grow">
                                         <p className="font-mono text-sm">{result.value}</p>
                                         <p className="text-xs text-gray-500 dark:text-gray-400">{result.type} - {result.trainee_tier}</p>
+                                        {result.submitted_at && <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Submitted: {new Date(result.submitted_at).toLocaleString()}</p>}
                                     </div>
                                     <button type="button" onClick={() => handleRemoveResult(result.id)} disabled={isResultsDisabled} aria-label={`Remove result ${result.value}`}>
                                         <TrashIcon />
