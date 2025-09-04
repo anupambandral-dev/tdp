@@ -74,6 +74,7 @@ export interface SubmittedResult {
   value: string;
   type: ResultType;
   trainee_tier: ResultTier;
+  submitted_at: string;
 }
 
 // Types for the 'evaluation' JSONB column in 'submissions'
