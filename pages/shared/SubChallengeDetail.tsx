@@ -149,71 +149,82 @@ const TraineeView: React.FC<TraineeViewProps> = ({ subChallenge, overallChalleng
     const reportFile = submission.report_file as { name: string; path: string; } | null;
     const rules = subChallenge.evaluation_rules as unknown as EvaluationRules;
 
+    const MAX_RESULTS = 6;
+    const canSubmitMore = !results || results.length < MAX_RESULTS;
 
     return (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-            <div>
-                <h2 className="text-2xl font-semibold mb-4">Your Submission</h2>
-                <Card className="space-y-4">
-                  {results?.map(result => (
-                    <div key={result.id} className="p-2 border-b dark:border-gray-700">
-                      <p className="font-mono text-sm">{result.value}</p>
-                      <p className="text-xs text-gray-500">{result.type} - Submitted as {result.trainee_tier}</p>
-                    </div>
-                  ))}
-                  {reportFile && (
-                      <div>
-                          <h3 className="font-semibold text-md">Submitted Report</h3>
-                           {reportUrl ? (
-                               <a href={reportUrl} className="text-blue-600 dark:text-blue-400 hover:underline" target="_blank" rel="noopener noreferrer">{reportFile.name}</a>
-                           ) : (
-                               <p className="text-gray-500 text-sm">Generating secure link...</p>
-                           )}
-                      </div>
-                  )}
-                </Card>
-            </div>
-            <div>
-                <h2 className="text-2xl font-semibold mb-4">Evaluation Result</h2>
-                {evaluation ? (
-                    <Card>
-                        <div className="mb-4 pb-4 border-b dark:border-gray-700">
-                            <h3 className="text-lg font-semibold">Final Score</h3>
-                            <p className="text-3xl font-bold text-blue-600 dark:text-blue-400">{score}</p>
+        <div className="space-y-6">
+            {isChallengeActive && (
+                <div className="flex justify-end">
+                    <Link to={`/trainee/challenge/${subChallenge.id}/submit`}>
+                        <Button>{canSubmitMore ? 'Add / Edit Results' : 'Edit Submission'}</Button>
+                    </Link>
+                </div>
+            )}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                <div>
+                    <h2 className="text-2xl font-semibold mb-4">Your Submission</h2>
+                    <Card className="space-y-4">
+                      {results?.map(result => (
+                        <div key={result.id} className="p-2 border-b dark:border-gray-700">
+                          <p className="font-mono text-sm">{result.value}</p>
+                          <p className="text-xs text-gray-500">{result.type} - Submitted as {result.trainee_tier}</p>
                         </div>
-                        <h3 className="text-lg font-semibold mb-2">Result Breakdown</h3>
-                        <div className="space-y-2 mb-4">
-                           {results?.map(result => {
-                                const evalResult = evaluation.result_evaluations.find(e => e.result_id === result.id);
-                                if (!evalResult) return null;
-                                // FIX: Cast for enum comparison
-                                const isCorrect = evalResult.evaluator_tier === (result.trainee_tier as any);
-                                return (
-                                <div key={result.id} className="p-2 bg-gray-50 dark:bg-gray-700 rounded-md text-sm">
-                                    <p className="font-mono truncate">{result.value}</p>
-                                    <div className="flex justify-between items-center">
-                                      <p>Your Tier: <span className="font-semibold">{result.trainee_tier}</span></p>
-                                      <p>Evaluator Tier: <span className="font-semibold">{evalResult.evaluator_tier}</span></p>
-                                      {isCorrect ? <span className="text-green-500 font-bold">Correct</span> : <span className="text-orange-500 font-bold">Incorrect</span>}
-                                    </div>
-                                </div>
-                                )
-                           })}
-                        </div>
-                         {rules.report.enabled && (
-                            <div className="flex justify-between items-center text-sm mb-4">
-                               <span className="font-semibold">Report Score:</span>
-                               <span>{evaluation.report_score || 0} / {rules.report.maxScore}</span>
+                      ))}
+                      {reportFile && (
+                          <div>
+                              <h3 className="font-semibold text-md">Submitted Report</h3>
+                               {reportUrl ? (
+                                   <a href={reportUrl} className="text-blue-600 dark:text-blue-400 hover:underline" target="_blank" rel="noopener noreferrer">{reportFile.name}</a>
+                               ) : (
+                                   <p className="text-gray-500 text-sm">Generating secure link...</p>
+                               )}
+                          </div>
+                      )}
+                    </Card>
+                </div>
+                <div>
+                    <h2 className="text-2xl font-semibold mb-4">Evaluation Result</h2>
+                    {evaluation ? (
+                        <Card>
+                            <div className="mb-4 pb-4 border-b dark:border-gray-700">
+                                <h3 className="text-lg font-semibold">Final Score</h3>
+                                <p className="text-3xl font-bold text-blue-600 dark:text-blue-400">{score}</p>
                             </div>
-                         )}
-                         <h3 className="text-lg font-semibold mb-2">Evaluator Feedback</h3>
-                         <p className="text-gray-600 dark:text-gray-300 bg-gray-100 dark:bg-gray-900 p-3 rounded-md">{evaluation.feedback}</p>
-                    </Card>
-                ) : (
-                    <Card className="text-center py-10">
-                        <p className="text-gray-500">Your submission has not been evaluated yet.</p>
-                    </Card>
-                )}
+                            <h3 className="text-lg font-semibold mb-2">Result Breakdown</h3>
+                            <div className="space-y-2 mb-4">
+                               {results?.map(result => {
+                                    const evalResult = evaluation.result_evaluations.find(e => e.result_id === result.id);
+                                    if (!evalResult) return null;
+                                    // FIX: Cast for enum comparison
+                                    const isCorrect = evalResult.evaluator_tier === (result.trainee_tier as any);
+                                    return (
+                                    <div key={result.id} className="p-2 bg-gray-50 dark:bg-gray-700 rounded-md text-sm">
+                                        <p className="font-mono truncate">{result.value}</p>
+                                        <div className="flex justify-between items-center">
+                                          <p>Your Tier: <span className="font-semibold">{result.trainee_tier}</span></p>
+                                          <p>Evaluator Tier: <span className="font-semibold">{evalResult.evaluator_tier}</span></p>
+                                          {isCorrect ? <span className="text-green-500 font-bold">Correct</span> : <span className="text-orange-500 font-bold">Incorrect</span>}
+                                        </div>
+                                    </div>
+                                    )
+                               })}
+                            </div>
+                             {rules.report.enabled && (
+                                <div className="flex justify-between items-center text-sm mb-4">
+                                   <span className="font-semibold">Report Score:</span>
+                                   <span>{evaluation.report_score || 0} / {rules.report.maxScore}</span>
+                                </div>
+                             )}
+                             <h3 className="text-lg font-semibold mb-2">Evaluator Feedback</h3>
+                             <p className="text-gray-600 dark:text-gray-300 bg-gray-100 dark:bg-gray-900 p-3 rounded-md">{evaluation.feedback}</p>
+                        </Card>
+                    ) : (
+                        <Card className="text-center py-10">
+                            <p className="text-gray-500">Your submission has not been evaluated yet.</p>
+                        </Card>
+                    )}
+                </div>
             </div>
         </div>
     );
