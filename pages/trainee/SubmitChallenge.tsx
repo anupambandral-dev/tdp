@@ -6,7 +6,6 @@ import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { BackButton } from '../../components/ui/BackButton';
 import { SubmittedResult, ResultType, ResultTier, Profile, Submission, SubChallenge, OverallChallenge, Json, EvaluationRules } from '../../types';
-import { TablesInsert, TablesUpdate } from '../../database.types';
 
 const TrashIcon = () => (
     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5 text-gray-500 hover:text-red-500"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2-2h-4"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>
@@ -140,13 +139,14 @@ export const SubmitChallenge: React.FC<SubmitChallengeProps> = ({ currentUser })
     }, [subChallengeId, currentUser.id, fetchSubmission]);
     
     const handleRemoveResult = async (id: string) => {
+        if (!existingSubmission) return;
         setSubmitting(true);
         const updatedResults = results.filter(r => r.id !== id);
         
         const { error } = await supabase
             .from('submissions')
             .update({ results: updatedResults as unknown as Json })
-            .eq('id', existingSubmission!.id);
+            .eq('id', existingSubmission.id);
 
         if (error) {
             setErrorMessage(`Error removing result: ${error.message}`);
@@ -168,24 +168,15 @@ export const SubmitChallenge: React.FC<SubmitChallengeProps> = ({ currentUser })
         setSubmitting(true);
         setErrorMessage(null);
 
-        // Fetch latest submission to prevent race conditions
         const { data: latestSubmission, error: fetchError } = await supabase
             .from('submissions')
-            .select('id, results, report_file, evaluation')
+            .select('id, results')
             .eq('sub_challenge_id', subChallengeId!)
             .eq('trainee_id', currentUser.id)
             .single();
 
         if (fetchError && fetchError.code !== 'PGRST116') {
             setErrorMessage(`Could not verify submission status: ${fetchError.message}`);
-            setSubmitting(false);
-            return;
-        }
-
-        const currentResults = (latestSubmission?.results as SubmittedResult[] | null) || [];
-
-        if (currentResults.length >= MAX_RESULTS) {
-            setErrorMessage(`You cannot submit more than ${MAX_RESULTS} results.`);
             setSubmitting(false);
             return;
         }
@@ -197,27 +188,43 @@ export const SubmitChallenge: React.FC<SubmitChallengeProps> = ({ currentUser })
             trainee_tier: newResultTier,
             submitted_at: new Date().toISOString(),
         };
-        const newResultsArray = [...currentResults, newResult];
 
-        const submissionData: Omit<TablesInsert<'submissions'>, 'id'> & Omit<TablesUpdate<'submissions'>, 'id'> = {
-            sub_challenge_id: subChallengeId!,
-            trainee_id: currentUser.id,
-            results: newResultsArray as unknown as Json,
-            report_file: latestSubmission?.report_file, // Preserve existing report
-            evaluation: latestSubmission?.evaluation, // Preserve existing evaluation
-            submitted_at: new Date().toISOString(),
-        };
+        let dbError = null;
 
-        const { error: upsertError } = await supabase
-            .from('submissions')
-            .upsert(submissionData, { onConflict: 'trainee_id, sub_challenge_id' });
+        if (latestSubmission) { // Submission exists, so UPDATE it
+            const currentResults = (latestSubmission.results as SubmittedResult[] | null) || [];
+
+            if (currentResults.length >= MAX_RESULTS) {
+                setErrorMessage(`You cannot submit more than ${MAX_RESULTS} results.`);
+                setSubmitting(false);
+                return;
+            }
+
+            const newResultsArray = [...currentResults, newResult];
+            const { error: updateError } = await supabase
+                .from('submissions')
+                .update({ results: newResultsArray as unknown as Json, submitted_at: new Date().toISOString() })
+                .eq('id', latestSubmission.id);
+            dbError = updateError;
+
+        } else { // No submission exists, so INSERT a new one
+            const newResultsArray = [newResult];
+            const { error: insertError } = await supabase
+                .from('submissions')
+                .insert({
+                    sub_challenge_id: subChallengeId!,
+                    trainee_id: currentUser.id,
+                    results: newResultsArray as unknown as Json,
+                });
+            dbError = insertError;
+        }
         
-        if (upsertError) {
-            setErrorMessage(`Error saving result: ${upsertError.message}`);
+        if (dbError) {
+            setErrorMessage(`Error saving result: ${dbError.message}`);
         } else {
             setSuccessMessage('Result submitted successfully!');
-            setNewResultValue(''); // Clear input
-            await fetchSubmission(); // Refresh component state
+            setNewResultValue('');
+            await fetchSubmission();
             setTimeout(() => setSuccessMessage(null), 3000);
         }
         setSubmitting(false);
@@ -239,21 +246,6 @@ export const SubmitChallenge: React.FC<SubmitChallengeProps> = ({ currentUser })
             return;
         }
 
-        const { data: latestSubmission } = await supabase
-            .from('submissions')
-            .select('id, results, report_file, evaluation')
-            .eq('sub_challenge_id', subChallengeId!)
-            .eq('trainee_id', currentUser.id)
-            .single();
-        
-        if (latestSubmission?.report_file) {
-            const oldPath = (latestSubmission.report_file as {path: string}).path;
-            const { error: removeError } = await supabase.storage.from('reports').remove([oldPath]);
-            if (removeError) {
-               console.warn(`Could not remove the old report file: ${removeError.message}`);
-            }
-        }
-
         const filePath = `${currentUser.auth_id}/${subChallengeId}/${uuidv4()}-${reportFile.name}`;
         const { error: uploadError } = await supabase.storage.from('reports').upload(filePath, reportFile);
 
@@ -265,21 +257,50 @@ export const SubmitChallenge: React.FC<SubmitChallengeProps> = ({ currentUser })
         
         const reportFileData = { path: filePath, name: reportFile.name };
 
-        const submissionData: Omit<TablesInsert<'submissions'>, 'id'> & Omit<TablesUpdate<'submissions'>, 'id'> = {
-            sub_challenge_id: subChallengeId!,
-            trainee_id: currentUser.id,
-            results: latestSubmission?.results,
-            report_file: reportFileData as unknown as Json,
-            evaluation: latestSubmission?.evaluation, // Preserve existing evaluation
-            submitted_at: new Date().toISOString(),
-        };
-
-        const { error: upsertError } = await supabase
+        const { data: latestSubmission, error: fetchError } = await supabase
             .from('submissions')
-            .upsert(submissionData, { onConflict: 'trainee_id, sub_challenge_id' });
+            .select('id, report_file')
+            .eq('sub_challenge_id', subChallengeId!)
+            .eq('trainee_id', currentUser.id)
+            .single();
 
-        if (upsertError) {
-            setErrorMessage(`Error saving report submission: ${upsertError.message}`);
+        if (fetchError && fetchError.code !== 'PGRST116') {
+            setErrorMessage(`Could not verify submission status: ${fetchError.message}`);
+            setSubmitting(false);
+            return;
+        }
+        
+        let dbError = null;
+
+        if (latestSubmission) { // UPDATE existing submission
+            // Remove old file from storage if it exists
+            if (latestSubmission.report_file) {
+                const oldPath = (latestSubmission.report_file as {path: string}).path;
+                const { error: removeError } = await supabase.storage.from('reports').remove([oldPath]);
+                if (removeError) {
+                   console.warn(`Could not remove the old report file: ${removeError.message}`);
+                }
+            }
+
+            const { error: updateError } = await supabase
+                .from('submissions')
+                .update({ report_file: reportFileData as unknown as Json, submitted_at: new Date().toISOString() })
+                .eq('id', latestSubmission.id);
+            dbError = updateError;
+
+        } else { // INSERT new submission
+            const { error: insertError } = await supabase
+                .from('submissions')
+                .insert({
+                    sub_challenge_id: subChallengeId!,
+                    trainee_id: currentUser.id,
+                    report_file: reportFileData as unknown as Json,
+                });
+            dbError = insertError;
+        }
+
+        if (dbError) {
+            setErrorMessage(`Error saving report submission: ${dbError.message}`);
         } else {
             setSuccessMessage('Report uploaded successfully!');
             setReportFile(null);
