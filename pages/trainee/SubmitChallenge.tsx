@@ -199,8 +199,7 @@ export const SubmitChallenge: React.FC<SubmitChallengeProps> = ({ currentUser })
         };
         const newResultsArray = [...currentResults, newResult];
 
-        const submissionData: TablesInsert<'submissions'> & TablesUpdate<'submissions'> = {
-            id: latestSubmission?.id,
+        const submissionData: Omit<TablesInsert<'submissions'>, 'id'> & Omit<TablesUpdate<'submissions'>, 'id'> = {
             sub_challenge_id: subChallengeId!,
             trainee_id: currentUser.id,
             results: newResultsArray as unknown as Json,
@@ -266,8 +265,7 @@ export const SubmitChallenge: React.FC<SubmitChallengeProps> = ({ currentUser })
         
         const reportFileData = { path: filePath, name: reportFile.name };
 
-        const submissionData: TablesInsert<'submissions'> & TablesUpdate<'submissions'> = {
-            id: latestSubmission?.id,
+        const submissionData: Omit<TablesInsert<'submissions'>, 'id'> & Omit<TablesUpdate<'submissions'>, 'id'> = {
             sub_challenge_id: subChallengeId!,
             trainee_id: currentUser.id,
             results: latestSubmission?.results,
