@@ -195,6 +195,7 @@ export const SubmitChallenge: React.FC<SubmitChallengeProps> = ({ currentUser })
             value: newResultValue.trim(),
             type: newResultType,
             trainee_tier: newResultTier,
+            submitted_at: new Date().toISOString(),
         };
         const newResultsArray = [...currentResults, newResult];
 
