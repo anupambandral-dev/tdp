@@ -161,6 +161,7 @@ export const TraineePerforma: React.FC = () => {
                                                     <div key={r.id} className="p-2 bg-gray-100 dark:bg-gray-700 rounded-md text-xs">
                                                         <p className="font-mono truncate">{r.value}</p>
                                                         <p>{r.type} - Submitted as {r.trainee_tier}</p>
+                                                        {r.submitted_at && <p className="text-gray-500">Submitted: {new Date(r.submitted_at).toLocaleString()}</p>}
                                                     </div>
                                                 ))}
                                                 </div>
