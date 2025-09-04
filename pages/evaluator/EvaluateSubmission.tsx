@@ -356,8 +356,14 @@ export const EvaluateSubmission: React.FC<EvaluateSubmissionProps> = ({ currentU
                                                 <div key={result.id} className="p-3 mb-2 bg-gray-50 dark:bg-gray-800 rounded-lg flex flex-col sm:flex-row sm:items-center sm:space-x-4">
                                                     <div className="flex-grow mb-3 sm:mb-0">
                                                         <p className="font-mono text-sm">{result.value}</p>
-                                                        <p className="text-xs text-gray-500 dark:text-gray-400">{result.type} - Submitted as {result.trainee_tier}</p>
-                                                        {result.submitted_at && <p className="text-xs text-gray-500 dark:text-gray-400">Submitted: {new Date(result.submitted_at).toLocaleString()}</p>}
+                                                        <p className="text-xs text-gray-500 dark:text-gray-400">
+                                                            {result.type} - Submitted as {result.trainee_tier}
+                                                            {result.submitted_at && (
+                                                                <span className="ml-2 pl-2 border-l border-gray-300 dark:border-gray-600">
+                                                                    Submitted: {new Date(result.submitted_at).toLocaleString()}
+                                                                </span>
+                                                            )}
+                                                        </p>
                                                     </div>
                                                     <div className="flex items-center gap-2">
                                                         <select
