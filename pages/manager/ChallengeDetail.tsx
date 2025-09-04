@@ -10,6 +10,40 @@ interface ChallengeDetailProps {
   currentUser: Profile;
 }
 
+const calculateSubChallengeScore = (submission: Submission, subChallenge: SubChallenge) => {
+    const evaluation = submission.evaluation as unknown as Evaluation | null;
+    const results = submission.results as unknown as SubmittedResult[] | null;
+    if (!evaluation || !results) return 0;
+    
+    const rules = subChallenge.evaluation_rules as unknown as EvaluationRules;
+    let totalScore = 0;
+
+    results.forEach(result => {
+        const resultEvaluation = evaluation.result_evaluations.find(re => re.result_id === result.id);
+        if (resultEvaluation) {
+            if (resultEvaluation.score_override != null) {
+                totalScore += resultEvaluation.score_override;
+            } else {
+                if (result.trainee_tier === (resultEvaluation.evaluator_tier as any)) {
+                    const resultTypeScores = rules.tierScores[result.type as ResultType];
+                    if (resultTypeScores) {
+                        totalScore += resultTypeScores[result.trainee_tier as ResultTier] || 0;
+                    }
+                } else {
+                    if (rules.incorrectMarking === IncorrectMarking.PENALTY) {
+                        totalScore += rules.incorrectPenalty;
+                    }
+                }
+            }
+        }
+    });
+
+    if (rules.report.enabled && evaluation.report_score) {
+        totalScore += evaluation.report_score;
+    }
+    return Math.round(totalScore);
+}
+
 export const ChallengeDetail: React.FC<ChallengeDetailProps> = ({ currentUser }) => {
     const { challengeId } = useParams();
     const navigate = useNavigate();
@@ -109,34 +143,11 @@ export const ChallengeDetail: React.FC<ChallengeDetailProps> = ({ currentUser })
         let totalScore = 0;
         challenge.sub_challenges.forEach(sc => {
             const submission = sc.submissions?.find(s => s.trainee_id === traineeId);
-            const evaluation = submission?.evaluation as unknown as Evaluation | null;
-            const results = submission?.results as unknown as SubmittedResult[] | null;
-
-            if (evaluation && results) {
-                const rules = sc.evaluation_rules as unknown as EvaluationRules;
-                results.forEach((result) => {
-                    const resultEval = evaluation.result_evaluations.find((re) => re.result_id === result.id);
-                    if (resultEval) {
-                        // FIX: Cast for enum comparison
-                        if (result.trainee_tier === (resultEval.evaluator_tier as any)) {
-                            const resultTypeScores = rules.tierScores[result.type as ResultType];
-                            if (resultTypeScores) {
-                                totalScore += resultTypeScores[result.trainee_tier as ResultTier] || 0;
-                            }
-                        } else {
-                            if (rules.incorrectMarking === IncorrectMarking.PENALTY) {
-                                totalScore += rules.incorrectPenalty;
-                            }
-                        }
-                    }
-                });
-
-                if (rules.report.enabled && evaluation?.report_score) {
-                    totalScore += evaluation.report_score;
-                }
+            if (submission) {
+                totalScore += calculateSubChallengeScore(submission, sc);
             }
         });
-        return Math.round(totalScore);
+        return totalScore;
     };
 
     if (loading) return <div className="p-8">Loading challenge details...</div>;

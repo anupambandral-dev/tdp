@@ -81,6 +81,8 @@ export interface SubmittedResult {
 export interface ResultEvaluation {
   result_id: string;
   evaluator_tier: EvaluationResultTier;
+  score_override?: number | null;
+  override_reason?: string;
 }
 
 export interface Evaluation {

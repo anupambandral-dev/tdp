@@ -95,13 +95,38 @@ export const EvaluateSubmission: React.FC<EvaluateSubmissionProps> = ({ currentU
 
     // State to track saved data for change detection
     const [savedEvaluation, setSavedEvaluation] = useState<Evaluation | null>(null);
-    const [savedInSession, setSavedInSession] = useState<{ [key: string]: boolean }>({}); // keys: result_id, 'report'
     
     // Loading/submitting states
-    const [isSaving, setIsSaving] = useState<{ [key: string]: boolean }>({}); // keys: result_id, 'report', 'final'
+    const [isSaving, setIsSaving] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [success, setSuccess] = useState<string | null>(null);
 
+    const allResultsMap = useMemo(() => {
+        const map = new Map<string, { profile: Profile | null; submittedAt: string; traineeId: string }[]>();
+        if (!challenge) return map;
+    
+        challenge.submissions.forEach(sub => {
+            const results = (sub.results as unknown as SubmittedResult[]) || [];
+            results.forEach(result => {
+                const normalizedValue = result.value.trim().toLowerCase();
+                if (!map.has(normalizedValue)) {
+                    map.set(normalizedValue, []);
+                }
+                map.get(normalizedValue)!.push({
+                    profile: sub.profiles,
+                    submittedAt: result.submitted_at || sub.submitted_at,
+                    traineeId: sub.trainee_id,
+                });
+            });
+        });
+    
+        // Sort each entry by submission time
+        map.forEach(submitters => {
+            submitters.sort((a, b) => new Date(a.submittedAt || 0).getTime() - new Date(b.submittedAt || 0).getTime());
+        });
+    
+        return map;
+    }, [challenge]);
 
     const fetchChallenge = useCallback(async () => {
         if (!challengeId) return;
@@ -132,14 +157,13 @@ export const EvaluateSubmission: React.FC<EvaluateSubmissionProps> = ({ currentU
     
     // Effect to reset form when selected trainee changes
     useEffect(() => {
-        if (!selectedSubmission) {
+        if (!selectedSubmission || !selectedTraineeId) {
             // Clear form if no submission is selected
             setResultEvals([]);
             setReportScore('');
             setFeedback('');
             setSavedEvaluation(null);
             setReportUrl(null);
-            setSavedInSession({});
             return;
         };
 
@@ -149,7 +173,27 @@ export const EvaluateSubmission: React.FC<EvaluateSubmissionProps> = ({ currentU
         // Create a full list of evaluations, ensuring one for each submitted result.
         const initialEvals = submittedResults.map(result => {
             const existing = existingEval?.result_evaluations.find(re => re.result_id === result.id);
-            return existing || { result_id: result.id, evaluator_tier: EvaluationResultTier.TIER_3 }; // Default to TIER_3
+
+            let scoreOverride: number | null = existing?.score_override ?? null;
+            let overrideReason: string = existing?.override_reason || '';
+
+            // Auto-set override for duplicates if this is a new evaluation
+            if (!existing) {
+                const duplicatesInfo = allResultsMap.get(result.value.trim().toLowerCase());
+                const isDuplicate = duplicatesInfo && duplicatesInfo.length > 1;
+                const isFirst = isDuplicate && duplicatesInfo[0].traineeId === selectedTraineeId;
+                if (isDuplicate && !isFirst) {
+                    scoreOverride = 0;
+                    overrideReason = `Duplicate. First submitted by ${duplicatesInfo[0].profile?.name}.`;
+                }
+            }
+
+            return {
+                result_id: result.id,
+                evaluator_tier: existing?.evaluator_tier || EvaluationResultTier.TIER_3,
+                score_override: scoreOverride,
+                override_reason: overrideReason
+            };
         });
         
         setResultEvals(initialEvals);
@@ -166,9 +210,6 @@ export const EvaluateSubmission: React.FC<EvaluateSubmissionProps> = ({ currentU
         };
         setSavedEvaluation(baselineEval);
         
-        // Reset session save status
-        setSavedInSession({});
-
         // Fetch report URL
         const fetchUrl = async () => {
             if (selectedSubmission.report_file) {
@@ -182,33 +223,23 @@ export const EvaluateSubmission: React.FC<EvaluateSubmissionProps> = ({ currentU
         };
         fetchUrl();
 
-    }, [selectedSubmission, currentUser.id]);
+    }, [selectedSubmission, currentUser.id, allResultsMap, selectedTraineeId]);
 
-    const isResultDirty = useCallback((resultId: string) => {
-        if (!savedEvaluation) return true;
-        const current = resultEvals.find(re => re.result_id === resultId);
-        const saved = savedEvaluation.result_evaluations.find(re => re.result_id === resultId);
-        return current?.evaluator_tier !== saved?.evaluator_tier;
-    }, [resultEvals, savedEvaluation]);
-
-    const isReportDirty = useCallback(() => {
-        if (!savedEvaluation) return true;
-        const currentReportScore = reportScore === '' ? undefined : Number(reportScore);
-        return currentReportScore !== savedEvaluation.report_score || feedback !== savedEvaluation.feedback;
-    }, [reportScore, feedback, savedEvaluation]);
-
-    const handleSave = async (updatedFields: Partial<Evaluation>) => {
-        if (!selectedSubmission) return false;
+    const handleSave = async (isFinalSubmit: boolean = false) => {
+        if (!selectedSubmission) return;
         
         setError(null);
         setSuccess(null);
+        setIsSaving(true);
 
         const newEvaluation: Evaluation = {
             evaluator_id: currentUser.id,
-            result_evaluations: resultEvals,
+            result_evaluations: resultEvals.map(re => ({
+                ...re,
+                score_override: re.score_override === null || re.score_override === undefined ? null : Number(re.score_override)
+            })),
             report_score: reportScore === '' ? undefined : Number(reportScore),
             feedback: feedback,
-            ...updatedFields,
             evaluated_at: new Date().toISOString(),
         };
 
@@ -216,61 +247,32 @@ export const EvaluateSubmission: React.FC<EvaluateSubmissionProps> = ({ currentU
             .from('submissions')
             .update({ evaluation: newEvaluation as unknown as Json })
             .eq('id', selectedSubmission.id);
+        
+        setIsSaving(false);
 
         if (updateError) {
             setError(`Failed to save: ${updateError.message}`);
-            return false;
         } else {
             setSavedEvaluation(newEvaluation); // Update baseline
-            return true;
+            if (!isFinalSubmit) {
+                setSuccess('Evaluation progress saved!');
+                setTimeout(() => setSuccess(null), 3000);
+            }
         }
     };
     
-    const handleSaveResult = async (resultId: string) => {
-        if (savedInSession[resultId]) {
-            if (!window.confirm("Are you sure you want to change this saved evaluation?")) {
-                return;
-            }
-        }
-        setIsSaving(prev => ({ ...prev, [resultId]: true }));
-        const success = await handleSave({});
-        if (success) {
-            setSuccess(`Result evaluation saved.`);
-            setSavedInSession(prev => ({...prev, [resultId]: true}));
-            setTimeout(() => setSuccess(null), 3000);
-        }
-        setIsSaving(prev => ({ ...prev, [resultId]: false }));
-    };
-
-    const handleSaveReport = async () => {
-        if (savedInSession['report']) {
-            if (!window.confirm("Are you sure you want to change the saved report evaluation?")) {
-                return;
-            }
-        }
-        setIsSaving(prev => ({ ...prev, report: true }));
-        const success = await handleSave({});
-        if (success) {
-            setSuccess('Report & Feedback saved.');
-            setSavedInSession(prev => ({...prev, report: true}));
-            setTimeout(() => setSuccess(null), 3000);
-        }
-        setIsSaving(prev => ({ ...prev, report: false }));
-    };
-
     const handleSubmitAllAndNext = async () => {
-        setIsSaving(prev => ({ ...prev, final: true }));
-        const success = await handleSave({});
-        if (success) {
-            // Find next trainee
-            const currentIndex = challenge?.submissions.findIndex(s => s.trainee_id === selectedTraineeId) ?? -1;
-            const nextIndex = (currentIndex + 1) % (challenge?.submissions.length ?? 1);
-            if (challenge?.submissions[nextIndex]) {
-                setSelectedTraineeId(challenge.submissions[nextIndex].trainee_id);
-            }
-            await fetchChallenge(); // Re-fetch to update progress bar on dashboard
+        await handleSave(true);
+        // Find next trainee
+        const currentIndex = challenge?.submissions.findIndex(s => s.trainee_id === selectedTraineeId) ?? -1;
+        const nextIndex = (currentIndex + 1) % (challenge?.submissions.length ?? 1);
+        if (challenge?.submissions[nextIndex] && currentIndex < (challenge.submissions.length -1)) {
+            setSelectedTraineeId(challenge.submissions[nextIndex].trainee_id);
+        } else {
+            // Last trainee, just refetch
+            setSelectedTraineeId(selectedTraineeId);
         }
-        setIsSaving(prev => ({ ...prev, final: false }));
+        await fetchChallenge(); // Re-fetch to update progress bar on dashboard
     };
 
     if (loading) return <div className="p-8">Loading evaluation...</div>;
@@ -351,39 +353,62 @@ export const EvaluateSubmission: React.FC<EvaluateSubmissionProps> = ({ currentU
                                         <div>
                                             <h3 className="text-lg font-semibold mb-2">Submitted Results</h3>
                                             {submittedResults.map((result) => {
-                                                const currentEvalValue = resultEvals.find(re => re.result_id === result.id)?.evaluator_tier;
+                                                const currentEval = resultEvals.find(re => re.result_id === result.id);
+                                                const duplicatesInfo = allResultsMap.get(result.value.trim().toLowerCase());
+                                                const isDuplicate = duplicatesInfo && duplicatesInfo.length > 1;
+                                                const isFirstSubmitter = isDuplicate && duplicatesInfo[0].traineeId === selectedTraineeId;
+
                                                 return (
-                                                <div key={result.id} className="p-3 mb-2 bg-gray-50 dark:bg-gray-800 rounded-lg flex flex-col sm:flex-row sm:items-center sm:space-x-4">
-                                                    <div className="flex-grow mb-3 sm:mb-0">
+                                                <div key={result.id} className="p-3 mb-2 bg-gray-50 dark:bg-gray-800 rounded-lg space-y-3">
+                                                    <div>
                                                         <p className="font-mono text-sm">{result.value}</p>
-                                                        <p className="text-xs text-gray-500 dark:text-gray-400">
+                                                        {isDuplicate && (
+                                                            <p className={`text-xs font-semibold ${isFirstSubmitter ? 'text-green-600 dark:text-green-400' : 'text-orange-500 dark:text-orange-400'}`}>
+                                                                {isFirstSubmitter 
+                                                                    ? 'You were the first to submit this result.' 
+                                                                    : `Duplicate. First submitted by ${duplicatesInfo[0].profile?.name}.`}
+                                                            </p>
+                                                        )}
+                                                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
                                                             {result.type} - Submitted as {result.trainee_tier}
-                                                            {result.submitted_at && (
-                                                                <span className="ml-2 pl-2 border-l border-gray-300 dark:border-gray-600">
-                                                                    Submitted: {new Date(result.submitted_at).toLocaleString()}
-                                                                </span>
-                                                            )}
                                                         </p>
                                                     </div>
-                                                    <div className="flex items-center gap-2">
+                                                    <div className="flex items-center gap-2 flex-wrap">
                                                         <select
-                                                            value={currentEvalValue || ''}
+                                                            value={currentEval?.evaluator_tier || ''}
                                                             onChange={(e) => {
                                                                 const newTier = e.target.value as EvaluationResultTier;
                                                                 setResultEvals(prev => prev.map(re => re.result_id === result.id ? { ...re, evaluator_tier: newTier } : re));
                                                             }}
-                                                            className="input w-40"
+                                                            className="input w-32"
                                                             disabled={isChallengeEnded}
                                                         >
                                                             {Object.values(EvaluationResultTier).map(tier => <option key={tier} value={tier}>{tier}</option>)}
                                                         </select>
-                                                        <Button 
-                                                            onClick={() => handleSaveResult(result.id)} 
-                                                            disabled={!isResultDirty(result.id) || isSaving[result.id] || isChallengeEnded}
-                                                            className="w-28"
-                                                        >
-                                                            {isSaving[result.id] ? 'Saving...' : savedInSession[result.id] ? '✓ Saved' : 'Save'}
-                                                        </Button>
+                                                        <input 
+                                                            type="number" 
+                                                            placeholder="Score" 
+                                                            title="Override Score"
+                                                            className="input w-24"
+                                                            value={currentEval?.score_override ?? ''}
+                                                            onChange={(e) => {
+                                                                const value = e.target.value;
+                                                                setResultEvals(prev => prev.map(re => re.result_id === result.id ? { ...re, score_override: value === '' ? null : Number(value) } : re));
+                                                            }}
+                                                            disabled={isChallengeEnded}
+                                                        />
+                                                        <input 
+                                                            type="text" 
+                                                            placeholder="Reason for override"
+                                                            title="Reason for override"
+                                                            className="input flex-grow min-w-40"
+                                                            value={currentEval?.override_reason ?? ''}
+                                                            onChange={(e) => {
+                                                                const value = e.target.value;
+                                                                setResultEvals(prev => prev.map(re => re.result_id === result.id ? { ...re, override_reason: value } : re));
+                                                            }}
+                                                            disabled={isChallengeEnded}
+                                                        />
                                                     </div>
                                                 </div>
                                             )})}
@@ -391,8 +416,8 @@ export const EvaluateSubmission: React.FC<EvaluateSubmissionProps> = ({ currentU
                                         {rules.report.enabled && (
                                             <div className="pt-6 border-t dark:border-gray-700">
                                                 <h3 className="text-lg font-semibold mb-2">Report & Feedback</h3>
-                                                <div className="flex flex-col sm:flex-row sm:items-start sm:space-x-4">
-                                                    <div className="flex-grow">
+                                                <div className="space-y-4">
+                                                    <div>
                                                         <label htmlFor="reportScore">Report Score (Max: {rules.report.maxScore})</label>
                                                         <input id="reportScore" type="number" max={rules.report.maxScore} min="0" value={reportScore} onChange={e => setReportScore(e.target.value)} className="input" disabled={isChallengeEnded} />
                                                         {reportUrl && (
@@ -401,27 +426,21 @@ export const EvaluateSubmission: React.FC<EvaluateSubmissionProps> = ({ currentU
                                                             </a>
                                                         )}
                                                     </div>
-                                                    <div className="flex-grow-[2] mt-4 sm:mt-0">
+                                                    <div>
                                                         <label htmlFor="feedback">Overall Feedback</label>
                                                         <textarea id="feedback" value={feedback} onChange={e => setFeedback(e.target.value)} rows={4} className="input" disabled={isChallengeEnded} />
-                                                    </div>
-                                                    <div className="self-end mt-4 sm:mt-0">
-                                                        <Button 
-                                                            onClick={handleSaveReport}
-                                                            disabled={!isReportDirty() || isSaving['report'] || isChallengeEnded}
-                                                            className="w-full sm:w-auto"
-                                                        >
-                                                            {isSaving['report'] ? 'Saving...' : savedInSession['report'] ? '✓ Saved' : 'Save Report & Feedback'}
-                                                        </Button>
                                                     </div>
                                                 </div>
                                             </div>
                                         )}
                                     </div>
 
-                                    <div className="pt-6 mt-6 border-t dark:border-gray-700 flex justify-end">
-                                        <Button onClick={handleSubmitAllAndNext} disabled={isSaving['final'] || isChallengeEnded}>
-                                            {isSaving['final'] ? 'Submitting...' : 'Submit Complete Evaluation & Next'}
+                                    <div className="pt-6 mt-6 border-t dark:border-gray-700 flex justify-end items-center gap-4">
+                                        <Button onClick={() => handleSave(false)} variant="secondary" disabled={isSaving || isChallengeEnded}>
+                                            {isSaving ? 'Saving...' : 'Save Progress'}
+                                        </Button>
+                                        <Button onClick={handleSubmitAllAndNext} disabled={isSaving || isChallengeEnded}>
+                                            {isSaving ? 'Submitting...' : 'Submit & Next'}
                                         </Button>
                                     </div>
                                 </Card>
