@@ -171,7 +171,7 @@ export const SubmitChallenge: React.FC<SubmitChallengeProps> = ({ currentUser })
         // Fetch latest submission to prevent race conditions
         const { data: latestSubmission, error: fetchError } = await supabase
             .from('submissions')
-            .select('id, results, report_file')
+            .select('id, results, report_file, evaluation')
             .eq('sub_challenge_id', subChallengeId!)
             .eq('trainee_id', currentUser.id)
             .single();
@@ -205,6 +205,7 @@ export const SubmitChallenge: React.FC<SubmitChallengeProps> = ({ currentUser })
             trainee_id: currentUser.id,
             results: newResultsArray as unknown as Json,
             report_file: latestSubmission?.report_file, // Preserve existing report
+            evaluation: latestSubmission?.evaluation, // Preserve existing evaluation
             submitted_at: new Date().toISOString(),
         };
 
@@ -241,7 +242,7 @@ export const SubmitChallenge: React.FC<SubmitChallengeProps> = ({ currentUser })
 
         const { data: latestSubmission } = await supabase
             .from('submissions')
-            .select('id, results, report_file')
+            .select('id, results, report_file, evaluation')
             .eq('sub_challenge_id', subChallengeId!)
             .eq('trainee_id', currentUser.id)
             .single();
@@ -271,6 +272,7 @@ export const SubmitChallenge: React.FC<SubmitChallengeProps> = ({ currentUser })
             trainee_id: currentUser.id,
             results: latestSubmission?.results,
             report_file: reportFileData as unknown as Json,
+            evaluation: latestSubmission?.evaluation, // Preserve existing evaluation
             submitted_at: new Date().toISOString(),
         };
 
