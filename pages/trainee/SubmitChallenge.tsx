@@ -39,6 +39,8 @@ export const SubmitChallenge: React.FC<SubmitChallengeProps> = ({ currentUser })
     const [errorMessage, setErrorMessage] = useState<string | null>(null);
     const [activeTab, setActiveTab] = useState<'results' | 'report'>('results');
 
+    const MAX_RESULTS = 6;
+
     const calculateTimeLeft = useCallback(() => {
         if (!subChallenge) return { results: '', report: '' };
         
@@ -182,8 +184,8 @@ export const SubmitChallenge: React.FC<SubmitChallengeProps> = ({ currentUser })
 
         const currentResults = (latestSubmission?.results as SubmittedResult[] | null) || [];
 
-        if (currentResults.length >= 6) {
-            setErrorMessage("You cannot submit more than 6 results.");
+        if (currentResults.length >= MAX_RESULTS) {
+            setErrorMessage(`You cannot submit more than ${MAX_RESULTS} results.`);
             setSubmitting(false);
             return;
         }
@@ -297,8 +299,6 @@ export const SubmitChallenge: React.FC<SubmitChallengeProps> = ({ currentUser })
 
     const isReportDeadlinePassed = !rules.report.enabled || !subChallenge.report_end_time || new Date(subChallenge.report_end_time) < new Date();
     const isReportDisabled = isReportDeadlinePassed || isChallengeEnded || submitting;
-
-    const MAX_RESULTS = 6;
     
     return (
         <div className="container mx-auto p-4 sm:p-6 lg:p-8 max-w-4xl">
