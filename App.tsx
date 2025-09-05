@@ -25,6 +25,7 @@ const AppContent: React.FC = () => {
   const [session, setSession] = useState<Session | null>(null);
   const [currentUser, setCurrentUser] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
+  const [isPasswordRecovery, setIsPasswordRecovery] = useState(false);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -38,12 +39,12 @@ const AppContent: React.FC = () => {
       (event, session) => {
         setSession(session);
         if (event === 'PASSWORD_RECOVERY') {
-          // This event fires when the user is redirected back from the recovery link.
-          // The session is now set, so we can navigate to the reset password page.
+          setIsPasswordRecovery(true);
           navigate('/reset-password');
         }
         if (event === 'SIGNED_OUT') {
             setCurrentUser(null);
+            setIsPasswordRecovery(false);
         }
       }
     );
@@ -53,6 +54,11 @@ const AppContent: React.FC = () => {
 
   useEffect(() => {
     if (session?.user) {
+      // Don't fetch profile if we are in the middle of password recovery
+      if (isPasswordRecovery) {
+        setLoading(false);
+        return;
+      }
       const fetchProfile = async () => {
         const { data: profileData, error: profileError } = await supabase
           .from('profiles')
@@ -98,10 +104,11 @@ const AppContent: React.FC = () => {
       setCurrentUser(null);
       setLoading(false);
     }
-  }, [session]);
+  }, [session, isPasswordRecovery]);
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
+    setIsPasswordRecovery(false);
     window.location.reload();
   };
 
@@ -139,11 +146,17 @@ const AppContent: React.FC = () => {
 
   return (
     <div className="min-h-screen flex flex-col bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100">
-      {currentUser && <Header currentUser={currentUser} onLogout={handleLogout} />}
+      {currentUser && !isPasswordRecovery && <Header currentUser={currentUser} onLogout={handleLogout} />}
       <main className="flex-grow">
         <Routes>
-          <Route path="/reset-password" element={<ResetPasswordPage />} />
-          <Route path="/" element={!currentUser ? <LoginPage /> : <Navigate to={`/${currentUser.role.toLowerCase()}`} />} />
+          <Route path="/reset-password" element={<ResetPasswordPage onResetSuccess={() => setIsPasswordRecovery(false)} />} />
+          <Route path="/" element={
+            !currentUser 
+                ? <LoginPage /> 
+                : isPasswordRecovery 
+                    ? null // Render nothing while we navigate to /reset-password
+                    : <Navigate to={`/${currentUser.role.toLowerCase()}`} />
+          } />
           
           <Route element={<ProtectedRoute allowedRoles={[Role.MANAGER]} />}>
             <Route path="/manager" element={currentUser ? <ManagerDashboard currentUser={currentUser} /> : null} />
