@@ -25,19 +25,23 @@ const AppContent: React.FC = () => {
   const [session, setSession] = useState<Session | null>(null);
   const [currentUser, setCurrentUser] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
-  const [isPasswordRecovery, setIsPasswordRecovery] = useState(false);
+  
+  // Initialize state from sessionStorage to handle page refreshes during recovery.
+  const [isPasswordRecovery, setIsPasswordRecovery] = useState(() => {
+    // Check URL hash for the initial entry from email link. If found,
+    // set the flag in sessionStorage immediately for persistence.
+    if (window.location.hash.includes('type=recovery')) {
+        sessionStorage.setItem('isPasswordRecovery', 'true');
+        return true;
+    }
+    return sessionStorage.getItem('isPasswordRecovery') === 'true';
+  });
 
   useEffect(() => {
-    // Synchronously check the URL hash on component mount to prevent race conditions.
-    // If it's a recovery link, set the flag immediately.
-    if (window.location.hash.includes('type=recovery')) {
-      setIsPasswordRecovery(true);
-    }
-    
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
       // If there's no session and it's not a recovery flow, stop loading.
-      if (!session && !window.location.hash.includes('type=recovery')) {
+      if (!session && !isPasswordRecovery) {
         setLoading(false);
       }
     });
@@ -45,24 +49,27 @@ const AppContent: React.FC = () => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
         setSession(session);
-        // The PASSWORD_RECOVERY event is the signal to navigate.
+        
         if (event === 'PASSWORD_RECOVERY') {
-          setIsPasswordRecovery(true); // Ensure flag is set
+          sessionStorage.setItem('isPasswordRecovery', 'true');
+          setIsPasswordRecovery(true);
           navigate('/reset-password');
         }
+        
         if (event === 'SIGNED_OUT') {
             setCurrentUser(null);
-            setIsPasswordRecovery(false); // Reset the flag on sign out
+            sessionStorage.removeItem('isPasswordRecovery');
+            setIsPasswordRecovery(false);
         }
       }
     );
 
     return () => subscription.unsubscribe();
-  }, [navigate]);
+  }, [navigate, isPasswordRecovery]);
 
   useEffect(() => {
     if (session?.user) {
-      // The isPasswordRecovery flag, now set reliably, will guard the profile fetch.
+      // The isPasswordRecovery flag, now persistent, reliably guards the profile fetch.
       if (isPasswordRecovery) {
         setLoading(false);
         return;
@@ -110,14 +117,23 @@ const AppContent: React.FC = () => {
       fetchProfile();
     } else {
       setCurrentUser(null);
-      setLoading(false);
+      // Only stop loading if we are NOT in password recovery, as getSession might still be processing.
+      if (!isPasswordRecovery) {
+          setLoading(false);
+      }
     }
   }, [session, isPasswordRecovery]);
 
   const handleLogout = async () => {
+    sessionStorage.removeItem('isPasswordRecovery');
     await supabase.auth.signOut();
-    setIsPasswordRecovery(false);
+    // onAuthStateChange handles state updates, but reload ensures cleanest state.
     window.location.reload();
+  };
+
+  const handleResetSuccess = () => {
+    sessionStorage.removeItem('isPasswordRecovery');
+    setIsPasswordRecovery(false);
   };
 
   const ProtectedRoute: React.FC<{ allowedRoles: Role[] }> = ({ allowedRoles }) => {
@@ -157,13 +173,11 @@ const AppContent: React.FC = () => {
       {currentUser && !isPasswordRecovery && <Header currentUser={currentUser} onLogout={handleLogout} />}
       <main className="flex-grow">
         <Routes>
-          <Route path="/reset-password" element={<ResetPasswordPage onResetSuccess={() => setIsPasswordRecovery(false)} />} />
+          <Route path="/reset-password" element={<ResetPasswordPage onResetSuccess={handleResetSuccess} />} />
           <Route path="/" element={
             !currentUser 
                 ? <LoginPage /> 
-                : isPasswordRecovery 
-                    ? null // Render nothing while the app confirms the recovery session and navigates
-                    : <Navigate to={`/${currentUser.role.toLowerCase()}`} />
+                : <Navigate to={`/${currentUser.role.toLowerCase()}`} />
           } />
           
           <Route element={<ProtectedRoute allowedRoles={[Role.MANAGER]} />}>
