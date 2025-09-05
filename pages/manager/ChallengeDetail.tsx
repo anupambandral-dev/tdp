@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
+import Papa from 'papaparse';
 import { supabase } from '../../supabaseClient';
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { BackButton } from '../../components/ui/BackButton';
-import { ResultTier, IncorrectMarking, OverallChallenge, SubChallenge, Profile, Submission, OverallChallengeWithSubChallenges, EvaluationRules, SubmittedResult, Evaluation, ResultType } from '../../types';
+import { ResultTier, IncorrectMarking, OverallChallenge, SubChallenge, Profile, Submission, OverallChallengeWithSubChallenges, EvaluationRules, SubmittedResult, Evaluation, ResultType, EvaluationResultTier } from '../../types';
 
 interface ChallengeDetailProps {
   currentUser: Profile;
@@ -150,6 +151,119 @@ export const ChallengeDetail: React.FC<ChallengeDetailProps> = ({ currentUser })
         return totalScore;
     };
 
+    const handleExportToCSV = () => {
+        if (!challenge) return;
+
+        const exportData: any[] = [];
+        const overallScores = new Map<string, number>();
+        trainees.forEach(t => {
+            overallScores.set(t.id, getTraineeScore(t.id));
+        });
+
+        challenge.sub_challenges.forEach(sc => {
+            sc.submissions.forEach(submission => {
+                const trainee = trainees.find(t => t.id === submission.trainee_id);
+                if (!trainee) return;
+
+                const results = (submission.results as unknown as SubmittedResult[]) || [];
+                const evaluation = submission.evaluation as unknown as Evaluation | null;
+                const rules = sc.evaluation_rules as unknown as EvaluationRules;
+                const subChallengeScore = calculateSubChallengeScore(submission, sc);
+                const overallScore = overallScores.get(trainee.id) || 0;
+
+                const getResultScore = (result: SubmittedResult, evalResult: any) => {
+                    if (evalResult.score_override != null) {
+                        return evalResult.score_override;
+                    }
+                    if (result.trainee_tier === (evalResult.evaluator_tier as any)) {
+                         const resultTypeScores = rules.tierScores[result.type as ResultType];
+                         if (resultTypeScores) {
+                            return resultTypeScores[result.trainee_tier as ResultTier] || 0;
+                         }
+                    } else {
+                        if (rules.incorrectMarking === IncorrectMarking.PENALTY) {
+                           return rules.incorrectPenalty;
+                        }
+                    }
+                    return 0; // Zero for incorrect marking by default
+                };
+                
+                const getStatus = (traineeTier: ResultTier, evaluatorTier: EvaluationResultTier) => {
+                    // FIX: Cast to `any` to allow comparing `ResultTier` and `EvaluationResultTier` enum values.
+                    if (traineeTier === (evaluatorTier as any)) return 'Correct';
+
+                    const tierValues: Record<string, number> = { [ResultTier.TIER_1]: 1, [ResultTier.TIER_2]: 2, [ResultTier.TIER_3]: 3 };
+                    const traineeValue = tierValues[traineeTier];
+                    const evaluatorValue = tierValues[evaluatorTier];
+
+                    if (traineeValue && evaluatorValue) {
+                        if (evaluatorValue < traineeValue) return 'Upgraded';
+                        if (evaluatorValue > traineeValue) return 'Downgraded';
+                    }
+                    
+                    if (evaluatorTier === EvaluationResultTier.INVALID || evaluatorTier === EvaluationResultTier.NOT_TIER_3) return 'Invalid';
+
+                    return 'Incorrect';
+                };
+
+                if (results.length === 0) {
+                     exportData.push({
+                        'Overall Challenge Name': challenge.name,
+                        'Sub-Challenge Name': sc.title,
+                        'Sub-Challenge Patent': sc.patent_number,
+                        'Participant Name': trainee.name,
+                        'Participant Email': trainee.email,
+                        'Submitted Result Value': 'N/A - No Result Submitted',
+                        'Submitted Result Type': '',
+                        "Trainee's Submitted Tier": '',
+                        "Evaluator's Final Tier": '',
+                        'Evaluation Status': evaluation ? 'Evaluated' : 'Pending',
+                        'Result Score': '',
+                        'Override Reason': '',
+                        'Participant Sub-Challenge Score': subChallengeScore,
+                        'Participant Overall Challenge Score': overallScore,
+                     });
+                } else {
+                    results.forEach(result => {
+                        const evalResult = evaluation?.result_evaluations.find(re => re.result_id === result.id);
+                        exportData.push({
+                            'Overall Challenge Name': challenge.name,
+                            'Sub-Challenge Name': sc.title,
+                            'Sub-Challenge Patent': sc.patent_number,
+                            'Participant Name': trainee.name,
+                            'Participant Email': trainee.email,
+                            'Submitted Result Value': result.value,
+                            'Submitted Result Type': result.type,
+                            "Trainee's Submitted Tier": result.trainee_tier,
+                            "Evaluator's Final Tier": evalResult?.evaluator_tier || 'Pending',
+                            'Evaluation Status': evalResult ? getStatus(result.trainee_tier, evalResult.evaluator_tier) : 'Pending',
+                            'Result Score': evalResult ? getResultScore(result, evalResult) : 'N/A',
+                            'Override Reason': evalResult?.override_reason || '',
+                            'Participant Sub-Challenge Score': subChallengeScore,
+                            'Participant Overall Challenge Score': overallScore,
+                        });
+                    });
+                }
+            });
+        });
+        
+        if (exportData.length > 0) {
+            const csv = Papa.unparse(exportData);
+            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement('a');
+            const url = URL.createObjectURL(blob);
+            link.setAttribute('href', url);
+            const safeFileName = challenge.name.replace(/[^a-z0-9]/gi, '_').toLowerCase();
+            link.setAttribute('download', `challenge_export_${safeFileName}.csv`);
+            link.style.visibility = 'hidden';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        } else {
+            alert("No data available to export.");
+        }
+    };
+
     if (loading) return <div className="p-8">Loading challenge details...</div>;
     if (error) return <div className="p-8 text-red-500">Error: {error}</div>;
     if (!challenge) return <div className="text-center p-8">Challenge not found.</div>;
@@ -171,7 +285,12 @@ export const ChallengeDetail: React.FC<ChallengeDetailProps> = ({ currentUser })
                         </div>
                     )}
                 </div>
-                <div className="flex items-center space-x-2">
+                <div className="flex items-center space-x-2 flex-wrap gap-2">
+                    {isAssignedManager && (
+                        <Button variant="secondary" onClick={handleExportToCSV}>
+                            Export to CSV
+                        </Button>
+                    )}
                     {!isChallengeEnded && isAssignedManager && (
                         <>
                             <Button variant="danger" onClick={handleEndChallenge} disabled={loading}>
