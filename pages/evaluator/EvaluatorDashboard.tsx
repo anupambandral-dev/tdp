@@ -4,6 +4,7 @@ import { Profile, SubChallengeForEvaluator, Role } from '../../types';
 import { supabase } from '../../supabaseClient';
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
+import { BackButton } from '../../components/ui/BackButton';
 
 interface EvaluatorDashboardProps {
   currentUser: Profile;
@@ -101,6 +102,9 @@ export const EvaluatorDashboard: React.FC<EvaluatorDashboardProps> = ({ currentU
 
   return (
     <div className="container mx-auto p-4 sm:p-6 lg:p-8">
+      {currentUser.role === Role.MANAGER && (
+        <BackButton to="/manager" text="Back to Manager Dashboard" />
+      )}
       <h1 className="text-3xl font-bold mb-6">Evaluator Dashboard</h1>
       
       {loading && <p>Loading evaluation queue...</p>}
