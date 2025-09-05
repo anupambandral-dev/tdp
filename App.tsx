@@ -1,5 +1,3 @@
-
-
 import React, { useState, useEffect } from 'react';
 import { HashRouter, Routes, Route, Navigate, Outlet } from 'react-router-dom';
 import { Profile, Role } from './types';
@@ -19,6 +17,7 @@ import { supabase, initializationError } from './supabaseClient';
 import { Session } from '@supabase/supabase-js';
 import { UserManagement } from './pages/manager/UserManagement';
 import { ImportUsers } from './pages/manager/ImportUsers';
+import { ResetPasswordPage } from './pages/ResetPasswordPage';
 
 const App: React.FC = () => {
   const [session, setSession] = useState<Session | null>(null);
@@ -147,6 +146,7 @@ const App: React.FC = () => {
         {currentUser && <Header currentUser={currentUser} onLogout={handleLogout} />}
         <main className="flex-grow">
           <Routes>
+            <Route path="/reset-password" element={<ResetPasswordPage />} />
             <Route path="/" element={!currentUser ? <LoginPage /> : <Navigate to={`/${currentUser.role.toLowerCase()}`} />} />
             
             <Route element={<ProtectedRoute allowedRoles={[Role.MANAGER]} />}>
