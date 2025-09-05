@@ -83,6 +83,7 @@ export const SubmitChallenge: React.FC<SubmitChallengeProps> = ({ currentUser })
 
         if (submissionData) {
             setExistingSubmission(submissionData);
+            // FIX: Cast to 'unknown' first to handle Supabase's 'Json' type correctly.
             setResults((submissionData.results as unknown as SubmittedResult[]) || []);
             const report = submissionData.report_file as { name: string; path: string } | null;
             if (report) {
@@ -192,7 +193,8 @@ export const SubmitChallenge: React.FC<SubmitChallengeProps> = ({ currentUser })
         let dbError = null;
 
         if (latestSubmission) { // Submission exists, so UPDATE it
-            const currentResults = (latestSubmission.results as SubmittedResult[] | null) || [];
+            // FIX: Cast to 'unknown' first to handle Supabase's 'Json' type correctly.
+            const currentResults = (latestSubmission.results as unknown as SubmittedResult[] | null) || [];
 
             if (currentResults.length >= MAX_RESULTS) {
                 setErrorMessage(`You cannot submit more than ${MAX_RESULTS} results.`);
