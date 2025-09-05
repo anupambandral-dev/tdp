@@ -28,9 +28,16 @@ const AppContent: React.FC = () => {
   const [isPasswordRecovery, setIsPasswordRecovery] = useState(false);
 
   useEffect(() => {
+    // Synchronously check the URL hash on component mount to prevent race conditions.
+    // If it's a recovery link, set the flag immediately.
+    if (window.location.hash.includes('type=recovery')) {
+      setIsPasswordRecovery(true);
+    }
+    
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
-      if (!session) {
+      // If there's no session and it's not a recovery flow, stop loading.
+      if (!session && !window.location.hash.includes('type=recovery')) {
         setLoading(false);
       }
     });
@@ -38,13 +45,14 @@ const AppContent: React.FC = () => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
         setSession(session);
+        // The PASSWORD_RECOVERY event is the signal to navigate.
         if (event === 'PASSWORD_RECOVERY') {
-          setIsPasswordRecovery(true);
+          setIsPasswordRecovery(true); // Ensure flag is set
           navigate('/reset-password');
         }
         if (event === 'SIGNED_OUT') {
             setCurrentUser(null);
-            setIsPasswordRecovery(false);
+            setIsPasswordRecovery(false); // Reset the flag on sign out
         }
       }
     );
@@ -54,7 +62,7 @@ const AppContent: React.FC = () => {
 
   useEffect(() => {
     if (session?.user) {
-      // Don't fetch profile if we are in the middle of password recovery
+      // The isPasswordRecovery flag, now set reliably, will guard the profile fetch.
       if (isPasswordRecovery) {
         setLoading(false);
         return;
@@ -154,7 +162,7 @@ const AppContent: React.FC = () => {
             !currentUser 
                 ? <LoginPage /> 
                 : isPasswordRecovery 
-                    ? null // Render nothing while we navigate to /reset-password
+                    ? null // Render nothing while the app confirms the recovery session and navigates
                     : <Navigate to={`/${currentUser.role.toLowerCase()}`} />
           } />
           
