@@ -14,20 +14,26 @@ const LogoIcon = () => (
     </svg>
 );
 
+type View = 'login' | 'signup' | 'forgotPassword';
+
 export const LoginPage: React.FC = () => {
-    const [isSigningUp, setIsSigningUp] = useState(false);
+    const [view, setView] = useState<View>('login');
     const [name, setName] = useState('');
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
     const [message, setMessage] = useState('');
+    
+    const clearState = () => {
+        setError('');
+        setMessage('');
+    }
 
     const handleLogin = async (e: React.FormEvent) => {
         e.preventDefault();
         setLoading(true);
-        setError('');
-        setMessage('');
+        clearState();
 
         const { error } = await supabase.auth.signInWithPassword({
             email: email,
@@ -43,8 +49,7 @@ export const LoginPage: React.FC = () => {
     const handleSignUp = async (e: React.FormEvent) => {
         e.preventDefault();
         setLoading(true);
-        setError('');
-        setMessage('');
+        clearState();
 
         const { error } = await supabase.auth.signUp({
             email: email,
@@ -60,10 +65,37 @@ export const LoginPage: React.FC = () => {
             setError(error.message);
         } else {
             setMessage('Account created! Please check your email for a verification link.');
-            setIsSigningUp(false); // Switch back to login view
+            setView('login'); // Switch back to login view
         }
         setLoading(false);
     };
+    
+    const handleForgotPassword = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setLoading(true);
+        clearState();
+        
+        const { error } = await supabase.auth.resetPasswordForEmail(email, {
+             redirectTo: window.location.origin,
+        });
+
+        if (error) {
+            setError(error.message);
+        } else {
+            setMessage('Password reset link has been sent to your email.');
+            setView('login');
+        }
+        setLoading(false);
+    }
+    
+    const getTitle = () => {
+        switch(view) {
+            case 'signup': return 'Create your new account';
+            case 'forgotPassword': return 'Reset Your Password';
+            case 'login':
+            default: return 'Sign in to your account';
+        }
+    }
 
     return (
         <div className="min-h-screen flex items-center justify-center p-4 bg-gray-100 dark:bg-gray-900">
@@ -72,12 +104,55 @@ export const LoginPage: React.FC = () => {
                     <div className="flex justify-center mb-4"><LogoIcon /></div>
                     <h1 className="text-3xl font-bold text-gray-800 dark:text-white">Tour de Prior Art</h1>
                     <p className="text-gray-600 dark:text-gray-400 mt-2">
-                        {isSigningUp ? 'Create your new account' : 'Sign in to your account'}
+                        {getTitle()}
                     </p>
                 </div>
 
-                <form onSubmit={isSigningUp ? handleSignUp : handleLogin} className="space-y-6">
-                    {isSigningUp && (
+                {view === 'login' && (
+                     <form onSubmit={handleLogin} className="space-y-6">
+                        <div>
+                            <label htmlFor="email" className="block text-sm font-medium text-gray-700 dark:text-gray-200">Email address</label>
+                            <input
+                                id="email"
+                                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 p-2"
+                                type="email"
+                                placeholder="your@email.com"
+                                value={email}
+                                onChange={(e) => setEmail(e.target.value)}
+                                required
+                                disabled={loading}
+                                autoComplete="email"
+                            />
+                        </div>
+                        <div>
+                            <div className="flex justify-between items-center">
+                                <label htmlFor="password" className="block text-sm font-medium text-gray-700 dark:text-gray-200">Password</label>
+                                <button type="button" onClick={() => { setView('forgotPassword'); clearState(); }} className="text-sm text-blue-600 hover:underline dark:text-blue-400">
+                                    Forgot password?
+                                </button>
+                            </div>
+                            <input
+                                id="password"
+                                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 p-2"
+                                type="password"
+                                placeholder="••••••••"
+                                value={password}
+                                onChange={(e) => setPassword(e.target.value)}
+                                required
+                                disabled={loading}
+                                autoComplete={'current-password'}
+                            />
+                        </div>
+                        <div>
+                            <Button type="submit" className="w-full" disabled={loading}>
+                                {loading ? 'Signing In...' : 'Sign In'}
+                            </Button>
+                        </div>
+                    </form>
+                )}
+
+                {view === 'signup' && (
+                    <form onSubmit={handleSignUp} className="space-y-6">
                         <div>
                             <label htmlFor="name" className="block text-sm font-medium text-gray-700 dark:text-gray-200">Full Name</label>
                             <input
@@ -92,50 +167,87 @@ export const LoginPage: React.FC = () => {
                                 autoComplete="name"
                             />
                         </div>
-                    )}
-                    <div>
-                        <label htmlFor="email" className="block text-sm font-medium text-gray-700 dark:text-gray-200">Email address</label>
-                        <input
-                            id="email"
-                            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 p-2"
-                            type="email"
-                            placeholder="your@email.com"
-                            value={email}
-                            onChange={(e) => setEmail(e.target.value)}
-                            required
-                            disabled={loading}
-                            autoComplete="email"
-                        />
-                    </div>
-                    <div>
-                        <label htmlFor="password" className="block text-sm font-medium text-gray-700 dark:text-gray-200">Password</label>
-                        <input
-                            id="password"
-                            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 p-2"
-                            type="password"
-                            placeholder="••••••••"
-                            value={password}
-                            onChange={(e) => setPassword(e.target.value)}
-                            required
-                            disabled={loading}
-                            autoComplete={isSigningUp ? 'new-password' : 'current-password'}
-                        />
-                         {isSigningUp && <p className="text-xs text-gray-500 mt-1">Password should be at least 6 characters.</p>}
-                    </div>
-                    <div>
-                        <Button type="submit" className="w-full" disabled={loading}>
-                            {loading ? (isSigningUp ? 'Creating Account...' : 'Signing In...') : (isSigningUp ? 'Create Account' : 'Sign In')}
-                        </Button>
-                    </div>
-                </form>
+                        <div>
+                            <label htmlFor="email" className="block text-sm font-medium text-gray-700 dark:text-gray-200">Email address</label>
+                            <input
+                                id="email"
+                                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 p-2"
+                                type="email"
+                                placeholder="your@email.com"
+                                value={email}
+                                onChange={(e) => setEmail(e.target.value)}
+                                required
+                                disabled={loading}
+                                autoComplete="email"
+                            />
+                        </div>
+                        <div>
+                            <label htmlFor="password" className="block text-sm font-medium text-gray-700 dark:text-gray-200">Password</label>
+                            <input
+                                id="password"
+                                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 p-2"
+                                type="password"
+                                placeholder="••••••••"
+                                value={password}
+                                onChange={(e) => setPassword(e.target.value)}
+                                required
+                                disabled={loading}
+                                autoComplete={'new-password'}
+                            />
+                             <p className="text-xs text-gray-500 mt-1">Password should be at least 6 characters.</p>
+                        </div>
+                        <div>
+                            <Button type="submit" className="w-full" disabled={loading}>
+                                {loading ? 'Creating Account...' : 'Create Account'}
+                            </Button>
+                        </div>
+                    </form>
+                )}
+
+                {view === 'forgotPassword' && (
+                    <form onSubmit={handleForgotPassword} className="space-y-6">
+                         <div>
+                            <label htmlFor="email" className="block text-sm font-medium text-gray-700 dark:text-gray-200">Email address</label>
+                             <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">Enter your email and we will send you a link to reset your password.</p>
+                            <input
+                                id="email"
+                                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 p-2"
+                                type="email"
+                                placeholder="your@email.com"
+                                value={email}
+                                onChange={(e) => setEmail(e.target.value)}
+                                required
+                                disabled={loading}
+                                autoComplete="email"
+                            />
+                        </div>
+                        <div>
+                            <Button type="submit" className="w-full" disabled={loading}>
+                                {loading ? 'Sending...' : 'Send Reset Link'}
+                            </Button>
+                        </div>
+                    </form>
+                )}
 
                 {error && <p className="mt-4 text-center text-sm text-red-600 dark:text-red-400">{error}</p>}
                 {message && <p className="mt-4 text-center text-sm text-green-600 dark:text-green-400">{message}</p>}
 
                 <div className="mt-6 text-center">
-                    <button onClick={() => { setIsSigningUp(!isSigningUp); setError(''); setMessage(''); }} className="text-sm text-blue-600 hover:underline dark:text-blue-400">
-                        {isSigningUp ? 'Already have an account? Sign In' : "Don't have an account? Create one"}
-                    </button>
+                   {view === 'login' && (
+                        <button onClick={() => { setView('signup'); clearState(); }} className="text-sm text-blue-600 hover:underline dark:text-blue-400">
+                           Don't have an account? Create one
+                        </button>
+                   )}
+                   {view === 'signup' && (
+                        <button onClick={() => { setView('login'); clearState(); }} className="text-sm text-blue-600 hover:underline dark:text-blue-400">
+                           Already have an account? Sign In
+                        </button>
+                   )}
+                   {view === 'forgotPassword' && (
+                        <button onClick={() => { setView('login'); clearState(); }} className="text-sm text-blue-600 hover:underline dark:text-blue-400">
+                           Back to Login
+                        </button>
+                   )}
                 </div>
             </Card>
         </div>
