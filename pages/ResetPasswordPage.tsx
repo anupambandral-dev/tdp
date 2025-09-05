@@ -1,182 +1,95 @@
-import React, { useState, useEffect } from 'react';
-import { HashRouter, Routes, Route, Navigate, Outlet } from 'react-router-dom';
-import { Profile, Role } from './types';
-import { Header } from './components/Header';
-import { LoginPage } from './pages/LoginPage';
-import { ManagerDashboard } from './pages/manager/ManagerDashboard';
-import { TraineeDashboard } from './pages/trainee/TraineeDashboard';
-import { EvaluatorDashboard } from './pages/evaluator/EvaluatorDashboard';
-import { ChallengeDetail } from './pages/manager/ChallengeDetail';
-import { SubmitChallenge } from './pages/trainee/SubmitChallenge';
-import { EvaluateSubmission } from './pages/evaluator/EvaluateSubmission';
-import { CreateChallenge } from './pages/manager/CreateChallenge';
-import { CreateSubChallenge } from './pages/manager/CreateSubChallenge';
-import { SubChallengeDetail } from './pages/shared/SubChallengeDetail';
-import { TraineePerforma } from './pages/manager/TraineePerforma';
-import { supabase, initializationError } from './supabaseClient';
-import { Session } from '@supabase/supabase-js';
-import { UserManagement } from './pages/manager/UserManagement';
-import { ImportUsers } from './pages/manager/ImportUsers';
-import { ResetPasswordPage } from './pages/ResetPasswordPage';
+import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { supabase } from '../supabaseClient';
+import { Card } from '../components/ui/Card';
+import { Button } from '../components/ui/Button';
 
-const App: React.FC = () => {
-  const [session, setSession] = useState<Session | null>(null);
-  const [currentUser, setCurrentUser] = useState<Profile | null>(null);
-  const [loading, setLoading] = useState(true);
+// Re-using the LogoIcon from LoginPage for consistency
+const LogoIcon = () => (
+    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-16 w-16 text-blue-500">
+        <path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/>
+        <path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/>
+        <path d="M4 22h16"/>
+        <path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/>
+        <path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/>
+        <path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/>
+    </svg>
+);
 
-  // Hook 1: Manages the session state. It's the single source of truth for authentication status.
-  useEffect(() => {
-    // Check for an existing session on initial load.
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-    });
+export const ResetPasswordPage: React.FC = () => {
+    const [password, setPassword] = useState('');
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState('');
+    const [message, setMessage] = useState('');
+    const navigate = useNavigate();
 
-    // Listen for changes in authentication state (login, logout).
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (_event, session) => {
-        setSession(session);
-      }
-    );
+    const handleResetPassword = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setLoading(true);
+        setError('');
+        setMessage('');
 
-    // Cleanup the subscription when the component unmounts.
-    return () => subscription.unsubscribe();
-  }, []);
-
-  // Hook 2: Manages the user profile based on the session state.
-  // This hook runs only when the session changes, cleanly separating concerns.
-  useEffect(() => {
-    // If a session exists, fetch the user's profile.
-    if (session?.user) {
-      const fetchProfile = async () => {
-        // First, try to get the profile the standard way (already linked).
-        const { data: profileData, error: profileError } = await supabase
-          .from('profiles')
-          .select('*')
-          .eq('auth_id', session.user.id)
-          .single();
-
-        // Case 1: Profile found successfully.
-        if (profileData) {
-          setCurrentUser(profileData as Profile);
-          setLoading(false);
-          return;
-        }
-
-        // Case 2: An actual error occurred (not just 'no rows found').
-        if (profileError && profileError.code !== 'PGRST116') {
-            console.error("Error fetching profile:", profileError);
-            await supabase.auth.signOut();
-            setCurrentUser(null);
+        if (password.length < 6) {
+            setError('Password should be at least 6 characters long.');
             setLoading(false);
             return;
         }
-        
-        // Case 3: No profile found (PGRST116), which means this is the first login.
-        // Call the RPC to link the auth user to their profile via email.
-        if (!profileData) {
-            console.log('No profile linked yet. Attempting to link now...');
-            const { data: linkedProfile, error: rpcError } = await supabase.rpc('link_auth_to_profile');
 
-            if (rpcError) {
-                console.error('Error linking profile:', rpcError);
-                await supabase.auth.signOut();
-                setCurrentUser(null);
-            } else if (linkedProfile && linkedProfile.length > 0) {
-                console.log('Profile successfully linked.');
-                setCurrentUser(linkedProfile[0] as Profile);
-            } else {
-                console.error("Could not find a profile to link for this user. The manager may not have imported this user's profile yet. Signing out.");
-                await supabase.auth.signOut();
-                setCurrentUser(null);
-            }
+        // The user object is automatically available from the session
+        // that was established by the recovery link.
+        const { error } = await supabase.auth.updateUser({ password: password });
+
+        if (error) {
+            setError(`Error updating password: ${error.message}`);
+        } else {
+            setMessage('Your password has been successfully updated. Redirecting to login...');
+            // Sign out of the recovery session before redirecting
+            await supabase.auth.signOut();
+            setTimeout(() => {
+                navigate('/');
+            }, 3000);
         }
         setLoading(false);
-      };
-      fetchProfile();
-    } else {
-      // If there is no session, ensure the user profile is cleared and stop loading.
-      setCurrentUser(null);
-      setLoading(false);
-    }
-  }, [session]);
+    };
 
-  const handleLogout = async () => {
-    await supabase.auth.signOut();
-    // Force a reload to ensure all state is cleared, preventing issues with stale session data
-    window.location.reload();
-  };
-
-  const ProtectedRoute: React.FC<{ allowedRoles: Role[] }> = ({ allowedRoles }) => {
-    if (loading) {
-      return <div className="min-h-screen flex items-center justify-center"><p>Loading session...</p></div>;
-    }
-    if (!currentUser) {
-      return <Navigate to="/" replace />;
-    }
-    if (!allowedRoles.includes(currentUser.role)) {
-      return <Navigate to={`/${currentUser.role.toLowerCase()}`} replace />;
-    }
-    return <Outlet />;
-  };
-
-  if (initializationError) {
     return (
-        <div className="min-h-screen flex items-center justify-center p-4 bg-red-100 text-red-900 dark:bg-red-900 dark:text-red-100">
-          <div className="text-center max-w-2xl">
-            <h1 className="text-2xl font-bold mb-4">Application Configuration Error</h1>
-            <p className="mb-4">The application cannot start because it's missing essential configuration.</p>
-            <p className="bg-red-200 dark:bg-red-800 p-4 rounded-lg font-mono text-sm text-left">{initializationError}</p>
-             <p className="mt-4 text-sm">Please ensure you have correctly set up your environment variables.</p>
-          </div>
+        <div className="min-h-screen flex items-center justify-center p-4 bg-gray-100 dark:bg-gray-900">
+            <Card className="w-full max-w-md">
+                <div className="text-center mb-8">
+                    <div className="flex justify-center mb-4"><LogoIcon /></div>
+                    <h1 className="text-3xl font-bold text-gray-800 dark:text-white">Set New Password</h1>
+                    <p className="text-gray-600 dark:text-gray-400 mt-2">
+                        Enter your new password below.
+                    </p>
+                </div>
+
+                <form onSubmit={handleResetPassword} className="space-y-6">
+                    <div>
+                        <label htmlFor="password" className="block text-sm font-medium text-gray-700 dark:text-gray-200">New Password</label>
+                        <input
+                            id="password"
+                            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 p-2"
+                            type="password"
+                            placeholder="••••••••"
+                            value={password}
+                            onChange={(e) => setPassword(e.target.value)}
+                            required
+                            disabled={loading}
+                            autoComplete="new-password"
+                        />
+                         <p className="text-xs text-gray-500 mt-1">Password should be at least 6 characters.</p>
+                    </div>
+                    <div>
+                        <Button type="submit" className="w-full" disabled={loading || !!message}>
+                            {loading ? 'Updating...' : 'Update Password'}
+                        </Button>
+                    </div>
+                </form>
+                
+                {error && <p className="mt-4 text-center text-sm text-red-600 dark:text-red-400">{error}</p>}
+                {message && <p className="mt-4 text-center text-sm text-green-600 dark:text-green-400">{message}</p>}
+
+            </Card>
         </div>
     );
-  }
-
-  if (loading) {
-    return (
-        <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900">
-            <p className="text-gray-500">Loading application...</p>
-        </div>
-    );
-  }
-
-  return (
-    <HashRouter>
-      <div className="min-h-screen flex flex-col bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100">
-        {currentUser && <Header currentUser={currentUser} onLogout={handleLogout} />}
-        <main className="flex-grow">
-          <Routes>
-            <Route path="/reset-password" element={<ResetPasswordPage />} />
-            <Route path="/" element={!currentUser ? <LoginPage /> : <Navigate to={`/${currentUser.role.toLowerCase()}`} />} />
-            
-            <Route element={<ProtectedRoute allowedRoles={[Role.MANAGER]} />}>
-              <Route path="/manager" element={currentUser ? <ManagerDashboard currentUser={currentUser} /> : null} />
-               <Route path="/manager/users" element={<UserManagement />} />
-               <Route path="/manager/import-users" element={<ImportUsers />} />
-              <Route path="/manager/challenge/:challengeId" element={currentUser ? <ChallengeDetail currentUser={currentUser} /> : null} />
-              <Route path="/manager/challenge/:challengeId/trainee/:traineeId" element={<TraineePerforma />} />
-              <Route path="/manager/create-challenge" element={currentUser ? <CreateChallenge currentUser={currentUser} /> : null} />
-              <Route path="/manager/challenge/:challengeId/create-sub-challenge" element={<CreateSubChallenge />} />
-              <Route path="/manager/sub-challenge/:subChallengeId" element={currentUser ? <SubChallengeDetail currentUser={currentUser} /> : null} />
-            </Route>
-
-            <Route element={<ProtectedRoute allowedRoles={[Role.TRAINEE]} />}>
-              <Route path="/trainee" element={currentUser ? <TraineeDashboard currentUser={currentUser} /> : null} />
-              <Route path="/trainee/challenge/:challengeId/submit" element={currentUser ? <SubmitChallenge currentUser={currentUser} /> : null} />
-              <Route path="/trainee/sub-challenge/:subChallengeId" element={currentUser ? <SubChallengeDetail currentUser={currentUser} /> : null} />
-            </Route>
-
-            <Route element={<ProtectedRoute allowedRoles={[Role.EVALUATOR, Role.MANAGER]} />}>
-              <Route path="/evaluator" element={currentUser ? <EvaluatorDashboard currentUser={currentUser} /> : null} />
-              <Route path="/evaluator/challenge/:challengeId/evaluate" element={currentUser ? <EvaluateSubmission currentUser={currentUser} /> : null} />
-            </Route>
-            
-            <Route path="*" element={<Navigate to="/" />} />
-          </Routes>
-        </main>
-      </div>
-    </HashRouter>
-  );
 };
-
-export default App;
