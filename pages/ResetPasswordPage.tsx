@@ -16,7 +16,11 @@ const LogoIcon = () => (
     </svg>
 );
 
-export const ResetPasswordPage: React.FC = () => {
+interface ResetPasswordPageProps {
+    onResetSuccess: () => void;
+}
+
+export const ResetPasswordPage: React.FC<ResetPasswordPageProps> = ({ onResetSuccess }) => {
     const [password, setPassword] = useState('');
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
@@ -43,6 +47,7 @@ export const ResetPasswordPage: React.FC = () => {
             setError(`Error updating password: ${error.message}`);
         } else {
             setMessage('Your password has been successfully updated. Redirecting to login...');
+            onResetSuccess(); // Signal to the parent component that recovery is complete
             // Sign out of the recovery session before redirecting
             await supabase.auth.signOut();
             setTimeout(() => {
