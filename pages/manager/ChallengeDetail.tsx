@@ -317,7 +317,7 @@ export const ChallengeDetail: React.FC<ChallengeDetailProps> = ({ currentUser })
                             <Card className="h-full">
                                 <h3 className="text-xl font-semibold text-blue-600 dark:text-blue-400">{sc.title}</h3>
                                 <p className="text-sm text-gray-500 dark:text-gray-400">Patent: {sc.patent_number}</p>
-                                <p className="mt-2 text-gray-700 dark:text-gray-300">{sc.summary}</p>
+                                <p className="mt-2 text-gray-700 dark:text-gray-300 whitespace-pre-wrap">{sc.summary}</p>
                                 <div className="mt-4 flex justify-between items-center text-sm">
                                     <p>Submissions: {sc.submissions?.length || 0} / {challenge.trainee_ids.length}</p>
                                     <p className="text-gray-500 dark:text-gray-400">Deadline: {new Date(sc.submission_end_time).toLocaleString()}</p>
