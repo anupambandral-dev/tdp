@@ -330,11 +330,11 @@ export const SubChallengeDetail: React.FC<SubChallengeDetailProps> = ({ currentU
                     </div>
                      <div>
                         <p className="font-semibold">Summary</p>
-                        <p>{subChallenge.summary}</p>
+                        <p className="whitespace-pre-wrap">{subChallenge.summary}</p>
                     </div>
                      <div>
                         <p className="font-semibold">Claim Focus</p>
-                        <p>{subChallenge.claim_focus}</p>
+                        <p className="whitespace-pre-wrap">{subChallenge.claim_focus}</p>
                     </div>
                 </div>
                  {evaluators.length > 0 && (
