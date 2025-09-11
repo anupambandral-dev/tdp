@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { Profile, Role, SubChallenge, OverallChallenge, Submission, IncorrectMarking, ResultTier, Evaluation, EvaluationRules, SubChallengeWithSubmissions, SubmittedResult, ResultType } from '../../types';
@@ -313,7 +314,7 @@ export const SubChallengeDetail: React.FC<SubChallengeDetailProps> = ({ currentU
             <Card className="mb-8">
                 <h1 className="text-3xl font-bold">{subChallenge.title}</h1>
                 <p className="text-gray-500 dark:text-gray-400">Part of "{overallChallenge.name}"</p>
-                <div className="mt-4 border-t dark:border-gray-700 pt-4 grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                <div className="mt-4 border-t dark:border-gray-700 pt-4 grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4 text-sm">
                     <div>
                         <p className="font-semibold">Results Deadline</p>
                         <p>{new Date(subChallenge.submission_end_time).toLocaleString()}</p>
@@ -328,13 +329,16 @@ export const SubChallengeDetail: React.FC<SubChallengeDetailProps> = ({ currentU
                         <p className="font-semibold">Patent Number</p>
                         <p>{subChallenge.patent_number}</p>
                     </div>
-                     <div>
+                     <div className="md:col-span-2">
                         <p className="font-semibold">Summary</p>
-                        <p className="whitespace-pre-wrap">{subChallenge.summary}</p>
+                        <div
+                            className="prose dark:prose-invert max-w-none mt-1"
+                            dangerouslySetInnerHTML={{ __html: subChallenge.summary || '' }}
+                        />
                     </div>
-                     <div>
+                     <div className="md:col-span-2">
                         <p className="font-semibold">Claim Focus</p>
-                        <p className="whitespace-pre-wrap">{subChallenge.claim_focus}</p>
+                        <p className="whitespace-pre-wrap mt-1">{subChallenge.claim_focus}</p>
                     </div>
                 </div>
                  {evaluators.length > 0 && (
@@ -353,6 +357,12 @@ export const SubChallengeDetail: React.FC<SubChallengeDetailProps> = ({ currentU
 
             {currentUser.role === Role.MANAGER && <ManagerView subChallenge={subChallenge} />}
             {currentUser.role === Role.TRAINEE && <TraineeView subChallenge={subChallenge} overallChallenge={overallChallenge} currentUser={currentUser} />}
+            <style>{`
+            .prose mark {
+                background-color: #fef08a;
+                padding: 0.1em;
+            }
+            `}</style>
         </div>
     );
 };
