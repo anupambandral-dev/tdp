@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { supabase } from '../../supabaseClient';
@@ -6,6 +7,7 @@ import { Button } from '../../components/ui/Button';
 import { BackButton } from '../../components/ui/BackButton';
 import { EvaluationRules, ResultTier, IncorrectMarking, OverallChallenge, Json, Profile, Role, ResultType } from '../../types';
 import { TablesInsert } from '../../database.types';
+import { RichTextInput } from '../../components/ui/RichTextInput';
 
 export const CreateSubChallenge: React.FC = () => {
     const { challengeId } = useParams<{ challengeId: string }>();
@@ -181,7 +183,7 @@ export const CreateSubChallenge: React.FC = () => {
                     </div>
                     <div>
                         <label htmlFor="summary">Summary</label>
-                        <textarea id="summary" value={summary} onChange={e => setSummary(e.target.value)} rows={3} className="input" />
+                        <RichTextInput value={summary} onChange={setSummary} />
                     </div>
                     <div>
                         <label htmlFor="claimFocus">Claim Focus</label>
