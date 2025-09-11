@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import Papa from 'papaparse';
@@ -317,7 +318,10 @@ export const ChallengeDetail: React.FC<ChallengeDetailProps> = ({ currentUser })
                             <Card className="h-full">
                                 <h3 className="text-xl font-semibold text-blue-600 dark:text-blue-400">{sc.title}</h3>
                                 <p className="text-sm text-gray-500 dark:text-gray-400">Patent: {sc.patent_number}</p>
-                                <p className="mt-2 text-gray-700 dark:text-gray-300 whitespace-pre-wrap">{sc.summary}</p>
+                                <div
+                                    className="mt-2 text-gray-700 dark:text-gray-300 prose dark:prose-invert max-w-none"
+                                    dangerouslySetInnerHTML={{ __html: sc.summary || '' }}
+                                />
                                 <div className="mt-4 flex justify-between items-center text-sm">
                                     <p>Submissions: {sc.submissions?.length || 0} / {challenge.trainee_ids.length}</p>
                                     <p className="text-gray-500 dark:text-gray-400">Deadline: {new Date(sc.submission_end_time).toLocaleString()}</p>
@@ -355,6 +359,12 @@ export const ChallengeDetail: React.FC<ChallengeDetailProps> = ({ currentUser })
                     </Card>
                 </div>
             </div>
+            <style>{`
+            .prose mark {
+                background-color: #fef08a;
+                padding: 0.1em;
+            }
+            `}</style>
         </div>
     );
 };
