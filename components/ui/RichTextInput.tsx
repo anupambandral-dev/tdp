@@ -23,6 +23,9 @@ export const RichTextInput: React.FC<RichTextInputProps> = ({ value, onChange })
   const editorRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
+    // This effect ensures that if the `value` prop changes from an external source
+    // (e.g., form reset), the editor's content is updated. The check prevents
+    // a feedback loop when the change comes from the editor itself.
     if (editorRef.current && value !== editorRef.current.innerHTML) {
       editorRef.current.innerHTML = value;
     }
@@ -31,6 +34,8 @@ export const RichTextInput: React.FC<RichTextInputProps> = ({ value, onChange })
   const handleCommand = (command: string, valueArg?: string) => {
     document.execCommand(command, false, valueArg);
     if (editorRef.current) {
+        // After a command, the state needs to be synced manually as `onInput` may not fire.
+        onChange(editorRef.current.innerHTML);
         editorRef.current.focus();
     }
   };
@@ -40,17 +45,23 @@ export const RichTextInput: React.FC<RichTextInputProps> = ({ value, onChange })
       onChange(editorRef.current.innerHTML);
     }
   };
+  
+  const preventFocusSteal = (e: React.MouseEvent) => {
+    // We prevent default on mousedown to stop the editor from losing focus,
+    // which would cause the text selection to be lost before the command runs.
+    e.preventDefault();
+  };
 
   return (
     <div className="rounded-md border border-gray-300 dark:border-gray-600 focus-within:border-blue-500 focus-within:ring-1 focus-within:ring-blue-500">
       <div className="flex items-center space-x-1 p-2 border-b border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-800 rounded-t-md">
-        <button type="button" onClick={() => handleCommand('bold')} className="toolbar-btn" aria-label="Bold">
+        <button type="button" onMouseDown={preventFocusSteal} onClick={() => handleCommand('bold')} className="toolbar-btn" aria-label="Bold">
             <BoldIcon />
         </button>
-        <button type="button" onClick={() => handleCommand('italic')} className="toolbar-btn" aria-label="Italic">
+        <button type="button" onMouseDown={preventFocusSteal} onClick={() => handleCommand('italic')} className="toolbar-btn" aria-label="Italic">
             <ItalicIcon />
         </button>
-        <button type="button" onClick={() => handleCommand('hiliteColor', '#fef08a')} className="toolbar-btn" aria-label="Highlight">
+        <button type="button" onMouseDown={preventFocusSteal} onClick={() => handleCommand('hiliteColor', '#fef08a')} className="toolbar-btn" aria-label="Highlight">
             <HighlightIcon />
         </button>
       </div>
@@ -58,7 +69,9 @@ export const RichTextInput: React.FC<RichTextInputProps> = ({ value, onChange })
         ref={editorRef}
         contentEditable
         onInput={handleInput}
-        dangerouslySetInnerHTML={{ __html: value }}
+        // The `dangerouslySetInnerHTML` prop was removed. It was causing React to
+        // re-render the content on every keystroke, which reset the cursor to the beginning.
+        // The `useEffect` now properly handles setting the initial value without this side effect.
         className="w-full min-h-[100px] p-2 dark:bg-gray-700 focus:outline-none prose dark:prose-invert max-w-none"
         aria-label="Rich text editor for summary"
       />
