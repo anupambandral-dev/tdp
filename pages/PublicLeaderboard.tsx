@@ -63,6 +63,7 @@ export const PublicLeaderboard: React.FC = () => {
             }
             setLoading(true);
 
+            // Fetch challenge, sub-challenges, and all submissions
             const { data, error } = await supabase
                 .from('overall_challenges')
                 .select('*, sub_challenges(*, submissions(*))')
@@ -70,7 +71,7 @@ export const PublicLeaderboard: React.FC = () => {
                 .single<ChallengeWithSubChallengesAndSubmissions>();
             
             if (error) {
-                setError(error.message);
+                setError("This challenge may not exist or is not publicly available.");
                 console.error(error);
             } else if (data) {
                 setChallenge(data);
@@ -117,7 +118,7 @@ export const PublicLeaderboard: React.FC = () => {
     };
 
     if (loading) return <div className="min-h-screen flex items-center justify-center p-4 bg-gray-100 dark:bg-gray-900"><p className="text-gray-500">Loading leaderboard...</p></div>;
-    if (error) return <div className="min-h-screen flex items-center justify-center p-4 bg-red-100 dark:bg-red-900"><p>Error: {error}</p></div>;
+    if (error) return <div className="min-h-screen flex items-center justify-center p-4 bg-red-100 dark:bg-red-900"><Card><p className="text-red-700 dark:text-red-200">{error}</p></Card></div>;
     if (!challenge) return <div className="min-h-screen flex items-center justify-center p-4"><p>Challenge not found.</p></div>;
 
     return (
@@ -152,6 +153,9 @@ export const PublicLeaderboard: React.FC = () => {
                                 </li>
                             ))}
                         </ul>
+                         {leaderboardData.length === 0 && (
+                            <p className="text-center text-gray-500 py-6">No participants have submitted evaluated work yet.</p>
+                        )}
                     </div>
                 </Card>
                  <footer className="text-center mt-4">
