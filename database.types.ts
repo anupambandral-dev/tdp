@@ -174,6 +174,15 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      // FIX: Add missing 'get_public_leaderboard' RPC function definition.
+      // This allows TypeScript to correctly type the supabase.rpc call and
+      // resolves the "not assignable to parameter" and subsequent casting errors.
+      get_public_leaderboard: {
+        Args: {
+          p_challenge_id: string
+        }
+        Returns: Json
+      }
       link_auth_to_profile: {
         Args: Record<string, never>
         Returns: {
