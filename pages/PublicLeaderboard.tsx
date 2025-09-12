@@ -154,7 +154,7 @@ export const PublicLeaderboard: React.FC = () => {
                             ))}
                         </ul>
                          {leaderboardData.length === 0 && (
-                            <p className="text-center text-gray-500 py-6">No participants have submitted evaluated work yet.</p>
+                            <p className="text-center text-gray-500 py-6">No participants were found for this challenge.</p>
                         )}
                     </div>
                 </Card>
