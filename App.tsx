@@ -18,6 +18,7 @@ import { Session } from '@supabase/supabase-js';
 import { UserManagement } from './pages/manager/UserManagement';
 import { ImportUsers } from './pages/manager/ImportUsers';
 import { ResetPasswordPage } from './pages/ResetPasswordPage';
+import { PublicLeaderboard } from './pages/PublicLeaderboard';
 
 
 const AppContent: React.FC = () => {
@@ -173,6 +174,7 @@ const AppContent: React.FC = () => {
       {currentUser && !isPasswordRecovery && <Header currentUser={currentUser} onLogout={handleLogout} />}
       <main className="flex-grow">
         <Routes>
+          <Route path="/leaderboard/:challengeId" element={<PublicLeaderboard />} />
           <Route path="/reset-password" element={<ResetPasswordPage onResetSuccess={handleResetSuccess} />} />
           <Route path="/" element={
             isPasswordRecovery
