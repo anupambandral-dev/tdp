@@ -1,5 +1,3 @@
-
-
 import React, { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import Papa from 'papaparse';
@@ -168,6 +166,42 @@ export const ChallengeDetail: React.FC<ChallengeDetailProps> = ({ currentUser })
             overallScores.set(t.id, getTraineeScore(t.id));
         });
 
+        const getResultScore = (result: SubmittedResult, evalResult: any, rules: EvaluationRules) => {
+            if (evalResult.score_override != null) {
+                return evalResult.score_override;
+            }
+            if (result.trainee_tier === (evalResult.evaluator_tier as any)) {
+                 const resultTypeScores = rules.tierScores[result.type as ResultType];
+                 if (resultTypeScores) {
+                    return resultTypeScores[result.trainee_tier as ResultTier] || 0;
+                 }
+            } else {
+                if (rules.incorrectMarking === IncorrectMarking.PENALTY) {
+                   return rules.incorrectPenalty;
+                }
+            }
+            return 0; // Zero for incorrect marking by default
+        };
+        
+        const getStatus = (traineeTier: ResultTier, evaluatorTier: EvaluationResultTier) => {
+            // FIX: Cast to `any` to allow comparing `ResultTier` and `EvaluationResultTier` enum values.
+            if (traineeTier === (evaluatorTier as any)) return 'Correct';
+
+            const tierValues: Record<string, number> = { [ResultTier.TIER_1]: 1, [ResultTier.TIER_2]: 2, [ResultTier.TIER_3]: 3 };
+            const traineeValue = tierValues[traineeTier];
+            const evaluatorValue = tierValues[evaluatorTier];
+
+            if (traineeValue && evaluatorValue) {
+                if (evaluatorValue < traineeValue) return 'Upgraded';
+                if (evaluatorValue > traineeValue) return 'Downgraded';
+            }
+            
+            if (evaluatorTier === EvaluationResultTier.INVALID || evaluatorTier === EvaluationResultTier.NOT_TIER_3) return 'Invalid';
+
+            return 'Incorrect';
+        };
+
+
         challenge.sub_challenges.forEach(sc => {
             sc.submissions.forEach(submission => {
                 const trainee = trainees.find(t => t.id === submission.trainee_id);
@@ -178,41 +212,6 @@ export const ChallengeDetail: React.FC<ChallengeDetailProps> = ({ currentUser })
                 const rules = sc.evaluation_rules as unknown as EvaluationRules;
                 const subChallengeScore = calculateSubChallengeScore(submission, sc);
                 const overallScore = overallScores.get(trainee.id) || 0;
-
-                const getResultScore = (result: SubmittedResult, evalResult: any) => {
-                    if (evalResult.score_override != null) {
-                        return evalResult.score_override;
-                    }
-                    if (result.trainee_tier === (evalResult.evaluator_tier as any)) {
-                         const resultTypeScores = rules.tierScores[result.type as ResultType];
-                         if (resultTypeScores) {
-                            return resultTypeScores[result.trainee_tier as ResultTier] || 0;
-                         }
-                    } else {
-                        if (rules.incorrectMarking === IncorrectMarking.PENALTY) {
-                           return rules.incorrectPenalty;
-                        }
-                    }
-                    return 0; // Zero for incorrect marking by default
-                };
-                
-                const getStatus = (traineeTier: ResultTier, evaluatorTier: EvaluationResultTier) => {
-                    // FIX: Cast to `any` to allow comparing `ResultTier` and `EvaluationResultTier` enum values.
-                    if (traineeTier === (evaluatorTier as any)) return 'Correct';
-
-                    const tierValues: Record<string, number> = { [ResultTier.TIER_1]: 1, [ResultTier.TIER_2]: 2, [ResultTier.TIER_3]: 3 };
-                    const traineeValue = tierValues[traineeTier];
-                    const evaluatorValue = tierValues[evaluatorTier];
-
-                    if (traineeValue && evaluatorValue) {
-                        if (evaluatorValue < traineeValue) return 'Upgraded';
-                        if (evaluatorValue > traineeValue) return 'Downgraded';
-                    }
-                    
-                    if (evaluatorTier === EvaluationResultTier.INVALID || evaluatorTier === EvaluationResultTier.NOT_TIER_3) return 'Invalid';
-
-                    return 'Incorrect';
-                };
 
                 if (results.length === 0) {
                      exportData.push({
@@ -243,9 +242,9 @@ export const ChallengeDetail: React.FC<ChallengeDetailProps> = ({ currentUser })
                             'Submitted Result Value': result.value,
                             'Submitted Result Type': result.type,
                             "Trainee's Submitted Tier": result.trainee_tier,
-                            "Evaluator's Final Tier": evalResult?.evaluator_tier || 'Pending',
+                            "Evaluator's Final Tier": evalResult?.evaluator_tier || 'N/A',
                             'Evaluation Status': evalResult ? getStatus(result.trainee_tier, evalResult.evaluator_tier) : 'Pending',
-                            'Result Score': evalResult ? getResultScore(result, evalResult) : 'N/A',
+                            'Result Score': evalResult ? getResultScore(result, evalResult, rules) : 'N/A',
                             'Override Reason': evalResult?.override_reason || '',
                             'Participant Sub-Challenge Score': subChallengeScore,
                             'Participant Overall Challenge Score': overallScore,
@@ -254,135 +253,125 @@ export const ChallengeDetail: React.FC<ChallengeDetailProps> = ({ currentUser })
                 }
             });
         });
-        
-        if (exportData.length > 0) {
-            const csv = Papa.unparse(exportData);
-            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-            const link = document.createElement('a');
-            const url = URL.createObjectURL(blob);
-            link.setAttribute('href', url);
-            const safeFileName = challenge.name.replace(/[^a-z0-9]/gi, '_').toLowerCase();
-            link.setAttribute('download', `challenge_export_${safeFileName}.csv`);
-            link.style.visibility = 'hidden';
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-        } else {
-            alert("No data available to export.");
-        }
-    };
 
-    const handleCopyLink = () => {
-        const url = `${window.location.origin}/#/leaderboard/${challengeId}`;
-        navigator.clipboard.writeText(url);
-        setLinkCopied(true);
-        setTimeout(() => setLinkCopied(false), 2000);
+        const csv = Papa.unparse(exportData);
+        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement('a');
+        const url = URL.createObjectURL(blob);
+        link.setAttribute('href', url);
+        link.setAttribute('download', `${challenge.name}_export.csv`);
+        link.style.visibility = 'hidden';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
     };
-
+    
+    const handleCopyPublicLink = () => {
+        const link = `${window.location.origin}/#/leaderboard/${challengeId}`;
+        navigator.clipboard.writeText(link).then(() => {
+            setLinkCopied(true);
+            setTimeout(() => setLinkCopied(false), 2000);
+        }).catch(err => {
+            console.error('Failed to copy: ', err);
+            alert('Failed to copy link.');
+        });
+    };
 
     if (loading) return <div className="p-8">Loading challenge details...</div>;
     if (error) return <div className="p-8 text-red-500">Error: {error}</div>;
-    if (!challenge) return <div className="text-center p-8">Challenge not found.</div>;
+    if (!challenge) return <div className="p-8 text-center">Challenge not found.</div>;
 
-    const isChallengeEnded = !!challenge.ended_at;
-    const isAssignedManager = challenge.manager_ids.includes(currentUser.id);
+    const leaderboard = trainees
+        .map(trainee => ({
+            id: trainee.id,
+            name: trainee.name,
+            score: getTraineeScore(trainee.id),
+        }))
+        .sort((a, b) => b.score - a.score);
 
     return (
         <div className="container mx-auto p-4 sm:p-6 lg:p-8">
             <BackButton to="/manager" text="Back to Dashboard" />
-            <div className="flex justify-between items-start mb-6 flex-wrap gap-4">
-                <div>
-                    <h1 className="text-3xl font-bold">{challenge.name}</h1>
-                    {isChallengeEnded && (
-                        <div className="mt-2">
-                             <span className="px-3 py-1 text-sm font-semibold rounded-full bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200">
-                                Challenge Ended
-                            </span>
-                        </div>
-                    )}
-                </div>
-                <div className="flex items-center space-x-2 flex-wrap gap-2">
-                    <Button variant="secondary" onClick={handleCopyLink}>
-                        <ClipboardIcon /> {linkCopied ? 'Copied!' : 'Copy Public Link'}
-                    </Button>
-                    {isAssignedManager && (
-                        <Button variant="secondary" onClick={handleExportToCSV}>
-                            Export to CSV
+
+            <Card className="mb-8">
+                <div className="flex justify-between items-start flex-wrap gap-4">
+                    <div>
+                        <h1 className="text-3xl font-bold">{challenge.name}</h1>
+                        <p className="text-gray-500 dark:text-gray-400">{challenge.trainee_ids.length} participants</p>
+                         {challenge.ended_at && (
+                            <p className="text-sm font-semibold text-red-600 dark:text-red-400 mt-2">
+                                Challenge ended on {new Date(challenge.ended_at).toLocaleDateString()}
+                            </p>
+                        )}
+                    </div>
+                    <div className="flex items-center space-x-2 flex-wrap gap-2">
+                        <Button onClick={handleCopyPublicLink} variant="secondary">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5 mr-2"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.72"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.72-1.72"></path></svg>
+                            {linkCopied ? 'Copied!' : 'Copy Public Link'}
                         </Button>
-                    )}
-                    {!isChallengeEnded && isAssignedManager && (
-                        <>
-                            <Button variant="danger" onClick={handleEndChallenge} disabled={loading}>
-                                End Challenge
+                        <Button onClick={handleExportToCSV} variant="secondary"><ClipboardIcon />Export to CSV</Button>
+                        {!challenge.ended_at && (
+                             <Button onClick={handleEndChallenge} variant="danger-outline" disabled={loading}>
+                                {loading ? 'Ending...' : 'End Challenge'}
                             </Button>
-                            <Link to={`/manager/challenge/${challenge.id}/create-sub-challenge`}>
-                                <Button>+ Add Sub-Challenge</Button>
-                            </Link>
-                        </>
-                    )}
-                    {isAssignedManager && (
-                        <Button variant="danger-outline" onClick={handleDeleteChallenge} disabled={loading}>
-                            Delete Challenge
+                        )}
+                        <Button onClick={handleDeleteChallenge} variant="danger" disabled={loading}>
+                           {loading ? 'Deleting...' : 'Delete Challenge'}
                         </Button>
-                    )}
+                    </div>
                 </div>
-            </div>
-            
+            </Card>
+
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                <div className="lg:col-span-2 space-y-6">
-                    <h2 className="text-2xl font-semibold">Sub-Challenges</h2>
-                    {challenge.sub_challenges.length > 0 ? challenge.sub_challenges.map(sc => (
-                        <Link to={`/manager/sub-challenge/${sc.id}`} key={sc.id} className="block hover:shadow-lg transition-shadow duration-200 rounded-lg">
-                            <Card className="h-full">
-                                <h3 className="text-xl font-semibold text-blue-600 dark:text-blue-400">{sc.title}</h3>
-                                <p className="text-sm text-gray-500 dark:text-gray-400">Patent: {sc.patent_number}</p>
-                                <div
-                                    className="mt-2 text-gray-700 dark:text-gray-300 prose dark:prose-invert max-w-none"
-                                    dangerouslySetInnerHTML={{ __html: sc.summary || '' }}
-                                />
-                                <div className="mt-4 flex justify-between items-center text-sm">
-                                    <p>Submissions: {sc.submissions?.length || 0} / {challenge.trainee_ids.length}</p>
-                                    <p className="text-gray-500 dark:text-gray-400">Deadline: {new Date(sc.submission_end_time).toLocaleString()}</p>
-                                </div>
+                <div className="lg:col-span-2">
+                    <h2 className="text-2xl font-semibold mb-4">Sub-Challenges</h2>
+                    <div className="space-y-4">
+                        {challenge.sub_challenges.map(sc => (
+                             <Card key={sc.id} className="hover:shadow-lg transition-shadow duration-200">
+                                <Link to={`/manager/sub-challenge/${sc.id}`}>
+                                    <h3 className="text-lg font-semibold text-blue-600 dark:text-blue-400">{sc.title}</h3>
+                                    <p className="text-sm text-gray-500 dark:text-gray-400">{sc.patent_number}</p>
+                                    <p className="text-sm mt-2">{sc.submissions?.length || 0} submissions</p>
+                                </Link>
                             </Card>
-                        </Link>
-                    )) : (
-                        <Card>
-                            <p className="text-center text-gray-500">No sub-challenges have been created yet.</p>
-                        </Card>
-                    )}
+                        ))}
+                        {challenge.sub_challenges.length === 0 && (
+                            <Card>
+                                <p className="text-center text-gray-500">No sub-challenges have been created yet.</p>
+                            </Card>
+                        )}
+                        {!challenge.ended_at && (
+                             <Link to={`/manager/challenge/${challengeId}/create-sub-challenge`}>
+                                <Button className="w-full">
+                                    + Add New Sub-Challenge
+                                </Button>
+                            </Link>
+                        )}
+                    </div>
                 </div>
-                
+
                 <div>
-                    <h2 className="text-2xl font-semibold mb-6">Trainee Leaderboard</h2>
+                    <h2 className="text-2xl font-semibold mb-4">Leaderboard</h2>
                     <Card>
-                        <ul className="space-y-1">
-                            {trainees
-                                .map(user => ({ user, score: getTraineeScore(user.id) }))
-                                .sort((a, b) => b.score - a.score)
-                                .map(({ user, score }, index) => (
-                                <li key={user.id}>
-                                    <Link to={`/manager/challenge/${challenge.id}/trainee/${user.id}`} className="block p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
-                                        <div className="flex items-center justify-between">
-                                            <div className="flex items-center space-x-3">
-                                                <span className="font-bold w-6 text-center">{index + 1}</span>
-                                                <span>{user.name}</span>
-                                            </div>
-                                            <span className="font-semibold text-lg">{score} pts</span>
-                                        </div>
-                                    </Link>
+                        <ul className="space-y-4">
+                            {leaderboard.map((trainee, index) => (
+                                <li key={trainee.id} className="flex items-center justify-between">
+                                    <div className="flex items-center">
+                                        <span className="text-lg font-bold w-8">{index + 1}.</span>
+                                        <Link to={`/manager/challenge/${challenge.id}/trainee/${trainee.id}`} className="font-medium hover:underline">
+                                            {trainee.name}
+                                        </Link>
+                                    </div>
+                                    <span className="font-semibold">{trainee.score} pts</span>
                                 </li>
                             ))}
+                             {leaderboard.length === 0 && (
+                                <p className="text-center text-gray-500">No participants yet.</p>
+                            )}
                         </ul>
                     </Card>
                 </div>
             </div>
-            <style>{`
-            .prose mark {
-                background-color: #fef08a;
-                padding: 0.1em;
-            }
-            `}</style>
         </div>
     );
 };
