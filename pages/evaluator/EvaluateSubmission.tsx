@@ -4,29 +4,43 @@ import { supabase } from '../../supabaseClient';
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { BackButton } from '../../components/ui/BackButton';
-import { Profile, ResultEvaluation, SubmittedResult, SubChallenge, Submission, Evaluation, EvaluationRules, SubmissionWithProfile, SubChallengeWithSubmissions, Json, EvaluationResultTier, OverallChallenge } from '../../types';
+import { Profile, ResultEvaluation, SubmittedResult, SubChallenge, Submission, Evaluation, EvaluationRules, SubmissionWithProfile, SubChallengeWithSubmissions, Json, EvaluationResultTier, OverallChallenge, ResultType } from '../../types';
+
+const normalizeResultValue = (value: string, type: SubmittedResult['type']): string => {
+    let normalized = value.trim().toLowerCase();
+    if (type === ResultType.NON_PATENT) {
+        // Simple URL-like normalization
+        normalized = normalized.replace(/^https?:\/\//, ''); // remove protocol
+        normalized = normalized.replace(/^www\./, ''); // remove www.
+        if (normalized.endsWith('/')) {
+            normalized = normalized.slice(0, -1); // remove trailing slash
+        }
+        return normalized;
+    }
+    // For patents, also make it more robust by removing common separators
+    return normalized.replace(/[-/,\s]/g, '');
+};
 
 const DuplicateCheckView: React.FC<{ submissions: SubmissionWithProfile[] }> = ({ submissions }) => {
     const duplicateResults = useMemo(() => {
-        const resultsMap = new Map<string, { profile: Profile | null; submittedAt: string }[]>();
+        const resultsMap = new Map<string, { originalValue: string, submitters: { profile: Profile | null; submittedAt: string }[] }>();
 
         submissions.forEach(sub => {
             const results = (sub.results as unknown as SubmittedResult[]) || [];
             results.forEach(result => {
-                const normalizedValue = result.value.trim().toLowerCase();
+                const normalizedValue = normalizeResultValue(result.value, result.type);
                 if (!resultsMap.has(normalizedValue)) {
-                    resultsMap.set(normalizedValue, []);
+                    resultsMap.set(normalizedValue, { originalValue: result.value, submitters: [] });
                 }
-                resultsMap.get(normalizedValue)!.push({
+                resultsMap.get(normalizedValue)!.submitters.push({
                     profile: sub.profiles,
                     submittedAt: result.submitted_at || sub.submitted_at // Fallback to overall submission time
                 });
             });
         });
 
-        const duplicates = Array.from(resultsMap.entries())
-            .filter(([_, trainees]) => trainees.length > 1)
-            .map(([value, trainees]) => ({ value, trainees }));
+        const duplicates = Array.from(resultsMap.values())
+            .filter(item => item.submitters.length > 1);
         
         return duplicates;
     }, [submissions]);
@@ -42,12 +56,12 @@ const DuplicateCheckView: React.FC<{ submissions: SubmissionWithProfile[] }> = (
     return (
         <div className="space-y-6">
             <h2 className="text-2xl font-semibold">Duplicate Results Found</h2>
-            {duplicateResults.map(({ value, trainees }) => (
-                <Card key={value}>
-                    <h3 className="text-lg font-semibold font-mono break-all">{value}</h3>
-                    <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">Submitted by {trainees.length} trainees:</p>
+            {duplicateResults.map(({ originalValue, submitters }) => (
+                <Card key={originalValue}>
+                    <h3 className="text-lg font-semibold font-mono break-all">{originalValue}</h3>
+                    <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">Submitted by {submitters.length} trainees:</p>
                     <ul className="space-y-3">
-                        {trainees
+                        {submitters
                             .sort((a, b) => new Date(a.submittedAt || 0).getTime() - new Date(b.submittedAt || 0).getTime()) // Sort by submission time
                             .map(({ profile, submittedAt }, index) => (
                             <li key={profile?.id || index} className="flex justify-between items-center p-2 bg-gray-50 dark:bg-gray-800 rounded-md">
@@ -108,7 +122,7 @@ export const EvaluateSubmission: React.FC<EvaluateSubmissionProps> = ({ currentU
         challenge.submissions.forEach(sub => {
             const results = (sub.results as unknown as SubmittedResult[]) || [];
             results.forEach(result => {
-                const normalizedValue = result.value.trim().toLowerCase();
+                const normalizedValue = normalizeResultValue(result.value, result.type);
                 if (!map.has(normalizedValue)) {
                     map.set(normalizedValue, []);
                 }
@@ -179,7 +193,7 @@ export const EvaluateSubmission: React.FC<EvaluateSubmissionProps> = ({ currentU
 
             // Auto-set override for duplicates if this is a new evaluation
             if (!existing) {
-                const duplicatesInfo = allResultsMap.get(result.value.trim().toLowerCase());
+                const duplicatesInfo = allResultsMap.get(normalizeResultValue(result.value, result.type));
                 const isDuplicate = duplicatesInfo && duplicatesInfo.length > 1;
                 const isFirst = isDuplicate && duplicatesInfo[0].traineeId === selectedTraineeId;
                 if (isDuplicate && !isFirst) {
@@ -354,7 +368,7 @@ export const EvaluateSubmission: React.FC<EvaluateSubmissionProps> = ({ currentU
                                             <h3 className="text-lg font-semibold mb-2">Submitted Results</h3>
                                             {submittedResults.map((result) => {
                                                 const currentEval = resultEvals.find(re => re.result_id === result.id);
-                                                const duplicatesInfo = allResultsMap.get(result.value.trim().toLowerCase());
+                                                const duplicatesInfo = allResultsMap.get(normalizeResultValue(result.value, result.type));
                                                 const isDuplicate = duplicatesInfo && duplicatesInfo.length > 1;
                                                 const isFirstSubmitter = isDuplicate && duplicatesInfo[0].traineeId === selectedTraineeId;
 
