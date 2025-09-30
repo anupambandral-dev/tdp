@@ -9,15 +9,31 @@ import { Profile, ResultEvaluation, SubmittedResult, SubChallenge, Submission, E
 const normalizeResultValue = (value: string, type: SubmittedResult['type']): string => {
     let normalized = value.trim().toLowerCase();
     if (type === ResultType.NON_PATENT) {
-        // Simple URL-like normalization
-        normalized = normalized.replace(/^https?:\/\//, ''); // remove protocol
-        normalized = normalized.replace(/^www\./, ''); // remove www.
-        if (normalized.endsWith('/')) {
-            normalized = normalized.slice(0, -1); // remove trailing slash
+        // For NPL, we need to handle both document identifiers (e.g., 'R1-092785') and URLs.
+        // This function uses a heuristic to decide which normalization strategy to apply.
+
+        // Heuristic: If the string starts with 'http' or 'www.', treat it as a URL.
+        const isUrl = normalized.startsWith('http') || normalized.startsWith('www.');
+
+        if (isUrl) {
+            // Normalize as a URL: remove protocol, 'www.' prefix, and trailing slash.
+            normalized = normalized.replace(/^https?:\/\//, '');
+            normalized = normalized.replace(/^www\./, '');
+            if (normalized.endsWith('/')) {
+                normalized = normalized.slice(0, -1);
+            }
+            return normalized;
+        } else {
+            // Treat as an identifier.
+            // First, strip parenthetical content, which often contains URLs or comments.
+            // E.g., 'R1-092785 (http://...)' becomes 'R1-092785'.
+            normalized = normalized.replace(/\(.*\)/g, '').trim();
+            // Then, apply the same normalization as patents to handle variations
+            // in spacing and separators. E.g., 'R1 - 092785' becomes 'r1092785'.
+            return normalized.replace(/[-/,\s]/g, '');
         }
-        return normalized;
     }
-    // For patents, also make it more robust by removing common separators
+    // For patents, apply robust normalization by removing common separators.
     return normalized.replace(/[-/,\s]/g, '');
 };
 
