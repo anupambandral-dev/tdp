@@ -39,7 +39,7 @@ export const PublicSubChallengeLeaderboard: React.FC = () => {
             setLoading(true);
 
             // Call the secure database function to get the leaderboard
-            const { data, error } = await supabase.rpc('get_public_subchallenge_leaderboard', {
+            const { data, error } = await supabase.rpc('get_public_sub_challenge_leaderboard', {
                 p_sub_challenge_id: subChallengeId
             });
             
