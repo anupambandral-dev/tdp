@@ -1,4 +1,5 @@
 
+
 import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import { supabase } from '../supabaseClient';
@@ -43,7 +44,8 @@ export const PublicLeaderboard: React.FC = () => {
                 setError("This challenge may not exist or is not publicly available.");
                 console.error('RPC Error:', error);
             } else if (data) {
-                setLeaderboardData(data as LeaderboardData);
+                // FIX: Cast RPC return value to 'unknown' first before casting to the specific 'LeaderboardData' type to resolve the TypeScript error.
+                setLeaderboardData(data as unknown as LeaderboardData);
             }
             setLoading(false);
         };
