@@ -249,6 +249,7 @@ export const SubChallengeDetail: React.FC<SubChallengeDetailProps> = ({ currentU
     const [overallChallenge, setOverallChallenge] = useState<OverallChallenge | null>(null);
     const [evaluators, setEvaluators] = useState<Profile[]>([]);
     const [loading, setLoading] = useState(true);
+    const [linkCopied, setLinkCopied] = useState(false);
 
     useEffect(() => {
         const fetchDetails = async () => {
@@ -298,6 +299,17 @@ export const SubChallengeDetail: React.FC<SubChallengeDetailProps> = ({ currentU
         fetchDetails();
     }, [subChallengeId]);
 
+    const handleCopyPublicLink = () => {
+        const link = `${window.location.origin}/#/sub-challenge-leaderboard/${subChallengeId}`;
+        navigator.clipboard.writeText(link).then(() => {
+            setLinkCopied(true);
+            setTimeout(() => setLinkCopied(false), 2000);
+        }).catch(err => {
+            console.error('Failed to copy: ', err);
+            alert('Failed to copy link.');
+        });
+    };
+
 
     if (loading) return <div className="p-8">Loading details...</div>;
     if (!subChallenge || !overallChallenge) {
@@ -312,8 +324,18 @@ export const SubChallengeDetail: React.FC<SubChallengeDetailProps> = ({ currentU
             <BackButton to={backLink} text={backLinkText} />
             
             <Card className="mb-8">
-                <h1 className="text-3xl font-bold">{subChallenge.title}</h1>
-                <p className="text-gray-500 dark:text-gray-400">Part of "{overallChallenge.name}"</p>
+                <div className="flex justify-between items-start flex-wrap gap-4">
+                    <div>
+                        <h1 className="text-3xl font-bold">{subChallenge.title}</h1>
+                        <p className="text-gray-500 dark:text-gray-400">Part of "{overallChallenge.name}"</p>
+                    </div>
+                    {currentUser.role === Role.MANAGER && (
+                         <Button onClick={handleCopyPublicLink} variant="secondary">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4 mr-2"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.72"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.72-1.72"></path></svg>
+                            {linkCopied ? 'Copied!' : 'Copy Public Link'}
+                        </Button>
+                    )}
+                </div>
                 <div className="mt-4 border-t dark:border-gray-700 pt-4 grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4 text-sm">
                     <div>
                         <p className="font-semibold">Results Deadline</p>
