@@ -22,13 +22,12 @@ interface LeaderboardEntry {
     id: string;
     name: string;
     score: number;
-    has_correct_tier_one_or_two: boolean;
 }
 
 interface SubChallengeLeaderboardData {
     sub_challenge_title: string;
     leaderboard: LeaderboardEntry[];
-    first_tier_one: string | null;
+    highlights: string[];
 }
 
 // Helper function to calculate score, moved from other components to make this self-contained.
@@ -98,65 +97,78 @@ export const PublicSubChallengeLeaderboard: React.FC = () => {
             const subChallenge = subChallengeData as SubChallenge & { submissions: (Submission & { profiles: {id: string; name: string} | null })[] };
             const evaluatedSubmissions = subChallenge.submissions.filter(s => s.evaluation && s.profiles);
 
-            // --- Process Data Client-Side ---
-            
-            // 1. Find the first correct Tier-1 submission
-            let firstTierOneSubmitter: string | null = null;
-            
-            const allResultsSortedByTime = evaluatedSubmissions
-                .flatMap(sub => 
-                    (((sub.results || []) as unknown as SubmittedResult[]).map(res => ({
-                        ...res,
-                        traineeName: sub.profiles!.name,
-                        evaluation: sub.evaluation as unknown as Evaluation
-                    })))
-                )
-                .sort((a, b) => new Date(a.submitted_at).getTime() - new Date(b.submitted_at).getTime());
+            // --- Process Data Client-Side for Highlights ---
+            const highlights: string[] = [];
+            const resultsMap = new Map<string, { submitter: { name: string, traineeTier: ResultTier, evalTier: EvaluationResultTier }, submittedAt: string }[]>();
 
-            for (const result of allResultsSortedByTime) {
-                const resultEval = result.evaluation.result_evaluations.find(re => re.result_id === result.id);
-                if (result.trainee_tier === ResultTier.TIER_1 && resultEval?.evaluator_tier === EvaluationResultTier.TIER_1) {
-                    firstTierOneSubmitter = result.traineeName;
-                    break; // Found the first one
-                }
-            }
-            
-            // 2. Build the leaderboard
-            const leaderboardEntries: LeaderboardEntry[] = evaluatedSubmissions.map(sub => {
-                const score = calculateScore(sub, subChallenge);
-                
-                let hasCorrectTierOneOrTwo = false;
+            // 1. Group all results by their normalized value and sort them by submission time
+            evaluatedSubmissions.forEach(sub => {
                 const results = (sub.results || []) as unknown as SubmittedResult[];
                 const evaluation = sub.evaluation as unknown as Evaluation;
-
                 for (const result of results) {
+                    const normalizedValue = result.value.trim().toLowerCase();
                     const resultEval = evaluation.result_evaluations.find(re => re.result_id === result.id);
                     if (!resultEval) continue;
 
-                    const isCorrectTier1 = result.trainee_tier === ResultTier.TIER_1 && resultEval.evaluator_tier === EvaluationResultTier.TIER_1;
-                    const isCorrectTier2 = result.trainee_tier === ResultTier.TIER_2 && resultEval.evaluator_tier === EvaluationResultTier.TIER_2;
-                    
-                    if (isCorrectTier1 || isCorrectTier2) {
-                        hasCorrectTierOneOrTwo = true;
-                        break;
+                    if (!resultsMap.has(normalizedValue)) {
+                        resultsMap.set(normalizedValue, []);
+                    }
+                    resultsMap.get(normalizedValue)!.push({
+                        submitter: { name: sub.profiles!.name, traineeTier: result.trainee_tier, evalTier: resultEval.evaluator_tier },
+                        submittedAt: result.submitted_at
+                    });
+                }
+            });
+            resultsMap.forEach(submitters => submitters.sort((a, b) => new Date(a.submittedAt).getTime() - new Date(b.submittedAt).getTime()));
+
+            // 2. Identify achievements
+            let firstCorrectT1SubmitterName: string | null = null;
+            const uniqueFinders = new Set<string>();
+
+            for (const [_, submitters] of resultsMap.entries()) {
+                // Check for unique correct T1/T2
+                if (submitters.length === 1) {
+                    const { submitter } = submitters[0];
+                    const isCorrectT1 = submitter.traineeTier === ResultTier.TIER_1 && submitter.evalTier === EvaluationResultTier.TIER_1;
+                    const isCorrectT2 = submitter.traineeTier === ResultTier.TIER_2 && submitter.evalTier === EvaluationResultTier.TIER_2;
+                    if (isCorrectT1 || isCorrectT2) {
+                        uniqueFinders.add(submitter.name);
                     }
                 }
                 
-                return {
-                    id: sub.trainee_id,
-                    name: sub.profiles!.name,
-                    score: score,
-                    has_correct_tier_one_or_two: hasCorrectTierOneOrTwo,
-                };
-            });
+                // Check for first correct T1 among duplicates
+                if (!firstCorrectT1SubmitterName && submitters.length > 1) {
+                    for (const { submitter } of submitters) {
+                        if (submitter.traineeTier === ResultTier.TIER_1 && submitter.evalTier === EvaluationResultTier.TIER_1) {
+                            firstCorrectT1SubmitterName = submitter.name;
+                            break;
+                        }
+                    }
+                }
+            }
             
-            // 3. Sort leaderboard by score descending
+            if (firstCorrectT1SubmitterName) {
+                highlights.push(`${firstCorrectT1SubmitterName} first submitted a correct Tier-1.`);
+                uniqueFinders.delete(firstCorrectT1SubmitterName); // Avoid duplicate highlight
+            }
+            uniqueFinders.forEach(name => {
+                highlights.push(`${name} found a unique correct Tier-1/Tier-2.`);
+            });
+
+
+            // 3. Build the leaderboard
+            const leaderboardEntries: LeaderboardEntry[] = evaluatedSubmissions.map(sub => ({
+                id: sub.trainee_id,
+                name: sub.profiles!.name,
+                score: calculateScore(sub, subChallenge),
+            }));
+            
             leaderboardEntries.sort((a, b) => b.score - a.score);
             
             setLeaderboardData({
                 sub_challenge_title: subChallenge.title,
                 leaderboard: leaderboardEntries,
-                first_tier_one: firstTierOneSubmitter
+                highlights,
             });
 
             setLoading(false);
@@ -168,7 +180,7 @@ export const PublicSubChallengeLeaderboard: React.FC = () => {
     if (error) return <div className="min-h-screen flex items-center justify-center p-4 bg-red-100 dark:bg-red-900"><Card><p className="text-red-700 dark:text-red-200">{error}</p></Card></div>;
     if (!leaderboardData || !leaderboardData.sub_challenge_title) return <div className="min-h-screen flex items-center justify-center p-4"><p>Sub-challenge not found.</p></div>;
 
-    const { sub_challenge_title, leaderboard, first_tier_one } = leaderboardData;
+    const { sub_challenge_title, leaderboard, highlights } = leaderboardData;
 
     return (
         <div className="min-h-screen flex flex-col items-center justify-center p-4 bg-gray-100 dark:bg-gray-900">
@@ -182,11 +194,18 @@ export const PublicSubChallengeLeaderboard: React.FC = () => {
                         <p className="text-gray-600 dark:text-gray-400 mt-2">Public Leaderboard</p>
                     </div>
 
-                    {first_tier_one && (
-                        <div className="mb-6 p-4 bg-green-50 dark:bg-green-900/30 rounded-lg text-center">
-                            <p className="text-sm text-green-800 dark:text-green-200">
-                                First Correct Tier-1 submitted by: <span className="font-bold">{first_tier_one}</span> 🎉
-                            </p>
+                    {highlights.length > 0 && (
+                        <div className="mb-6 p-4 bg-green-50 dark:bg-green-900/30 rounded-lg space-y-2">
+                            <h3 className="font-bold text-center text-green-800 dark:text-green-200 mb-2">Highlights</h3>
+                             {highlights.map((note, index) => {
+                                const name = note.split(' ')[0];
+                                const restOfNote = note.substring(note.indexOf(' '));
+                                return (
+                                <p key={index} className="text-sm text-green-800 dark:text-green-200 text-center">
+                                    <span className="font-bold">{name}</span>{restOfNote} 🎉
+                                </p>
+                                );
+                            })}
                         </div>
                     )}
                     
@@ -196,22 +215,14 @@ export const PublicSubChallengeLeaderboard: React.FC = () => {
                                 <tr>
                                     <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Rank</th>
                                     <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Participant</th>
-                                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Correct Tier-1/Tier-2</th>
                                     <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Score</th>
                                 </tr>
                             </thead>
                              <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-                                {leaderboard.map(({ id, name, score, has_correct_tier_one_or_two }, index) => (
+                                {leaderboard.map(({ id, name, score }, index) => (
                                     <tr key={id}>
                                         <td className="px-6 py-4 whitespace-nowrap font-bold">{index + 1}</td>
                                         <td className="px-6 py-4 whitespace-nowrap font-medium text-gray-900 dark:text-white">{name}</td>
-                                        <td className="px-6 py-4 whitespace-nowrap">
-                                            {has_correct_tier_one_or_two ? (
-                                                <span className="text-green-500">✔️ Yes</span>
-                                            ) : (
-                                                <span className="text-gray-500">❌ No</span>
-                                            )}
-                                        </td>
                                         <td className="px-6 py-4 whitespace-nowrap font-semibold">{score} pts</td>
                                     </tr>
                                 ))}
