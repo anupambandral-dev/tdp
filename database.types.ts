@@ -180,7 +180,7 @@ export type Database = {
         }
         Returns: Json
       }
-      get_public_sub_challenge_leaderboard: {
+      get_public_subchallenge_leaderboard: {
         Args: {
           p_sub_challenge_id: string
         }
