@@ -1,4 +1,6 @@
 
+
+
 import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import { supabase } from '../supabaseClient';
@@ -37,7 +39,7 @@ export const PublicSubChallengeLeaderboard: React.FC = () => {
             setLoading(true);
 
             // Call the secure database function to get the leaderboard
-            const { data, error } = await supabase.rpc('get_public_sub_challenge_leaderboard', {
+            const { data, error } = await supabase.rpc('get_public_subchallenge_leaderboard', {
                 p_sub_challenge_id: subChallengeId
             });
             
@@ -45,7 +47,8 @@ export const PublicSubChallengeLeaderboard: React.FC = () => {
                 setError("This sub-challenge may not exist or its results are not publicly available.");
                 console.error('RPC Error:', error);
             } else if (data) {
-                setLeaderboardData(data as SubChallengeLeaderboardData);
+                // FIX: Cast RPC return value to 'unknown' first before casting to the specific 'SubChallengeLeaderboardData' type to resolve the TypeScript error.
+                setLeaderboardData(data as unknown as SubChallengeLeaderboardData);
             }
             setLoading(false);
         };
