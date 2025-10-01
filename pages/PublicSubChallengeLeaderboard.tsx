@@ -22,7 +22,7 @@ interface LeaderboardEntry {
     id: string;
     name: string;
     score: number;
-    has_correct_tier_one: boolean;
+    has_correct_tier_one_or_two: boolean;
 }
 
 interface SubChallengeLeaderboardData {
@@ -125,14 +125,19 @@ export const PublicSubChallengeLeaderboard: React.FC = () => {
             const leaderboardEntries: LeaderboardEntry[] = evaluatedSubmissions.map(sub => {
                 const score = calculateScore(sub, subChallenge);
                 
-                let hasCorrectTierOne = false;
+                let hasCorrectTierOneOrTwo = false;
                 const results = (sub.results || []) as unknown as SubmittedResult[];
                 const evaluation = sub.evaluation as unknown as Evaluation;
 
                 for (const result of results) {
                     const resultEval = evaluation.result_evaluations.find(re => re.result_id === result.id);
-                    if (result.trainee_tier === ResultTier.TIER_1 && resultEval?.evaluator_tier === EvaluationResultTier.TIER_1) {
-                        hasCorrectTierOne = true;
+                    if (!resultEval) continue;
+
+                    const isCorrectTier1 = result.trainee_tier === ResultTier.TIER_1 && resultEval.evaluator_tier === EvaluationResultTier.TIER_1;
+                    const isCorrectTier2 = result.trainee_tier === ResultTier.TIER_2 && resultEval.evaluator_tier === EvaluationResultTier.TIER_2;
+                    
+                    if (isCorrectTier1 || isCorrectTier2) {
+                        hasCorrectTierOneOrTwo = true;
                         break;
                     }
                 }
@@ -141,7 +146,7 @@ export const PublicSubChallengeLeaderboard: React.FC = () => {
                     id: sub.trainee_id,
                     name: sub.profiles!.name,
                     score: score,
-                    has_correct_tier_one: hasCorrectTierOne,
+                    has_correct_tier_one_or_two: hasCorrectTierOneOrTwo,
                 };
             });
             
@@ -191,17 +196,17 @@ export const PublicSubChallengeLeaderboard: React.FC = () => {
                                 <tr>
                                     <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Rank</th>
                                     <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Participant</th>
-                                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Correct Tier-1</th>
+                                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Correct Tier-1/Tier-2</th>
                                     <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Score</th>
                                 </tr>
                             </thead>
                              <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-                                {leaderboard.map(({ id, name, score, has_correct_tier_one }, index) => (
+                                {leaderboard.map(({ id, name, score, has_correct_tier_one_or_two }, index) => (
                                     <tr key={id}>
                                         <td className="px-6 py-4 whitespace-nowrap font-bold">{index + 1}</td>
                                         <td className="px-6 py-4 whitespace-nowrap font-medium text-gray-900 dark:text-white">{name}</td>
                                         <td className="px-6 py-4 whitespace-nowrap">
-                                            {has_correct_tier_one ? (
+                                            {has_correct_tier_one_or_two ? (
                                                 <span className="text-green-500">✔️ Yes</span>
                                             ) : (
                                                 <span className="text-gray-500">❌ No</span>
