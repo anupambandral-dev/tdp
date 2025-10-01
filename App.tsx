@@ -19,6 +19,7 @@ import { UserManagement } from './pages/manager/UserManagement';
 import { ImportUsers } from './pages/manager/ImportUsers';
 import { ResetPasswordPage } from './pages/ResetPasswordPage';
 import { PublicLeaderboard } from './pages/PublicLeaderboard';
+import { PublicSubChallengeLeaderboard } from './pages/PublicSubChallengeLeaderboard';
 
 
 const AppContent: React.FC = () => {
@@ -175,6 +176,7 @@ const AppContent: React.FC = () => {
       <main className="flex-grow">
         <Routes>
           <Route path="/leaderboard/:challengeId" element={<PublicLeaderboard />} />
+          <Route path="/sub-challenge-leaderboard/:subChallengeId" element={<PublicSubChallengeLeaderboard />} />
           <Route path="/reset-password" element={<ResetPasswordPage onResetSuccess={handleResetSuccess} />} />
           <Route path="/" element={
             isPasswordRecovery
