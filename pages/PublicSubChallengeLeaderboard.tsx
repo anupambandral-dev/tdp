@@ -123,25 +123,38 @@ export const PublicSubChallengeLeaderboard: React.FC = () => {
 
             // 2. Identify achievements
             let firstCorrectT1SubmitterName: string | null = null;
-            const uniqueFinders = new Set<string>();
+            const uniqueFinders = new Map<string, Set<ResultTier>>(); // Map<ParticipantName, Set<Tier>>
 
             for (const [_, submitters] of resultsMap.entries()) {
+                const isCorrectT1 = (s: any) => s.submitter.traineeTier === ResultTier.TIER_1 && s.submitter.evalTier === EvaluationResultTier.TIER_1;
+                const isCorrectT2 = (s: any) => s.submitter.traineeTier === ResultTier.TIER_2 && s.submitter.evalTier === EvaluationResultTier.TIER_2;
+
                 // Check for unique correct T1/T2
                 if (submitters.length === 1) {
                     const { submitter } = submitters[0];
-                    const isCorrectT1 = submitter.traineeTier === ResultTier.TIER_1 && submitter.evalTier === EvaluationResultTier.TIER_1;
-                    const isCorrectT2 = submitter.traineeTier === ResultTier.TIER_2 && submitter.evalTier === EvaluationResultTier.TIER_2;
-                    if (isCorrectT1 || isCorrectT2) {
-                        uniqueFinders.add(submitter.name);
+                    const participantName = submitter.name;
+
+                    if (!uniqueFinders.has(participantName)) {
+                        uniqueFinders.set(participantName, new Set<ResultTier>());
+                    }
+                    if (isCorrectT1(submitters[0])) {
+                        uniqueFinders.get(participantName)!.add(ResultTier.TIER_1);
+                    }
+                    if (isCorrectT2(submitters[0])) {
+                        uniqueFinders.get(participantName)!.add(ResultTier.TIER_2);
+                    }
+                    // Clean up empty sets
+                    if (uniqueFinders.get(participantName)!.size === 0) {
+                        uniqueFinders.delete(participantName);
                     }
                 }
                 
                 // Check for first correct T1 among duplicates
                 if (!firstCorrectT1SubmitterName && submitters.length > 1) {
-                    for (const { submitter } of submitters) {
-                        if (submitter.traineeTier === ResultTier.TIER_1 && submitter.evalTier === EvaluationResultTier.TIER_1) {
-                            firstCorrectT1SubmitterName = submitter.name;
-                            break;
+                    for (const s of submitters) {
+                        if (isCorrectT1(s)) {
+                            firstCorrectT1SubmitterName = s.submitter.name;
+                            break; 
                         }
                     }
                 }
@@ -149,10 +162,15 @@ export const PublicSubChallengeLeaderboard: React.FC = () => {
             
             if (firstCorrectT1SubmitterName) {
                 highlights.push(`${firstCorrectT1SubmitterName} first submitted a correct Tier-1.`);
-                uniqueFinders.delete(firstCorrectT1SubmitterName); // Avoid duplicate highlight
+                uniqueFinders.delete(firstCorrectT1SubmitterName);
             }
-            uniqueFinders.forEach(name => {
-                highlights.push(`${name} found a unique correct Tier-1/Tier-2.`);
+            uniqueFinders.forEach((tiers, name) => {
+                if (tiers.has(ResultTier.TIER_1)) {
+                    highlights.push(`${name} found a correct unique Tier-1.`);
+                }
+                 if (tiers.has(ResultTier.TIER_2)) {
+                    highlights.push(`${name} found a correct unique Tier-2.`);
+                }
             });
 
 
