@@ -213,6 +213,14 @@ const AppContent: React.FC = () => {
               <Route path="/batch/:batchId/level/4/evaluator" element={<EvaluatorDashboard currentUser={currentUser!} />} />
               <Route path="/batch/:batchId/level/4/evaluator/challenge/:challengeId/evaluate" element={<EvaluateSubmission currentUser={currentUser!} />} />
             </Route>
+            
+            {/* Redirect for Level 4 base URL to role-specific dashboards */}
+            <Route path="/batch/:batchId/level/4" element={
+              currentUser && currentUser.role === Role.MANAGER ? <Navigate to="manager" replace /> :
+              currentUser && currentUser.role === Role.TRAINEE ? <Navigate to="trainee" replace /> :
+              currentUser && currentUser.role === Role.EVALUATOR ? <Navigate to="evaluator" replace /> :
+              <Navigate to="/batches" />
+            } />
           </Route>
           
           <Route path="*" element={<Navigate to="/" />} />

@@ -1,7 +1,7 @@
 
 
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useParams } from 'react-router-dom';
 import { Profile, OverallChallenge } from '../../types';
 import { supabase } from '../../supabaseClient';
 import { Card } from '../../components/ui/Card';
@@ -40,15 +40,18 @@ interface ChallengeWithSubChallengeCount extends OverallChallenge {
 
 
 export const ManagerDashboard: React.FC<ManagerDashboardProps> = ({ currentUser }) => {
+  const { batchId } = useParams<{ batchId: string }>();
   const [challenges, setChallenges] = useState<ChallengeWithCounts[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchChallenges = async () => {
+      if (!batchId) return;
       const { data, error } = await supabase
         .from('overall_challenges')
-        .select('*, sub_challenges(count)');
+        .select('*, sub_challenges(count)')
+        .eq('batch_id', batchId);
         
       if (error) {
         setError(error.message);
@@ -71,25 +74,19 @@ export const ManagerDashboard: React.FC<ManagerDashboardProps> = ({ currentUser 
     
     initialFetch();
 
-    // Set up real-time subscription
     const channel = supabase
-      .channel('manager-dashboard-challenges')
+      .channel(`manager-dashboard-challenges-${batchId}`)
       .on(
         'postgres_changes',
-        { event: '*', schema: 'public', table: 'overall_challenges' },
-        (payload) => {
-          console.log('Change received on overall_challenges!', payload);
-          // Re-fetch without setting loading state to avoid UI flicker
-          fetchChallenges(); 
-        }
+        { event: '*', schema: 'public', table: 'overall_challenges', filter: `batch_id=eq.${batchId}` },
+        () => fetchChallenges()
       )
       .subscribe();
 
-    // Cleanup subscription on component unmount
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [currentUser.id]);
+  }, [currentUser.id, batchId]);
   
   return (
     <div className="container mx-auto p-4 sm:p-6 lg:p-8">
@@ -99,13 +96,13 @@ export const ManagerDashboard: React.FC<ManagerDashboardProps> = ({ currentUser 
             <p className="text-gray-600 dark:text-gray-400">Welcome back, {currentUser.name}!</p>
         </div>
         <div className="flex items-center space-x-2 flex-wrap gap-2">
-            <Link to="/tour-de-prior-art/evaluator">
+            <Link to={`/batch/${batchId}/level/4/evaluator`}>
                 <Button variant="secondary"><ClipboardCheckIcon />Evaluation Queue</Button>
             </Link>
-            <Link to="/tour-de-prior-art/manager/users">
+            <Link to={`/batch/${batchId}/level/4/users`}>
                 <Button variant="secondary"><UserPlusIcon />User Management</Button>
             </Link>
-            <Link to="/tour-de-prior-art/manager/create-challenge">
+            <Link to={`/batch/${batchId}/level/4/create-challenge`}>
                 <Button><PlusIcon />Create New Challenge</Button>
             </Link>
         </div>
@@ -136,7 +133,7 @@ export const ManagerDashboard: React.FC<ManagerDashboardProps> = ({ currentUser 
                   </div>
                 </div>
                 <div className="mt-auto pt-4 border-t dark:border-gray-700">
-                  <Link to={`/tour-de-prior-art/manager/challenge/${challenge.id}`}>
+                  <Link to={`/batch/${batchId}/level/4/challenge/${challenge.id}`}>
                     <Button className="w-full">View Details</Button>
                   </Link>
                 </div>

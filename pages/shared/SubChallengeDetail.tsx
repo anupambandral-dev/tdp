@@ -93,13 +93,14 @@ const ManagerView: React.FC<{ subChallenge: SubChallengeWithSubmissions }> = ({ 
 };
 
 interface TraineeViewProps {
+    batchId: string;
     subChallenge: SubChallengeWithSubmissions;
     overallChallenge: OverallChallenge;
     currentUser: Profile;
 }
 
 // Trainee's view of their own submission
-const TraineeView: React.FC<TraineeViewProps> = ({ subChallenge, overallChallenge, currentUser }) => {
+const TraineeView: React.FC<TraineeViewProps> = ({ batchId, subChallenge, overallChallenge, currentUser }) => {
     const submission = subChallenge.submissions?.find(s => s.trainee_id === currentUser.id);
     const [reportUrl, setReportUrl] = useState<string | null>(null);
 
@@ -130,7 +131,7 @@ const TraineeView: React.FC<TraineeViewProps> = ({ subChallenge, overallChalleng
                 <Card className="text-center py-10">
                     <h2 className="text-xl font-semibold mb-2">Ready to start?</h2>
                     <p className="text-gray-600 dark:text-gray-400 mb-6">You have not made a submission for this challenge yet.</p>
-                    <Link to={`/tour-de-prior-art/trainee/challenge/${subChallenge.id}/submit`}>
+                    <Link to={`/batch/${batchId}/level/4/trainee/challenge/${subChallenge.id}/submit`}>
                         <Button>Submit Your Results Now</Button>
                     </Link>
                 </Card>
@@ -161,7 +162,7 @@ const TraineeView: React.FC<TraineeViewProps> = ({ subChallenge, overallChalleng
                      <div className="flex justify-between items-center mb-4 flex-wrap gap-2">
                         <h2 className="text-2xl font-semibold">Your Submission</h2>
                         {isChallengeActive && (
-                            <Link to={`/tour-de-prior-art/trainee/challenge/${subChallenge.id}/submit`}>
+                            <Link to={`/batch/${batchId}/level/4/trainee/challenge/${subChallenge.id}/submit`}>
                                 <Button>{canSubmitMore ? 'Add / Edit Results' : 'Edit Submission'}</Button>
                             </Link>
                         )}
@@ -245,7 +246,7 @@ const TraineeView: React.FC<TraineeViewProps> = ({ subChallenge, overallChalleng
 };
 
 export const SubChallengeDetail: React.FC<SubChallengeDetailProps> = ({ currentUser }) => {
-    const { subChallengeId } = useParams<{ subChallengeId: string }>();
+    const { batchId, subChallengeId } = useParams<{ batchId: string, subChallengeId: string }>();
     const [subChallenge, setSubChallenge] = useState<SubChallengeWithSubmissions | null>(null);
     const [overallChallenge, setOverallChallenge] = useState<OverallChallenge | null>(null);
     const [evaluators, setEvaluators] = useState<Profile[]>([]);
@@ -317,7 +318,10 @@ export const SubChallengeDetail: React.FC<SubChallengeDetailProps> = ({ currentU
         return <div className="text-center p-8">Challenge not found.</div>;
     }
 
-    const backLink = currentUser.role === Role.MANAGER ? `/tour-de-prior-art/manager/challenge/${overallChallenge.id}` : '/tour-de-prior-art/trainee';
+    const backLink = currentUser.role === Role.MANAGER 
+        ? `/batch/${batchId}/level/4/challenge/${overallChallenge.id}` 
+        : `/batch/${batchId}/level/4/trainee`;
+
     const backLinkText = currentUser.role === Role.MANAGER ? 'Back to Challenge Details' : 'Back to Dashboard';
 
     return (
@@ -379,7 +383,7 @@ export const SubChallengeDetail: React.FC<SubChallengeDetailProps> = ({ currentU
             </Card>
 
             {currentUser.role === Role.MANAGER && <ManagerView subChallenge={subChallenge} />}
-            {currentUser.role === Role.TRAINEE && <TraineeView subChallenge={subChallenge} overallChallenge={overallChallenge} currentUser={currentUser} />}
+            {currentUser.role === Role.TRAINEE && batchId && <TraineeView batchId={batchId} subChallenge={subChallenge} overallChallenge={overallChallenge} currentUser={currentUser} />}
             <style>{`
             .prose mark {
                 background-color: #fef08a;

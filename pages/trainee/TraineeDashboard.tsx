@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useParams } from 'react-router-dom';
 import { Profile, ResultTier, IncorrectMarking, Evaluation, EvaluationRules, SubmittedResult, Submission, SubChallengeWithOverallChallenge, ResultType } from '../../types';
 import { supabase } from '../../supabaseClient';
 import { Card } from '../../components/ui/Card';
@@ -14,16 +14,19 @@ const ClockIcon = () => (
 );
 
 export const TraineeDashboard: React.FC<TraineeDashboardProps> = ({ currentUser }) => {
+  const { batchId } = useParams<{ batchId: string }>();
   const [traineeChallenges, setTraineeChallenges] = useState<SubChallengeWithOverallChallenge[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchChallenges = async () => {
-      // Fetch overall challenges the trainee is part of
+      if (!batchId) return;
+
       const { data: overallChallenges, error: ocError } = await supabase
         .from('overall_challenges')
         .select('id')
+        .eq('batch_id', batchId)
         .contains('trainee_ids', [currentUser.id]);
 
       if (ocError) {
@@ -39,7 +42,6 @@ export const TraineeDashboard: React.FC<TraineeDashboardProps> = ({ currentUser 
         return;
       }
 
-      // Fetch sub-challenges belonging to those overall challenges
       const { data, error: scError } = await supabase
         .from('sub_challenges')
         .select('*, submissions(*, profiles(id, name, email, role)), overall_challenges(id, ended_at)')
@@ -60,7 +62,7 @@ export const TraineeDashboard: React.FC<TraineeDashboardProps> = ({ currentUser 
     initialFetch();
     
     const channel = supabase
-      .channel('trainee-dashboard-challenges')
+      .channel(`trainee-dashboard-${batchId}-${currentUser.id}`)
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'sub_challenges' },
@@ -86,7 +88,7 @@ export const TraineeDashboard: React.FC<TraineeDashboardProps> = ({ currentUser 
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [currentUser.id]);
+  }, [currentUser.id, batchId]);
 
   const getStatus = (challenge: SubChallengeWithOverallChallenge) => {
     const submission = challenge.submissions?.find(s => s.trainee_id === currentUser.id);
@@ -172,7 +174,7 @@ export const TraineeDashboard: React.FC<TraineeDashboardProps> = ({ currentUser 
             const score = getScore(challenge);
             const deadlineDisplay = getDeadlineDisplay(challenge);
             return (
-               <Link to={`/tour-de-prior-art/trainee/sub-challenge/${challenge.id}`} key={challenge.id} className="block">
+               <Link to={`/batch/${batchId}/level/4/trainee/sub-challenge/${challenge.id}`} key={challenge.id} className="block">
                 <Card className="h-full flex flex-col hover:shadow-xl transition-shadow duration-200">
                   <div className="flex-grow">
                     <div className="flex justify-between items-start">
@@ -208,7 +210,7 @@ export const TraineeDashboard: React.FC<TraineeDashboardProps> = ({ currentUser 
       )}
        {!loading && traineeChallenges.length === 0 && (
           <Card className="text-center py-10">
-              <p className="text-gray-500">You haven't been assigned to any challenges yet.</p>
+              <p className="text-gray-500">You haven't been assigned to any challenges in this batch yet.</p>
           </Card>
       )}
     </div>

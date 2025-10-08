@@ -51,7 +51,7 @@ const ClipboardIcon = () => (
 
 
 export const ChallengeDetail: React.FC<ChallengeDetailProps> = ({ currentUser }) => {
-    const { challengeId } = useParams();
+    const { batchId, challengeId } = useParams();
     const navigate = useNavigate();
     const [challenge, setChallenge] = useState<OverallChallengeWithSubChallenges | null>(null);
     const [trainees, setTrainees] = useState<Profile[]>([]);
@@ -140,7 +140,7 @@ export const ChallengeDetail: React.FC<ChallengeDetailProps> = ({ currentUser })
                 setLoading(false);
             } else {
                 alert('Challenge deleted successfully.');
-                navigate('/tour-de-prior-art/manager');
+                navigate(`/batch/${batchId}/level/4/manager`);
             }
         }
     };
@@ -291,7 +291,7 @@ export const ChallengeDetail: React.FC<ChallengeDetailProps> = ({ currentUser })
 
     return (
         <div className="container mx-auto p-4 sm:p-6 lg:p-8">
-            <BackButton to="/tour-de-prior-art/manager" text="Back to Dashboard" />
+            <BackButton to={`/batch/${batchId}/level/4/manager`} text="Back to Dashboard" />
 
             <Card className="mb-8">
                 <div className="flex justify-between items-start flex-wrap gap-4">
@@ -328,7 +328,7 @@ export const ChallengeDetail: React.FC<ChallengeDetailProps> = ({ currentUser })
                     <div className="space-y-4">
                         {challenge.sub_challenges.map(sc => (
                              <Card key={sc.id} className="hover:shadow-lg transition-shadow duration-200">
-                                <Link to={`/tour-de-prior-art/manager/sub-challenge/${sc.id}`}>
+                                <Link to={`/batch/${batchId}/level/4/sub-challenge/${sc.id}`}>
                                     <h3 className="text-lg font-semibold text-blue-600 dark:text-blue-400">{sc.title}</h3>
                                     <p className="text-sm text-gray-500 dark:text-gray-400">{sc.patent_number}</p>
                                     <p className="text-sm mt-2">{sc.submissions?.length || 0} submissions</p>
@@ -341,7 +341,7 @@ export const ChallengeDetail: React.FC<ChallengeDetailProps> = ({ currentUser })
                             </Card>
                         )}
                         {!challenge.ended_at && (
-                             <Link to={`/tour-de-prior-art/manager/challenge/${challengeId}/create-sub-challenge`}>
+                             <Link to={`/batch/${batchId}/level/4/challenge/${challengeId}/create-sub-challenge`}>
                                 <Button className="w-full">
                                     + Add New Sub-Challenge
                                 </Button>
@@ -358,7 +358,7 @@ export const ChallengeDetail: React.FC<ChallengeDetailProps> = ({ currentUser })
                                 <li key={trainee.id} className="flex items-center justify-between">
                                     <div className="flex items-center">
                                         <span className="text-lg font-bold w-8">{index + 1}.</span>
-                                        <Link to={`/tour-de-prior-art/manager/challenge/${challenge.id}/trainee/${trainee.id}`} className="font-medium hover:underline">
+                                        <Link to={`/batch/${batchId}/level/4/challenge/${challenge.id}/trainee/${trainee.id}`} className="font-medium hover:underline">
                                             {trainee.name}
                                         </Link>
                                     </div>

@@ -104,7 +104,7 @@ type SubChallengeForEvaluation = SubChallengeWithSubmissions & {
 };
 
 export const EvaluateSubmission: React.FC<EvaluateSubmissionProps> = ({ currentUser }) => {
-    const { challengeId } = useParams<{ challengeId: string }>();
+    const { batchId, challengeId } = useParams<{ batchId: string; challengeId: string }>();
     const navigate = useNavigate();
     const [challenge, setChallenge] = useState<SubChallengeForEvaluation | null>(null);
     const [loading, setLoading] = useState(true);
@@ -310,7 +310,7 @@ export const EvaluateSubmission: React.FC<EvaluateSubmissionProps> = ({ currentU
     if (challenge.submissions.length === 0) {
         return (
             <div className="container mx-auto p-4 sm:p-6 lg:p-8">
-                <BackButton to="/tour-de-prior-art/evaluator" text="Back to Dashboard" />
+                <BackButton to={`/batch/${batchId}/level/4/evaluator`} text="Back to Dashboard" />
                 <Card className="text-center py-10">
                     <p className="text-gray-500">There are no submissions for this challenge yet.</p>
                 </Card>
@@ -325,7 +325,7 @@ export const EvaluateSubmission: React.FC<EvaluateSubmissionProps> = ({ currentU
 
     return (
         <div className="container mx-auto p-4 sm:p-6 lg:p-8">
-            <BackButton to="/tour-de-prior-art/evaluator" text="Back to Dashboard" />
+            <BackButton to={`/batch/${batchId}/level/4/evaluator`} text="Back to Dashboard" />
             <h1 className="text-3xl font-bold mb-2">{challenge.title}</h1>
             <p className="text-gray-500 dark:text-gray-400 mb-6">Evaluation Form</p>
             

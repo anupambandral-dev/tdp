@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useParams } from 'react-router-dom';
 import { Profile } from '../../types';
 import { supabase } from '../../supabaseClient';
 import { Card } from '../../components/ui/Card';
@@ -7,6 +7,7 @@ import { BackButton } from '../../components/ui/BackButton';
 import { Button } from '../../components/ui/Button';
 
 export const UserManagement: React.FC = () => {
+  const { batchId } = useParams<{ batchId: string }>();
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -33,7 +34,7 @@ export const UserManagement: React.FC = () => {
 
   return (
     <div className="container mx-auto p-4 sm:p-6 lg:p-8">
-      <BackButton to="/tour-de-prior-art/manager" text="Back to Dashboard" />
+      <BackButton to={`/batch/${batchId}/level/4/manager`} text="Back to Dashboard" />
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-3xl font-bold">User Management</h1>
       </div>
@@ -79,7 +80,7 @@ export const UserManagement: React.FC = () => {
         <div>
             <h2 className="text-2xl font-semibold mb-4">Manage Members</h2>
             <Card className="space-y-6">
-                <Link to="/tour-de-prior-art/manager/import-users">
+                <Link to={`/batch/${batchId}/level/4/import-users`}>
                     <Button className="w-full">Import Users from CSV</Button>
                 </Link>
                  <div>

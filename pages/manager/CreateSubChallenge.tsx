@@ -11,7 +11,7 @@ import { TablesInsert } from '../../database.types';
 import { RichTextInput } from '../../components/ui/RichTextInput';
 
 export const CreateSubChallenge: React.FC = () => {
-    const { challengeId } = useParams<{ challengeId: string }>();
+    const { batchId, challengeId } = useParams<{ batchId: string, challengeId: string }>();
     const navigate = useNavigate();
     const [overallChallenge, setOverallChallenge] = useState<OverallChallenge | null>(null);
     const [loading, setLoading] = useState(true);
@@ -146,7 +146,7 @@ export const CreateSubChallenge: React.FC = () => {
             alert(`Error creating sub-challenge: ${error.message}`);
         } else {
             alert('New sub-challenge created!');
-            navigate(`/tour-de-prior-art/manager/challenge/${challengeId}`);
+            navigate(`/batch/${batchId}/level/4/challenge/${challengeId}`);
         }
         setLoading(false);
     };
@@ -163,7 +163,7 @@ export const CreateSubChallenge: React.FC = () => {
 
     return (
         <div className="container mx-auto p-4 sm:p-6 lg:p-8 max-w-4xl">
-            <BackButton to={`/tour-de-prior-art/manager/challenge/${challengeId}`} text="Back to Challenge" />
+            <BackButton to={`/batch/${batchId}/level/4/challenge/${challengeId}`} text="Back to Challenge" />
             <Card>
                 <h1 className="text-3xl font-bold mb-2">Create New Sub-Challenge</h1>
                 <p className="text-gray-500 dark:text-gray-400 mb-6">For "{overallChallenge.name}"</p>

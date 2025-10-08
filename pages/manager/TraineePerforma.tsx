@@ -76,7 +76,7 @@ const ReportLink: React.FC<{ reportFile: { name: string; path: string } | null }
 
 
 export const TraineePerforma: React.FC = () => {
-    const { challengeId, traineeId } = useParams<{ challengeId: string; traineeId: string }>();
+    const { batchId, challengeId, traineeId } = useParams<{ batchId: string; challengeId: string; traineeId: string }>();
     const [overallChallenge, setOverallChallenge] = useState<FetchedOverallChallenge | null>(null);
     const [trainee, setTrainee] = useState<Profile | null>(null);
     const [loading, setLoading] = useState(true);
@@ -132,7 +132,7 @@ export const TraineePerforma: React.FC = () => {
 
     return (
         <div className="container mx-auto p-4 sm:p-6 lg:p-8">
-            <BackButton to={`/tour-de-prior-art/manager/challenge/${challengeId}`} text="Back to Leaderboard" />
+            <BackButton to={`/batch/${batchId}/level/4/challenge/${challengeId}`} text="Back to Leaderboard" />
 
             <div className="mb-8">
                 <h1 className="text-3xl font-bold">{trainee.name}</h1>
