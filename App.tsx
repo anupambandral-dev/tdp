@@ -23,6 +23,9 @@ import { PublicSubChallengeLeaderboard } from './pages/PublicSubChallengeLeaderb
 import { MainDashboard } from './pages/MainDashboard';
 import { QuizDashboard } from './pages/quiz/QuizDashboard';
 import { TourDePriorArtIndex } from './pages/TourDePriorArtIndex';
+import { CreateQuiz } from './pages/quiz/CreateQuiz';
+import { TakeQuiz } from './pages/quiz/TakeQuiz';
+import { QuizManagerDetail } from './pages/quiz/QuizManagerDetail';
 
 
 const AppContent: React.FC = () => {
@@ -183,7 +186,18 @@ const AppContent: React.FC = () => {
           
           <Route element={<ProtectedRoute />}>
             <Route path="/dashboard" element={<MainDashboard currentUser={currentUser!} />} />
-            <Route path="/quiz" element={<QuizDashboard />} />
+            
+            {/* Quiz Routes */}
+            <Route path="/quiz" element={<QuizDashboard currentUser={currentUser!} />} />
+            <Route element={<ProtectedRoute allowedRoles={[Role.MANAGER]} />}>
+              <Route path="/quiz/create" element={<CreateQuiz currentUser={currentUser!} />} />
+              <Route path="/quiz/manage/:quizId" element={<QuizManagerDetail />} />
+            </Route>
+            <Route element={<ProtectedRoute allowedRoles={[Role.TRAINEE]} />}>
+              <Route path="/quiz/take/:quizId" element={<TakeQuiz currentUser={currentUser!} />} />
+            </Route>
+
+            {/* Tour de Prior Art Routes */}
             <Route path="/tour-de-prior-art" element={<TourDePriorArtIndex currentUser={currentUser!} />} />
 
             <Route element={<ProtectedRoute allowedRoles={[Role.MANAGER]} />}>

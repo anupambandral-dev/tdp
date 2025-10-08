@@ -18,6 +18,9 @@ export type Profile = Tables<'profiles'>;
 export type OverallChallenge = Tables<'overall_challenges'>;
 export type SubChallenge = Tables<'sub_challenges'>;
 export type Submission = Tables<'submissions'>;
+export type Quiz = Tables<'quizzes'>;
+export type QuizQuestion = Tables<'quiz_questions'>;
+export type QuizSubmission = Tables<'quiz_submissions'>;
 
 
 // Enums for evaluation logic
@@ -92,6 +95,28 @@ export interface Evaluation {
   feedback: string;
   evaluated_at: string;
 };
+
+// --- QUIZ TYPES ---
+
+export type QuizOption = {
+  id: string;
+  text: string;
+};
+
+export type QuizAnswer = {
+  question_id: string;
+  selected_option_id: string;
+  is_correct: boolean;
+};
+
+export type QuizWithQuestions = Quiz & {
+    quiz_questions: QuizQuestion[];
+};
+
+export type QuizSubmissionWithProfile = QuizSubmission & {
+    profiles: Profile | null;
+}
+
 
 // --- COMPOSITE TYPES for joined data ---
 

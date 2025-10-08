@@ -71,6 +71,118 @@ export type Database = {
           },
         ]
       }
+      quiz_questions: {
+        Row: {
+          correct_option_id: string
+          created_at: string
+          id: string
+          options: Json
+          question_text: string
+          quiz_id: string
+        }
+        Insert: {
+          correct_option_id: string
+          created_at?: string
+          id?: string
+          options: Json
+          question_text: string
+          quiz_id: string
+        }
+        Update: {
+          correct_option_id?: string
+          created_at?: string
+          id?: string
+          options?: Json
+          question_text?: string
+          quiz_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "quiz_questions_quiz_id_fkey"
+            columns: ["quiz_id"]
+            isOneToOne: false
+            referencedRelation: "quizzes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      quiz_submissions: {
+        Row: {
+          answers: Json
+          completed_at: string
+          created_at: string
+          id: string
+          participant_id: string
+          quiz_id: string
+          score: number
+        }
+        Insert: {
+          answers: Json
+          completed_at?: string
+          created_at?: string
+          id?: string
+          participant_id: string
+          quiz_id: string
+          score: number
+        }
+        Update: {
+          answers?: Json
+          completed_at?: string
+          created_at?: string
+          id?: string
+          participant_id?: string
+          quiz_id?: string
+          score?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "quiz_submissions_participant_id_fkey"
+            columns: ["participant_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "quiz_submissions_quiz_id_fkey"
+            columns: ["quiz_id"]
+            isOneToOne: false
+            referencedRelation: "quizzes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      quizzes: {
+        Row: {
+          created_at: string
+          created_by: string
+          id: string
+          status: Database["public"]["Enums"]["quiz_status"]
+          title: string
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          id?: string
+          status?: Database["public"]["Enums"]["quiz_status"]
+          title: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          id?: string
+          status?: Database["public"]["Enums"]["quiz_status"]
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "quizzes_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       sub_challenges: {
         Row: {
           claim_focus: string | null
@@ -200,6 +312,7 @@ export type Database = {
     }
     Enums: {
       incorrect_marking_type: "zero" | "penalty"
+      quiz_status: "draft" | "live" | "ended"
       result_tier: "Tier-1" | "Tier-2" | "Tier-3"
       result_type: "Patent" | "Non-Patent Literature"
       user_role: "Manager" | "Trainee" | "Evaluator" | "Mentor"
