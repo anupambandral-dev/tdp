@@ -24,9 +24,9 @@ export const Header: React.FC<HeaderProps> = ({ currentUser, onLogout }) => {
     <header className="bg-white dark:bg-gray-800 shadow-md">
       <div className="container mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
-          <Link to="/dashboard" className="flex items-center space-x-2">
+          <Link to="/batches" className="flex items-center space-x-2">
             <LogoIcon />
-            <span className="text-xl font-bold text-gray-800 dark:text-white">Tour de Prior Art</span>
+            <span className="text-xl font-bold text-gray-800 dark:text-white">Training Manager</span>
           </Link>
           {currentUser && (
             <div className="flex items-center space-x-4">

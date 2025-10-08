@@ -9,8 +9,63 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      batch_participants: {
+        Row: {
+          batch_id: string
+          created_at: string
+          id: string
+          level_1_cluster: string | null
+          level_2_cluster: string | null
+          level_3_cluster: string | null
+          level_4_cluster: string | null
+          level_5_cluster: string | null
+          overall_cluster: string | null
+          participant_id: string
+        }
+        Insert: {
+          batch_id: string
+          created_at?: string
+          id?: string
+          level_1_cluster?: string | null
+          level_2_cluster?: string | null
+          level_3_cluster?: string | null
+          level_4_cluster?: string | null
+          level_5_cluster?: string | null
+          overall_cluster?: string | null
+          participant_id: string
+        }
+        Update: {
+          batch_id?: string
+          created_at?: string
+          id?: string
+          level_1_cluster?: string | null
+          level_2_cluster?: string | null
+          level_3_cluster?: string | null
+          level_4_cluster?: string | null
+          level_5_cluster?: string | null
+          overall_cluster?: string | null
+          participant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "batch_participants_batch_id_fkey"
+            columns: ["batch_id"]
+            isOneToOne: false
+            referencedRelation: "training_batches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "batch_participants_participant_id_fkey"
+            columns: ["participant_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       overall_challenges: {
         Row: {
+          batch_id: string
           created_at: string
           ended_at: string | null
           id: string
@@ -19,6 +74,7 @@ export type Database = {
           trainee_ids: string[]
         }
         Insert: {
+          batch_id: string
           created_at?: string
           ended_at?: string | null
           id?: string
@@ -27,6 +83,7 @@ export type Database = {
           trainee_ids: string[]
         }
         Update: {
+          batch_id?: string
           created_at?: string
           ended_at?: string | null
           id?: string
@@ -34,7 +91,15 @@ export type Database = {
           name?: string
           trainee_ids?: string[]
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "overall_challenges_batch_id_fkey"
+            columns: ["batch_id"]
+            isOneToOne: false
+            referencedRelation: "training_batches"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       profiles: {
         Row: {
@@ -67,118 +132,6 @@ export type Database = {
             columns: ["auth_id"]
             isOneToOne: true
             referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      quiz_questions: {
-        Row: {
-          correct_option_id: string
-          created_at: string
-          id: string
-          options: Json
-          question_text: string
-          quiz_id: string
-        }
-        Insert: {
-          correct_option_id: string
-          created_at?: string
-          id?: string
-          options: Json
-          question_text: string
-          quiz_id: string
-        }
-        Update: {
-          correct_option_id?: string
-          created_at?: string
-          id?: string
-          options?: Json
-          question_text?: string
-          quiz_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "quiz_questions_quiz_id_fkey"
-            columns: ["quiz_id"]
-            isOneToOne: false
-            referencedRelation: "quizzes"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      quiz_submissions: {
-        Row: {
-          answers: Json
-          completed_at: string
-          created_at: string
-          id: string
-          participant_id: string
-          quiz_id: string
-          score: number
-        }
-        Insert: {
-          answers: Json
-          completed_at?: string
-          created_at?: string
-          id?: string
-          participant_id: string
-          quiz_id: string
-          score: number
-        }
-        Update: {
-          answers?: Json
-          completed_at?: string
-          created_at?: string
-          id?: string
-          participant_id?: string
-          quiz_id?: string
-          score?: number
-        }
-        Relationships: [
-          {
-            foreignKeyName: "quiz_submissions_participant_id_fkey"
-            columns: ["participant_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "quiz_submissions_quiz_id_fkey"
-            columns: ["quiz_id"]
-            isOneToOne: false
-            referencedRelation: "quizzes"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      quizzes: {
-        Row: {
-          created_at: string
-          created_by: string
-          id: string
-          status: Database["public"]["Enums"]["quiz_status"]
-          title: string
-        }
-        Insert: {
-          created_at?: string
-          created_by: string
-          id?: string
-          status?: Database["public"]["Enums"]["quiz_status"]
-          title: string
-        }
-        Update: {
-          created_at?: string
-          created_by?: string
-          id?: string
-          status?: Database["public"]["Enums"]["quiz_status"]
-          title?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "quizzes_created_by_fkey"
-            columns: ["created_by"]
-            isOneToOne: false
-            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
         ]
@@ -281,6 +234,27 @@ export type Database = {
           },
         ]
       }
+      training_batches: {
+        Row: {
+          created_at: string
+          id: string
+          manager_ids: string[]
+          name: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          manager_ids: string[]
+          name: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          manager_ids?: string[]
+          name?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
@@ -312,7 +286,6 @@ export type Database = {
     }
     Enums: {
       incorrect_marking_type: "zero" | "penalty"
-      quiz_status: "draft" | "live" | "ended"
       result_tier: "Tier-1" | "Tier-2" | "Tier-3"
       result_type: "Patent" | "Non-Patent Literature"
       user_role: "Manager" | "Trainee" | "Evaluator" | "Mentor"
@@ -326,7 +299,7 @@ export type Database = {
 type PublicSchema = Database[Extract<keyof Database, "public">]
 
 export type Tables<
-  Alias extends keyof (PublicSchema["Tables"] & PublicSchema["Views"]) & string
+  Alias extends keyof (PublicSchema["Tables"] & PublicSchema["Views"]) & string,
 > = (PublicSchema["Tables"] & PublicSchema["Views"])[Alias] extends {
   Row: infer R
 }
@@ -334,7 +307,7 @@ export type Tables<
   : never
 
 export type TablesInsert<
-  Alias extends keyof PublicSchema["Tables"] & string
+  Alias extends keyof PublicSchema["Tables"] & string,
 > = PublicSchema["Tables"][Alias] extends {
   Insert: infer I
 }
@@ -342,7 +315,7 @@ export type TablesInsert<
   : never
 
 export type TablesUpdate<
-  Alias extends keyof PublicSchema["Tables"] & string
+  Alias extends keyof PublicSchema["Tables"] & string,
 > = PublicSchema["Tables"][Alias] extends {
   Update: infer U
 }
@@ -350,5 +323,5 @@ export type TablesUpdate<
   : never
 
 export type Enums<
-  Alias extends keyof PublicSchema["Enums"] & string
+  Alias extends keyof PublicSchema["Enums"] & string,
 > = PublicSchema["Enums"][Alias]

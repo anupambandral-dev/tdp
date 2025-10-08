@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 import { Profile, Role } from '../../types';
 import { supabase } from '../../supabaseClient';
 import { Card } from '../../components/ui/Card';
@@ -12,6 +12,7 @@ interface CreateChallengeProps {
 }
 
 export const CreateChallenge: React.FC<CreateChallengeProps> = ({ currentUser }) => {
+    const { batchId } = useParams<{ batchId: string }>();
     const navigate = useNavigate();
     const [challengeName, setChallengeName] = useState('');
     const [allProfiles, setAllProfiles] = useState<Profile[]>([]);
@@ -70,10 +71,12 @@ export const CreateChallenge: React.FC<CreateChallengeProps> = ({ currentUser })
 
         setLoading(true);
 
+        // FIX: The batch_id is a required field for a new challenge.
         const newChallenge: TablesInsert<'overall_challenges'> = {
             name: challengeName,
             manager_ids: selectedManagerIds,
             trainee_ids: selectedTraineeIds,
+            batch_id: batchId!,
         };
 
         const { error } = await supabase.from('overall_challenges').insert([newChallenge]);
@@ -83,7 +86,7 @@ export const CreateChallenge: React.FC<CreateChallengeProps> = ({ currentUser })
             setLoading(false);
         } else {
             alert('New challenge created successfully!');
-            navigate('/tour-de-prior-art/manager');
+            navigate(`/batch/${batchId}/level/4/manager`);
         }
     };
     
@@ -101,7 +104,7 @@ export const CreateChallenge: React.FC<CreateChallengeProps> = ({ currentUser })
 
     return (
         <div className="container mx-auto p-4 sm:p-6 lg:p-8 max-w-4xl">
-            <BackButton to="/tour-de-prior-art/manager" text="Back to Dashboard" />
+            <BackButton to={`/batch/${batchId}/level/4/manager`} text="Back to Dashboard" />
             <Card>
                 <h1 className="text-3xl font-bold mb-6">Create New Overall Challenge</h1>
                 <form onSubmit={handleSubmit} className="space-y-8">
@@ -177,7 +180,7 @@ export const CreateChallenge: React.FC<CreateChallengeProps> = ({ currentUser })
                     </div>
 
                     <div className="flex justify-end space-x-4 pt-4 border-t dark:border-gray-700">
-                        <Link to="/tour-de-prior-art/manager">
+                        <Link to={`/batch/${batchId}/level/4/manager`}>
                             <Button type="button" variant="secondary" disabled={loading}>Cancel</Button>
                         </Link>
                         <Button type="submit" disabled={loading}>

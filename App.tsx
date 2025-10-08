@@ -20,12 +20,10 @@ import { ImportUsers } from './pages/manager/ImportUsers';
 import { ResetPasswordPage } from './pages/ResetPasswordPage';
 import { PublicLeaderboard } from './pages/PublicLeaderboard';
 import { PublicSubChallengeLeaderboard } from './pages/PublicSubChallengeLeaderboard';
-import { MainDashboard } from './pages/MainDashboard';
-import { QuizDashboard } from './pages/quiz/QuizDashboard';
-import { TourDePriorArtIndex } from './pages/TourDePriorArtIndex';
-import { CreateQuiz } from './pages/quiz/CreateQuiz';
-import { TakeQuiz } from './pages/quiz/TakeQuiz';
-import { QuizManagerDetail } from './pages/quiz/QuizManagerDetail';
+import { BatchSelectionPage } from './pages/BatchSelectionPage';
+import { BatchDashboard } from './pages/batch/BatchDashboard';
+import { ParticipantDetailView } from './pages/batch/ParticipantDetailView';
+import { LevelDetailView } from './pages/batch/LevelDetailView';
 
 
 const AppContent: React.FC = () => {
@@ -143,7 +141,7 @@ const AppContent: React.FC = () => {
       return <Navigate to="/" replace />;
     }
     if (allowedRoles && !allowedRoles.includes(currentUser.role)) {
-      return <Navigate to="/dashboard" replace />;
+      return <Navigate to="/batches" replace />;
     }
     return <Outlet />;
   };
@@ -172,54 +170,48 @@ const AppContent: React.FC = () => {
       {currentUser && !isPasswordRecovery && <Header currentUser={currentUser} onLogout={handleLogout} />}
       <main className="flex-grow">
         <Routes>
+          {/* PUBLIC ROUTES */}
           <Route path="/leaderboard/:challengeId" element={<PublicLeaderboard />} />
           <Route path="/sub-challenge-leaderboard/:subChallengeId" element={<PublicSubChallengeLeaderboard />} />
           <Route path="/reset-password" element={<ResetPasswordPage onResetSuccess={handleResetSuccess} />} />
 
+          {/* AUTH & ONBOARDING */}
           <Route path="/" element={
             isPasswordRecovery
               ? <Navigate to="/reset-password" replace />
               : !currentUser
                 ? <LoginPage />
-                : <Navigate to="/dashboard" />
+                : <Navigate to="/batches" />
           } />
           
+          {/* PROTECTED ROUTES */}
           <Route element={<ProtectedRoute />}>
-            <Route path="/dashboard" element={<MainDashboard currentUser={currentUser!} />} />
+              <Route path="/batches" element={<BatchSelectionPage currentUser={currentUser!} />} />
+              <Route path="/batch/:batchId" element={<BatchDashboard currentUser={currentUser!} />} />
+              <Route path="/batch/:batchId/participant/:participantId" element={<ParticipantDetailView />} />
+              <Route path="/batch/:batchId/level/:levelId" element={<LevelDetailView currentUser={currentUser!} />} />
             
-            {/* Quiz Routes */}
-            <Route path="/quiz" element={<QuizDashboard currentUser={currentUser!} />} />
+            {/* Tour de Prior Art Routes (Level 4) */}
             <Route element={<ProtectedRoute allowedRoles={[Role.MANAGER]} />}>
-              <Route path="/quiz/create" element={<CreateQuiz currentUser={currentUser!} />} />
-              <Route path="/quiz/manage/:quizId" element={<QuizManagerDetail />} />
-            </Route>
-            <Route element={<ProtectedRoute allowedRoles={[Role.TRAINEE]} />}>
-              <Route path="/quiz/take/:quizId" element={<TakeQuiz currentUser={currentUser!} />} />
-            </Route>
-
-            {/* Tour de Prior Art Routes */}
-            <Route path="/tour-de-prior-art" element={<TourDePriorArtIndex currentUser={currentUser!} />} />
-
-            <Route element={<ProtectedRoute allowedRoles={[Role.MANAGER]} />}>
-              <Route path="/tour-de-prior-art/manager" element={<ManagerDashboard currentUser={currentUser!} />} />
-              <Route path="/tour-de-prior-art/manager/users" element={<UserManagement />} />
-              <Route path="/tour-de-prior-art/manager/import-users" element={<ImportUsers />} />
-              <Route path="/tour-de-prior-art/manager/challenge/:challengeId" element={<ChallengeDetail currentUser={currentUser!} />} />
-              <Route path="/tour-de-prior-art/manager/challenge/:challengeId/trainee/:traineeId" element={<TraineePerforma />} />
-              <Route path="/tour-de-prior-art/manager/create-challenge" element={<CreateChallenge currentUser={currentUser!} />} />
-              <Route path="/tour-de-prior-art/manager/challenge/:challengeId/create-sub-challenge" element={<CreateSubChallenge />} />
-              <Route path="/tour-de-prior-art/manager/sub-challenge/:subChallengeId" element={<SubChallengeDetail currentUser={currentUser!} />} />
+              <Route path="/batch/:batchId/level/4/manager" element={<ManagerDashboard currentUser={currentUser!} />} />
+              <Route path="/batch/:batchId/level/4/users" element={<UserManagement />} />
+              <Route path="/batch/:batchId/level/4/import-users" element={<ImportUsers />} />
+              <Route path="/batch/:batchId/level/4/challenge/:challengeId" element={<ChallengeDetail currentUser={currentUser!} />} />
+              <Route path="/batch/:batchId/level/4/challenge/:challengeId/trainee/:traineeId" element={<TraineePerforma />} />
+              <Route path="/batch/:batchId/level/4/create-challenge" element={<CreateChallenge currentUser={currentUser!} />} />
+              <Route path="/batch/:batchId/level/4/challenge/:challengeId/create-sub-challenge" element={<CreateSubChallenge />} />
+              <Route path="/batch/:batchId/level/4/sub-challenge/:subChallengeId" element={<SubChallengeDetail currentUser={currentUser!} />} />
             </Route>
 
             <Route element={<ProtectedRoute allowedRoles={[Role.TRAINEE]} />}>
-              <Route path="/tour-de-prior-art/trainee" element={<TraineeDashboard currentUser={currentUser!} />} />
-              <Route path="/tour-de-prior-art/trainee/challenge/:challengeId/submit" element={<SubmitChallenge currentUser={currentUser!} />} />
-              <Route path="/tour-de-prior-art/trainee/sub-challenge/:subChallengeId" element={<SubChallengeDetail currentUser={currentUser!} />} />
+              <Route path="/batch/:batchId/level/4/trainee" element={<TraineeDashboard currentUser={currentUser!} />} />
+              <Route path="/batch/:batchId/level/4/trainee/challenge/:challengeId/submit" element={<SubmitChallenge currentUser={currentUser!} />} />
+              <Route path="/batch/:batchId/level/4/trainee/sub-challenge/:subChallengeId" element={<SubChallengeDetail currentUser={currentUser!} />} />
             </Route>
 
             <Route element={<ProtectedRoute allowedRoles={[Role.EVALUATOR, Role.MANAGER]} />}>
-              <Route path="/tour-de-prior-art/evaluator" element={<EvaluatorDashboard currentUser={currentUser!} />} />
-              <Route path="/tour-de-prior-art/evaluator/challenge/:challengeId/evaluate" element={<EvaluateSubmission currentUser={currentUser!} />} />
+              <Route path="/batch/:batchId/level/4/evaluator" element={<EvaluatorDashboard currentUser={currentUser!} />} />
+              <Route path="/batch/:batchId/level/4/evaluator/challenge/:challengeId/evaluate" element={<EvaluateSubmission currentUser={currentUser!} />} />
             </Route>
           </Route>
           
