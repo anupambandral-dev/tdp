@@ -60,25 +60,6 @@ export const BatchSelectionPage: React.FC<BatchSelectionPageProps> = ({ currentU
         };
         fetchBatches();
     }, [currentUser, navigate]);
-
-    const handleCreateBatch = async () => {
-        const batchName = prompt("Enter a name for the new training batch:");
-        if (batchName) {
-            setLoading(true);
-            const { data, error } = await supabase
-                .from('training_batches')
-                .insert({ name: batchName, manager_ids: [currentUser.id] })
-                .select()
-                .single();
-            
-            if (error) {
-                alert(`Error creating batch: ${error.message}`);
-            } else if (data) {
-                navigate(`/batch/${data.id}`);
-            }
-            setLoading(false);
-        }
-    };
     
     const getParticipantLink = (batchId: string) => {
         const rolePath = currentUser.role === Role.TRAINEE ? 'trainee' : 'evaluator';
@@ -108,9 +89,11 @@ export const BatchSelectionPage: React.FC<BatchSelectionPageProps> = ({ currentU
             <div className="flex justify-between items-center mb-6">
                 <h1 className="text-3xl font-bold">{isManager ? "Training Batches" : "Your Assigned Batches"}</h1>
                 {isManager && (
-                    <Button onClick={handleCreateBatch} disabled={loading}>
-                        <PlusIcon /> Create New Batch
-                    </Button>
+                    <Link to="/create-batch">
+                        <Button disabled={loading}>
+                            <PlusIcon /> Create New Batch
+                        </Button>
+                    </Link>
                 )}
             </div>
 

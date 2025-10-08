@@ -24,6 +24,7 @@ import { BatchSelectionPage } from './pages/BatchSelectionPage';
 import { BatchDashboard } from './pages/batch/BatchDashboard';
 import { ParticipantDetailView } from './pages/batch/ParticipantDetailView';
 import { LevelDetailView } from './pages/batch/LevelDetailView';
+import { CreateBatch } from './pages/batch/CreateBatch';
 
 
 const AppContent: React.FC = () => {
@@ -193,6 +194,7 @@ const AppContent: React.FC = () => {
             
             {/* Tour de Prior Art Routes (Level 4) */}
             <Route element={<ProtectedRoute allowedRoles={[Role.MANAGER]} />}>
+              <Route path="/create-batch" element={<CreateBatch currentUser={currentUser!} />} />
               <Route path="/batch/:batchId/level/4/manager" element={<ManagerDashboard currentUser={currentUser!} />} />
               <Route path="/batch/:batchId/level/4/users" element={<UserManagement />} />
               <Route path="/batch/:batchId/level/4/import-users" element={<ImportUsers />} />
