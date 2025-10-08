@@ -103,7 +103,7 @@ export const EvaluatorDashboard: React.FC<EvaluatorDashboardProps> = ({ currentU
   return (
     <div className="container mx-auto p-4 sm:p-6 lg:p-8">
       {currentUser.role === Role.MANAGER && (
-        <BackButton to="/manager" text="Back to Manager Dashboard" />
+        <BackButton to="/tour-de-prior-art/manager" text="Back to Manager Dashboard" />
       )}
       <h1 className="text-3xl font-bold mb-6">Evaluator Dashboard</h1>
       
@@ -130,7 +130,7 @@ export const EvaluatorDashboard: React.FC<EvaluatorDashboardProps> = ({ currentU
                               <div className="bg-blue-600 h-2.5 rounded-full" style={{ width: `${progress}%` }}></div>
                           </div>
                       </div>
-                    <Link to={`/evaluator/challenge/${challenge.id}/evaluate`}>
+                    <Link to={`/tour-de-prior-art/evaluator/challenge/${challenge.id}/evaluate`}>
                       <Button disabled={totalSubmissions === 0}>Evaluate</Button>
                     </Link>
                   </div>

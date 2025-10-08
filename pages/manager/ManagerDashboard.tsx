@@ -99,13 +99,13 @@ export const ManagerDashboard: React.FC<ManagerDashboardProps> = ({ currentUser 
             <p className="text-gray-600 dark:text-gray-400">Welcome back, {currentUser.name}!</p>
         </div>
         <div className="flex items-center space-x-2 flex-wrap gap-2">
-            <Link to="/evaluator">
+            <Link to="/tour-de-prior-art/evaluator">
                 <Button variant="secondary"><ClipboardCheckIcon />Evaluation Queue</Button>
             </Link>
-            <Link to="/manager/users">
+            <Link to="/tour-de-prior-art/manager/users">
                 <Button variant="secondary"><UserPlusIcon />User Management</Button>
             </Link>
-            <Link to="/manager/create-challenge">
+            <Link to="/tour-de-prior-art/manager/create-challenge">
                 <Button><PlusIcon />Create New Challenge</Button>
             </Link>
         </div>
@@ -136,7 +136,7 @@ export const ManagerDashboard: React.FC<ManagerDashboardProps> = ({ currentUser 
                   </div>
                 </div>
                 <div className="mt-auto pt-4 border-t dark:border-gray-700">
-                  <Link to={`/manager/challenge/${challenge.id}`}>
+                  <Link to={`/tour-de-prior-art/manager/challenge/${challenge.id}`}>
                     <Button className="w-full">View Details</Button>
                   </Link>
                 </div>

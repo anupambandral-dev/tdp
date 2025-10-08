@@ -1,4 +1,5 @@
 
+
 import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { Profile, Role, SubChallenge, OverallChallenge, Submission, IncorrectMarking, ResultTier, Evaluation, EvaluationRules, SubChallengeWithSubmissions, SubmittedResult, ResultType } from '../../types';
@@ -129,7 +130,7 @@ const TraineeView: React.FC<TraineeViewProps> = ({ subChallenge, overallChalleng
                 <Card className="text-center py-10">
                     <h2 className="text-xl font-semibold mb-2">Ready to start?</h2>
                     <p className="text-gray-600 dark:text-gray-400 mb-6">You have not made a submission for this challenge yet.</p>
-                    <Link to={`/trainee/challenge/${subChallenge.id}/submit`}>
+                    <Link to={`/tour-de-prior-art/trainee/challenge/${subChallenge.id}/submit`}>
                         <Button>Submit Your Results Now</Button>
                     </Link>
                 </Card>
@@ -160,7 +161,7 @@ const TraineeView: React.FC<TraineeViewProps> = ({ subChallenge, overallChalleng
                      <div className="flex justify-between items-center mb-4 flex-wrap gap-2">
                         <h2 className="text-2xl font-semibold">Your Submission</h2>
                         {isChallengeActive && (
-                            <Link to={`/trainee/challenge/${subChallenge.id}/submit`}>
+                            <Link to={`/tour-de-prior-art/trainee/challenge/${subChallenge.id}/submit`}>
                                 <Button>{canSubmitMore ? 'Add / Edit Results' : 'Edit Submission'}</Button>
                             </Link>
                         )}
@@ -316,7 +317,7 @@ export const SubChallengeDetail: React.FC<SubChallengeDetailProps> = ({ currentU
         return <div className="text-center p-8">Challenge not found.</div>;
     }
 
-    const backLink = currentUser.role === Role.MANAGER ? `/manager/challenge/${overallChallenge.id}` : '/trainee';
+    const backLink = currentUser.role === Role.MANAGER ? `/tour-de-prior-art/manager/challenge/${overallChallenge.id}` : '/tour-de-prior-art/trainee';
     const backLinkText = currentUser.role === Role.MANAGER ? 'Back to Challenge Details' : 'Back to Dashboard';
 
     return (
@@ -331,7 +332,7 @@ export const SubChallengeDetail: React.FC<SubChallengeDetailProps> = ({ currentU
                     </div>
                     {currentUser.role === Role.MANAGER && (
                          <Button onClick={handleCopyPublicLink} variant="secondary">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4 mr-2"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.72"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.72-1.72"></path></svg>
+                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4 mr-2"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.72"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.72-1.72"></path></svg>
                             {linkCopied ? 'Copied!' : 'Copy Public Link'}
                         </Button>
                     )}

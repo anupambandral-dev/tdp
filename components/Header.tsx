@@ -1,4 +1,5 @@
 import React from 'react';
+import { Link } from 'react-router-dom';
 import { Profile } from '../types';
 
 interface HeaderProps {
@@ -7,7 +8,7 @@ interface HeaderProps {
 }
 
 const LogoIcon = () => (
-    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-8 w-8 text-blue-500">
+    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-8 w-8 text-blue-500">
         <path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/>
         <path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/>
         <path d="M4 22h16"/>
@@ -23,10 +24,10 @@ export const Header: React.FC<HeaderProps> = ({ currentUser, onLogout }) => {
     <header className="bg-white dark:bg-gray-800 shadow-md">
       <div className="container mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
-          <div className="flex items-center space-x-2">
+          <Link to="/dashboard" className="flex items-center space-x-2">
             <LogoIcon />
             <span className="text-xl font-bold text-gray-800 dark:text-white">Tour de Prior Art</span>
-          </div>
+          </Link>
           {currentUser && (
             <div className="flex items-center space-x-4">
               <div className="flex items-center space-x-2">

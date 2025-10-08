@@ -83,7 +83,7 @@ export const CreateChallenge: React.FC<CreateChallengeProps> = ({ currentUser })
             setLoading(false);
         } else {
             alert('New challenge created successfully!');
-            navigate('/manager');
+            navigate('/tour-de-prior-art/manager');
         }
     };
     
@@ -101,7 +101,7 @@ export const CreateChallenge: React.FC<CreateChallengeProps> = ({ currentUser })
 
     return (
         <div className="container mx-auto p-4 sm:p-6 lg:p-8 max-w-4xl">
-            <BackButton to="/manager" text="Back to Dashboard" />
+            <BackButton to="/tour-de-prior-art/manager" text="Back to Dashboard" />
             <Card>
                 <h1 className="text-3xl font-bold mb-6">Create New Overall Challenge</h1>
                 <form onSubmit={handleSubmit} className="space-y-8">
@@ -177,7 +177,7 @@ export const CreateChallenge: React.FC<CreateChallengeProps> = ({ currentUser })
                     </div>
 
                     <div className="flex justify-end space-x-4 pt-4 border-t dark:border-gray-700">
-                        <Link to="/manager">
+                        <Link to="/tour-de-prior-art/manager">
                             <Button type="button" variant="secondary" disabled={loading}>Cancel</Button>
                         </Link>
                         <Button type="submit" disabled={loading}>

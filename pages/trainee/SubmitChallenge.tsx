@@ -326,7 +326,7 @@ export const SubmitChallenge: React.FC<SubmitChallengeProps> = ({ currentUser })
     
     return (
         <div className="container mx-auto p-4 sm:p-6 lg:p-8 max-w-4xl">
-            <BackButton to={`/trainee/sub-challenge/${subChallenge.id}`} text="Back to Challenge Details" />
+            <BackButton to={`/tour-de-prior-art/trainee/sub-challenge/${subChallenge.id}`} text="Back to Challenge Details" />
             <Card>
                 <div className="border-b pb-4 mb-6 dark:border-gray-700">
                     <h1 className="text-3xl font-bold">{subChallenge.title}</h1>

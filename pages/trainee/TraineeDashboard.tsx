@@ -172,7 +172,7 @@ export const TraineeDashboard: React.FC<TraineeDashboardProps> = ({ currentUser 
             const score = getScore(challenge);
             const deadlineDisplay = getDeadlineDisplay(challenge);
             return (
-               <Link to={`/trainee/sub-challenge/${challenge.id}`} key={challenge.id} className="block">
+               <Link to={`/tour-de-prior-art/trainee/sub-challenge/${challenge.id}`} key={challenge.id} className="block">
                 <Card className="h-full flex flex-col hover:shadow-xl transition-shadow duration-200">
                   <div className="flex-grow">
                     <div className="flex justify-between items-start">

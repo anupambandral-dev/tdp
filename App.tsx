@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { HashRouter, Routes, Route, Navigate, Outlet, useNavigate } from 'react-router-dom';
+import { HashRouter, Routes, Route, Navigate, Outlet } from 'react-router-dom';
 import { Profile, Role } from './types';
 import { Header } from './components/Header';
 import { LoginPage } from './pages/LoginPage';
@@ -20,18 +20,17 @@ import { ImportUsers } from './pages/manager/ImportUsers';
 import { ResetPasswordPage } from './pages/ResetPasswordPage';
 import { PublicLeaderboard } from './pages/PublicLeaderboard';
 import { PublicSubChallengeLeaderboard } from './pages/PublicSubChallengeLeaderboard';
+import { MainDashboard } from './pages/MainDashboard';
+import { QuizDashboard } from './pages/quiz/QuizDashboard';
+import { TourDePriorArtIndex } from './pages/TourDePriorArtIndex';
 
 
 const AppContent: React.FC = () => {
-  const navigate = useNavigate();
   const [session, setSession] = useState<Session | null>(null);
   const [currentUser, setCurrentUser] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
   
-  // Initialize state from sessionStorage to handle page refreshes during recovery.
   const [isPasswordRecovery, setIsPasswordRecovery] = useState(() => {
-    // Check URL hash for the initial entry from email link. If found,
-    // set the flag in sessionStorage immediately for persistence.
     if (window.location.hash.includes('type=recovery')) {
         sessionStorage.setItem('isPasswordRecovery', 'true');
         return true;
@@ -42,7 +41,6 @@ const AppContent: React.FC = () => {
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
-      // If there's no session and it's not a recovery flow, stop loading.
       if (!session && !isPasswordRecovery) {
         setLoading(false);
       }
@@ -55,7 +53,6 @@ const AppContent: React.FC = () => {
         if (event === 'PASSWORD_RECOVERY') {
           sessionStorage.setItem('isPasswordRecovery', 'true');
           setIsPasswordRecovery(true);
-          navigate('/reset-password');
         }
         
         if (event === 'SIGNED_OUT') {
@@ -67,11 +64,10 @@ const AppContent: React.FC = () => {
     );
 
     return () => subscription.unsubscribe();
-  }, [navigate]);
+  }, []);
 
   useEffect(() => {
     if (session?.user) {
-      // The isPasswordRecovery flag, now persistent, reliably guards the profile fetch.
       if (isPasswordRecovery) {
         setLoading(false);
         return;
@@ -119,7 +115,6 @@ const AppContent: React.FC = () => {
       fetchProfile();
     } else {
       setCurrentUser(null);
-      // Only stop loading if we are NOT in password recovery, as getSession might still be processing.
       if (!isPasswordRecovery) {
           setLoading(false);
       }
@@ -129,7 +124,6 @@ const AppContent: React.FC = () => {
   const handleLogout = async () => {
     sessionStorage.removeItem('isPasswordRecovery');
     await supabase.auth.signOut();
-    // onAuthStateChange handles state updates, but reload ensures cleanest state.
     window.location.reload();
   };
 
@@ -138,15 +132,15 @@ const AppContent: React.FC = () => {
     setIsPasswordRecovery(false);
   };
 
-  const ProtectedRoute: React.FC<{ allowedRoles: Role[] }> = ({ allowedRoles }) => {
+  const ProtectedRoute: React.FC<{ allowedRoles?: Role[] }> = ({ allowedRoles }) => {
     if (loading) {
       return <div className="min-h-screen flex items-center justify-center"><p>Loading session...</p></div>;
     }
     if (!currentUser) {
       return <Navigate to="/" replace />;
     }
-    if (!allowedRoles.includes(currentUser.role)) {
-      return <Navigate to={`/${currentUser.role.toLowerCase()}`} replace />;
+    if (allowedRoles && !allowedRoles.includes(currentUser.role)) {
+      return <Navigate to="/dashboard" replace />;
     }
     return <Outlet />;
   };
@@ -178,34 +172,41 @@ const AppContent: React.FC = () => {
           <Route path="/leaderboard/:challengeId" element={<PublicLeaderboard />} />
           <Route path="/sub-challenge-leaderboard/:subChallengeId" element={<PublicSubChallengeLeaderboard />} />
           <Route path="/reset-password" element={<ResetPasswordPage onResetSuccess={handleResetSuccess} />} />
+
           <Route path="/" element={
             isPasswordRecovery
               ? <Navigate to="/reset-password" replace />
               : !currentUser
                 ? <LoginPage />
-                : <Navigate to={`/${currentUser.role.toLowerCase()}`} />
+                : <Navigate to="/dashboard" />
           } />
           
-          <Route element={<ProtectedRoute allowedRoles={[Role.MANAGER]} />}>
-            <Route path="/manager" element={currentUser ? <ManagerDashboard currentUser={currentUser} /> : null} />
-            <Route path="/manager/users" element={<UserManagement />} />
-            <Route path="/manager/import-users" element={<ImportUsers />} />
-            <Route path="/manager/challenge/:challengeId" element={currentUser ? <ChallengeDetail currentUser={currentUser} /> : null} />
-            <Route path="/manager/challenge/:challengeId/trainee/:traineeId" element={<TraineePerforma />} />
-            <Route path="/manager/create-challenge" element={currentUser ? <CreateChallenge currentUser={currentUser} /> : null} />
-            <Route path="/manager/challenge/:challengeId/create-sub-challenge" element={<CreateSubChallenge />} />
-            <Route path="/manager/sub-challenge/:subChallengeId" element={currentUser ? <SubChallengeDetail currentUser={currentUser} /> : null} />
-          </Route>
+          <Route element={<ProtectedRoute />}>
+            <Route path="/dashboard" element={<MainDashboard currentUser={currentUser!} />} />
+            <Route path="/quiz" element={<QuizDashboard />} />
+            <Route path="/tour-de-prior-art" element={<TourDePriorArtIndex currentUser={currentUser!} />} />
 
-          <Route element={<ProtectedRoute allowedRoles={[Role.TRAINEE]} />}>
-            <Route path="/trainee" element={currentUser ? <TraineeDashboard currentUser={currentUser} /> : null} />
-            <Route path="/trainee/challenge/:challengeId/submit" element={currentUser ? <SubmitChallenge currentUser={currentUser} /> : null} />
-            <Route path="/trainee/sub-challenge/:subChallengeId" element={currentUser ? <SubChallengeDetail currentUser={currentUser} /> : null} />
-          </Route>
+            <Route element={<ProtectedRoute allowedRoles={[Role.MANAGER]} />}>
+              <Route path="/tour-de-prior-art/manager" element={<ManagerDashboard currentUser={currentUser!} />} />
+              <Route path="/tour-de-prior-art/manager/users" element={<UserManagement />} />
+              <Route path="/tour-de-prior-art/manager/import-users" element={<ImportUsers />} />
+              <Route path="/tour-de-prior-art/manager/challenge/:challengeId" element={<ChallengeDetail currentUser={currentUser!} />} />
+              <Route path="/tour-de-prior-art/manager/challenge/:challengeId/trainee/:traineeId" element={<TraineePerforma />} />
+              <Route path="/tour-de-prior-art/manager/create-challenge" element={<CreateChallenge currentUser={currentUser!} />} />
+              <Route path="/tour-de-prior-art/manager/challenge/:challengeId/create-sub-challenge" element={<CreateSubChallenge />} />
+              <Route path="/tour-de-prior-art/manager/sub-challenge/:subChallengeId" element={<SubChallengeDetail currentUser={currentUser!} />} />
+            </Route>
 
-          <Route element={<ProtectedRoute allowedRoles={[Role.EVALUATOR, Role.MANAGER]} />}>
-            <Route path="/evaluator" element={currentUser ? <EvaluatorDashboard currentUser={currentUser} /> : null} />
-            <Route path="/evaluator/challenge/:challengeId/evaluate" element={currentUser ? <EvaluateSubmission currentUser={currentUser} /> : null} />
+            <Route element={<ProtectedRoute allowedRoles={[Role.TRAINEE]} />}>
+              <Route path="/tour-de-prior-art/trainee" element={<TraineeDashboard currentUser={currentUser!} />} />
+              <Route path="/tour-de-prior-art/trainee/challenge/:challengeId/submit" element={<SubmitChallenge currentUser={currentUser!} />} />
+              <Route path="/tour-de-prior-art/trainee/sub-challenge/:subChallengeId" element={<SubChallengeDetail currentUser={currentUser!} />} />
+            </Route>
+
+            <Route element={<ProtectedRoute allowedRoles={[Role.EVALUATOR, Role.MANAGER]} />}>
+              <Route path="/tour-de-prior-art/evaluator" element={<EvaluatorDashboard currentUser={currentUser!} />} />
+              <Route path="/tour-de-prior-art/evaluator/challenge/:challengeId/evaluate" element={<EvaluateSubmission currentUser={currentUser!} />} />
+            </Route>
           </Route>
           
           <Route path="*" element={<Navigate to="/" />} />
