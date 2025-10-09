@@ -1,4 +1,4 @@
-import { Database, Tables, Json as DbJson } from './database.types';
+import { Database, Tables, Json as DbJson, Enums } from './database.types';
 
 // Re-export Json for convenience
 export type Json = DbJson;
@@ -20,6 +20,29 @@ export type SubChallenge = Tables<'sub_challenges'>;
 export type Submission = Tables<'submissions'>;
 export type TrainingBatch = Tables<'training_batches'>;
 export type BatchParticipant = Tables<'batch_participants'>;
+export type Quiz = Tables<'quizzes'>;
+export type QuizQuestion = Tables<'quiz_questions'>;
+export type QuizSubmission = Tables<'quiz_submissions'>;
+
+// Re-export enums for easier access
+export type QuizStatus = Enums<'quiz_status'>;
+export const QuizStatusEnum = {
+    DRAFT: 'draft',
+    LIVE: 'live',
+    ENDED: 'ended',
+} as const;
+
+
+// --- QUIZ SPECIFIC TYPES ---
+export interface QuizOption {
+    id: string;
+    text: string;
+}
+
+export interface QuizAnswer {
+    question_id: string;
+    selected_option_id: string;
+}
 
 
 // Enums for evaluation logic
@@ -120,3 +143,11 @@ export type SubChallengeWithOverallChallenge = SubChallenge & {
 };
 
 export type SubChallengeForEvaluator = SubChallengeWithSubmissions;
+
+export type QuizWithSubmission = Quiz & {
+    quiz_submissions: Pick<QuizSubmission, 'id' | 'participant_id'>[];
+};
+
+export type QuizSubmissionWithProfile = QuizSubmission & {
+    profiles: Profile | null;
+};

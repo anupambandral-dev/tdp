@@ -17,6 +17,7 @@ const levelData = [
     { id: 3, name: "Level 3: Beehive Results", description: "Review and score results from the Beehive platform.", icon: "🐝" },
     { id: 4, name: "Level 4: Tour de Prior Art", description: "Administer and monitor prior art search challenges.", icon: "🏆" },
     { id: 5, name: "Level 5: Mentor Training", description: "Oversee the mentor training and evaluation process.", icon: "🧑‍🏫" },
+    { id: "quiz", name: "Quizzes", description: "Create and manage real-time quizzes for this batch.", icon: "❓" },
 ];
 
 export const BatchDashboard: React.FC<BatchDashboardProps> = ({ currentUser }) => {
@@ -25,7 +26,7 @@ export const BatchDashboard: React.FC<BatchDashboardProps> = ({ currentUser }) =
     const [participants, setParticipants] = useState<BatchParticipantWithProfile[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
-    const [activeTab, setActiveTab] = useState<'participants' | 'levels'>('levels');
+    const [activeTab, setActiveTab] = useState<'levels' | 'participants'>('levels');
     const [isModalOpen, setIsModalOpen] = useState(false);
 
     const fetchBatchData = useCallback(async () => {
@@ -60,6 +61,13 @@ export const BatchDashboard: React.FC<BatchDashboardProps> = ({ currentUser }) =
     if (error) return <div className="p-8 text-red-500">Error: {error}</div>;
     if (!batch) return <div className="p-8 text-center">Training batch not found.</div>;
 
+    const getLinkForLevel = (levelId: number | string) => {
+        if (levelId === 'quiz') {
+            return `/batch/${batchId}/quiz`;
+        }
+        return `/batch/${batchId}/level/${levelId}`;
+    };
+
     return (
         <div className="container mx-auto p-4 sm:p-6 lg:p-8">
             <BackButton to="/batches" text="Back to All Batches" />
@@ -71,7 +79,7 @@ export const BatchDashboard: React.FC<BatchDashboardProps> = ({ currentUser }) =
             <div className="border-b border-gray-200 dark:border-gray-700 mb-6">
                 <nav className="-mb-px flex space-x-8" aria-label="Tabs">
                     <button onClick={() => setActiveTab('levels')} className={`${activeTab === 'levels' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'} whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm`}>
-                        Levels
+                        Modules
                     </button>
                     <button onClick={() => setActiveTab('participants')} className={`${activeTab === 'participants' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'} whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm`}>
                         Participants ({participants.length})
@@ -82,7 +90,7 @@ export const BatchDashboard: React.FC<BatchDashboardProps> = ({ currentUser }) =
             {activeTab === 'levels' && (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     {levelData.map(level => (
-                        <Link to={`/batch/${batchId}/level/${level.id}`} key={level.id} className="block transform hover:scale-105 transition-transform duration-200">
+                        <Link to={getLinkForLevel(level.id)} key={level.id} className="block transform hover:scale-105 transition-transform duration-200">
                              <Card className="h-full flex flex-col">
                                 <div className="text-5xl mb-4">{level.icon}</div>
                                 <h2 className="text-xl font-bold">{level.name}</h2>

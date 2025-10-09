@@ -25,6 +25,10 @@ import { BatchDashboard } from './pages/batch/BatchDashboard';
 import { ParticipantDetailView } from './pages/batch/ParticipantDetailView';
 import { LevelDetailView } from './pages/batch/LevelDetailView';
 import { CreateBatch } from './pages/batch/CreateBatch';
+import { QuizDashboard } from './pages/quiz/QuizDashboard';
+import { CreateQuiz } from './pages/quiz/CreateQuiz';
+import { QuizManagerDetail } from './pages/quiz/QuizManagerDetail';
+import { TakeQuiz } from './pages/quiz/TakeQuiz';
 
 
 const AppContent: React.FC = () => {
@@ -191,10 +195,16 @@ const AppContent: React.FC = () => {
               <Route path="/batch/:batchId" element={<BatchDashboard currentUser={currentUser!} />} />
               <Route path="/batch/:batchId/participant/:participantId" element={<ParticipantDetailView />} />
               <Route path="/batch/:batchId/level/:levelId" element={<LevelDetailView currentUser={currentUser!} />} />
+              
+              {/* Quiz Module Routes */}
+              <Route path="/batch/:batchId/quiz" element={<QuizDashboard currentUser={currentUser!} />} />
+              <Route path="/batch/:batchId/quiz/take/:quizId" element={<TakeQuiz currentUser={currentUser!} />} />
             
-            {/* Tour de Prior Art Routes (Level 4) */}
             <Route element={<ProtectedRoute allowedRoles={[Role.MANAGER]} />}>
+              {/* Batch Management */}
               <Route path="/create-batch" element={<CreateBatch currentUser={currentUser!} />} />
+              
+              {/* Tour de Prior Art Routes (Level 4) */}
               <Route path="/batch/:batchId/level/4/manager" element={<ManagerDashboard currentUser={currentUser!} />} />
               <Route path="/batch/:batchId/level/4/users" element={<UserManagement />} />
               <Route path="/batch/:batchId/level/4/import-users" element={<ImportUsers />} />
@@ -203,6 +213,10 @@ const AppContent: React.FC = () => {
               <Route path="/batch/:batchId/level/4/create-challenge" element={<CreateChallenge currentUser={currentUser!} />} />
               <Route path="/batch/:batchId/level/4/challenge/:challengeId/create-sub-challenge" element={<CreateSubChallenge />} />
               <Route path="/batch/:batchId/level/4/sub-challenge/:subChallengeId" element={<SubChallengeDetail currentUser={currentUser!} />} />
+
+              {/* Quiz Module Manager Routes */}
+              <Route path="/batch/:batchId/quiz/create" element={<CreateQuiz currentUser={currentUser!} />} />
+              <Route path="/batch/:batchId/quiz/manage/:quizId" element={<QuizManagerDetail />} />
             </Route>
 
             <Route element={<ProtectedRoute allowedRoles={[Role.TRAINEE]} />}>

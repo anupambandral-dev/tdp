@@ -65,7 +65,7 @@ export type Database = {
       }
       overall_challenges: {
         Row: {
-          batch_id: string
+          batch_id: string | null
           created_at: string
           ended_at: string | null
           id: string
@@ -74,7 +74,7 @@ export type Database = {
           trainee_ids: string[]
         }
         Insert: {
-          batch_id: string
+          batch_id?: string | null
           created_at?: string
           ended_at?: string | null
           id?: string
@@ -83,7 +83,7 @@ export type Database = {
           trainee_ids: string[]
         }
         Update: {
-          batch_id?: string
+          batch_id?: string | null
           created_at?: string
           ended_at?: string | null
           id?: string
@@ -132,6 +132,128 @@ export type Database = {
             columns: ["auth_id"]
             isOneToOne: true
             referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      quiz_questions: {
+        Row: {
+          correct_option_id: string
+          created_at: string
+          id: string
+          options: Json
+          question_text: string
+          quiz_id: string
+        }
+        Insert: {
+          correct_option_id: string
+          created_at?: string
+          id?: string
+          options: Json
+          question_text: string
+          quiz_id: string
+        }
+        Update: {
+          correct_option_id?: string
+          created_at?: string
+          id?: string
+          options?: Json
+          question_text?: string
+          quiz_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "quiz_questions_quiz_id_fkey"
+            columns: ["quiz_id"]
+            isOneToOne: false
+            referencedRelation: "quizzes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      quiz_submissions: {
+        Row: {
+          answers: Json
+          completed_at: string
+          created_at: string
+          id: string
+          participant_id: string
+          quiz_id: string
+          score: number
+        }
+        Insert: {
+          answers: Json
+          completed_at?: string
+          created_at?: string
+          id?: string
+          participant_id: string
+          quiz_id: string
+          score: number
+        }
+        Update: {
+          answers?: Json
+          completed_at?: string
+          created_at?: string
+          id?: string
+          participant_id?: string
+          quiz_id?: string
+          score?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "quiz_submissions_participant_id_fkey"
+            columns: ["participant_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "quiz_submissions_quiz_id_fkey"
+            columns: ["quiz_id"]
+            isOneToOne: false
+            referencedRelation: "quizzes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      quizzes: {
+        Row: {
+          batch_id: string
+          created_at: string
+          created_by: string
+          id: string
+          status: Database["public"]["Enums"]["quiz_status"]
+          title: string
+        }
+        Insert: {
+          batch_id: string
+          created_at?: string
+          created_by: string
+          id?: string
+          status?: Database["public"]["Enums"]["quiz_status"]
+          title: string
+        }
+        Update: {
+          batch_id?: string
+          created_at?: string
+          created_by?: string
+          id?: string
+          status?: Database["public"]["Enums"]["quiz_status"]
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "quizzes_batch_id_fkey"
+            columns: ["batch_id"]
+            isOneToOne: false
+            referencedRelation: "training_batches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "quizzes_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
         ]
@@ -286,6 +408,7 @@ export type Database = {
     }
     Enums: {
       incorrect_marking_type: "zero" | "penalty"
+      quiz_status: "draft" | "live" | "ended"
       result_tier: "Tier-1" | "Tier-2" | "Tier-3"
       result_type: "Patent" | "Non-Patent Literature"
       user_role: "Manager" | "Trainee" | "Evaluator" | "Mentor"
