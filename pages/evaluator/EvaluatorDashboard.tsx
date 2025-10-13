@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+
+import React, { useState, useEffect, useCallback } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { Profile, SubChallengeForEvaluator, Role } from '../../types';
 import { supabase } from '../../supabaseClient';
@@ -16,57 +17,80 @@ export const EvaluatorDashboard: React.FC<EvaluatorDashboardProps> = ({ currentU
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    const fetchChallenges = async () => {
-        if (currentUser.role === Role.MANAGER) {
-            const { data: managedChallenges, error: mcError } = await supabase
-                .from('overall_challenges')
-                .select('id')
-                .contains('manager_ids', [currentUser.id]);
-            
-            if (mcError) {
-                setError(mcError.message);
-                return;
-            }
-            if (!managedChallenges || managedChallenges.length === 0) {
-                setAssignedChallenges([]);
-                return;
-            }
-            const managedChallengeIds = managedChallenges.map(c => c.id);
+  const fetchChallenges = useCallback(async () => {
+    if (!batchId) {
+        setAssignedChallenges([]);
+        return;
+    }
 
-            const { data: potentialChallenges, error: scError } = await supabase
-                .from('sub_challenges')
-                .select('*, submissions(*, profiles(*))')
-                .or(`evaluator_ids.cs.{${currentUser.id}},overall_challenge_id.in.(${managedChallengeIds.join(',')})`);
-            
-            if (scError) {
-                setError(scError.message);
-                return;
-            }
+    // Get all overall_challenge IDs for the current batch
+    const { data: ocInBatch, error: ocError } = await supabase
+        .from('overall_challenges')
+        .select('id, manager_ids')
+        .eq('batch_id', batchId);
 
-            if (potentialChallenges) {
-                const challengesForManager = potentialChallenges.filter(sc => {
-                    const isExplicitlyAssigned = sc.evaluator_ids?.includes(currentUser.id);
-                    const isImplicitlyAssigned = (!sc.evaluator_ids || sc.evaluator_ids.length === 0) && managedChallengeIds.includes(sc.overall_challenge_id);
-                    return isExplicitlyAssigned || isImplicitlyAssigned;
-                });
-                setAssignedChallenges(challengesForManager as unknown as SubChallengeForEvaluator[]);
-            }
+    if (ocError) {
+        setError(ocError.message);
+        return;
+    }
+    if (!ocInBatch || ocInBatch.length === 0) {
+        setAssignedChallenges([]);
+        return;
+    }
 
-        } else { // Role.EVALUATOR
-            const { data, error } = await supabase
-                .from('sub_challenges')
-                .select('*, submissions(*, profiles(*))')
-                .contains('evaluator_ids', [currentUser.id]);
+    const ocIdsInBatch = ocInBatch.map(oc => oc.id);
 
-            if (error) {
-                setError(error.message);
-            } else if (data) {
-                setAssignedChallenges(data as unknown as SubChallengeForEvaluator[]);
-            }
+    if (currentUser.role === Role.MANAGER) {
+        const managedOcIds = ocInBatch
+            .filter(oc => oc.manager_ids.includes(currentUser.id))
+            .map(oc => oc.id);
+
+        // Fetch all sub-challenges in this batch that this manager could potentially evaluate.
+        const { data: potentialChallenges, error: scError } = await supabase
+            .from('sub_challenges')
+            .select('*, submissions(*, profiles(*))')
+            .in('overall_challenge_id', ocIdsInBatch)
+            .or(
+                `evaluator_ids.cs.{${currentUser.id}},` +
+                // Add a filter for managed challenges only if the manager actually manages challenges in this batch
+                (managedOcIds.length > 0 ? `overall_challenge_id.in.(${managedOcIds.join(',')})` : 'id.is.null') // Use a condition that won't match if array is empty
+            );
+
+        if (scError) {
+            setError(scError.message);
+            return;
         }
-    };
-    
+
+        if (potentialChallenges) {
+            const challengesForManager = potentialChallenges.filter(sc => {
+                const isExplicitlyAssigned = sc.evaluator_ids?.includes(currentUser.id);
+                const isImplicitlyAssigned = 
+                    (!sc.evaluator_ids || sc.evaluator_ids.length === 0) && 
+                    managedOcIds.includes(sc.overall_challenge_id);
+                return isExplicitlyAssigned || isImplicitlyAssigned;
+            });
+            setAssignedChallenges(challengesForManager as unknown as SubChallengeForEvaluator[]);
+        } else {
+            setAssignedChallenges([]);
+        }
+
+    } else { // Role.EVALUATOR
+        const { data, error } = await supabase
+            .from('sub_challenges')
+            .select('*, submissions(*, profiles(*))')
+            .in('overall_challenge_id', ocIdsInBatch) // Filter by batch
+            .contains('evaluator_ids', [currentUser.id]);
+
+        if (error) {
+            setError(error.message);
+        } else if (data) {
+            setAssignedChallenges(data as unknown as SubChallengeForEvaluator[]);
+        }
+    }
+  }, [batchId, currentUser.id, currentUser.role]);
+
+
+  useEffect(() => {
     const initialFetch = async () => {
         setLoading(true);
         await fetchChallenges();
@@ -76,7 +100,7 @@ export const EvaluatorDashboard: React.FC<EvaluatorDashboardProps> = ({ currentU
 
     // Set up real-time subscription
     const channel = supabase
-      .channel('evaluator-dashboard-challenges')
+      .channel(`evaluator-dashboard-challenges-${batchId}`)
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'sub_challenges' },
@@ -87,13 +111,18 @@ export const EvaluatorDashboard: React.FC<EvaluatorDashboardProps> = ({ currentU
         { event: '*', schema: 'public', table: 'submissions' },
         () => fetchChallenges()
       )
+       .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'overall_challenges', filter: `batch_id=eq.${batchId}` },
+        () => fetchChallenges()
+      )
       .subscribe();
 
     // Cleanup subscription on component unmount
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [currentUser.id, currentUser.role]);
+  }, [batchId, fetchChallenges]);
 
   const getEvaluationStats = (challenge: SubChallengeForEvaluator) => {
     const totalSubmissions = challenge.submissions?.length || 0;
@@ -143,7 +172,7 @@ export const EvaluatorDashboard: React.FC<EvaluatorDashboardProps> = ({ currentU
       )}
       {!loading && assignedChallenges.length === 0 && (
           <Card className="text-center py-10">
-              <p className="text-gray-500">You have no challenges assigned for evaluation.</p>
+              <p className="text-gray-500">You have no challenges assigned for evaluation in this batch.</p>
           </Card>
       )}
     </div>
