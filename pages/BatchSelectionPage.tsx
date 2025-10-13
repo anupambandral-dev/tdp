@@ -13,8 +13,6 @@ const PlusIcon = () => (
     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5 mr-2"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
 );
 
-type ParticipantBatch = { batch_id: string; training_batches: TrainingBatch };
-
 export const BatchSelectionPage: React.FC<BatchSelectionPageProps> = ({ currentUser }) => {
     const [batches, setBatches] = useState<TrainingBatch[]>([]);
     const [loading, setLoading] = useState(true);
@@ -26,6 +24,8 @@ export const BatchSelectionPage: React.FC<BatchSelectionPageProps> = ({ currentU
             setLoading(true);
             setError(null);
 
+            let finalBatches: TrainingBatch[] = [];
+
             if (currentUser.role === Role.MANAGER) {
                 const { data, error } = await supabase
                     .from('training_batches')
@@ -33,31 +33,75 @@ export const BatchSelectionPage: React.FC<BatchSelectionPageProps> = ({ currentU
                     .contains('manager_ids', [currentUser.id])
                     .order('created_at', { ascending: false });
                 
-                if (error) setError(error.message);
-                else setBatches(data || []);
-            } else { // Trainee or Evaluator
-                const { data, error } = await supabase
-                    .from('batch_participants')
-                    .select('batch_id, training_batches!inner(*)')
-                    .eq('participant_id', currentUser.id);
-                
                 if (error) {
                     setError(error.message);
-                } else if (data) {
-                    const participantBatches = data as ParticipantBatch[];
+                    setLoading(false);
+                    return;
+                }
+                finalBatches = data || [];
+
+            } else { // Trainee or Evaluator
+                const batchMap = new Map<string, TrainingBatch>();
+
+                // 1. All non-managers find batches they are participants of
+                const { data: participantData, error: participantError } = await supabase
+                    .from('batch_participants')
+                    .select('training_batches!inner(*)')
+                    .eq('participant_id', currentUser.id);
+                
+                if (participantError) {
+                    setError(participantError.message);
+                    setLoading(false);
+                    return;
+                }
+
+                const participantBatches = participantData ? participantData.map(p => p.training_batches).filter(Boolean) as TrainingBatch[] : [];
+                participantBatches.forEach(b => b && batchMap.set(b.id, b));
+                
+                // 2. Evaluators ALSO find batches where they are assigned to a sub-challenge
+                // This ensures evaluators see batches they are assigned to evaluate in, even if not explicitly a "participant".
+                if (currentUser.role === Role.EVALUATOR) {
+                    const { data: subChallenges, error: scError } = await supabase
+                        .from('sub_challenges')
+                        .select('overall_challenges(training_batches(*))')
+                        .contains('evaluator_ids', [currentUser.id]);
                     
-                    if (participantBatches.length === 1 && participantBatches[0].training_batches) {
-                        const batchId = participantBatches[0].batch_id;
-                        const rolePath = currentUser.role === Role.TRAINEE ? 'trainee' : 'evaluator';
-                        navigate(`/batch/${batchId}/level/4/${rolePath}`);
+                    if (scError) {
+                        setError(scError.message);
+                        setLoading(false);
                         return;
-                    } else {
-                        setBatches(participantBatches.map(pb => pb.training_batches));
+                    }
+
+                    if (subChallenges) {
+                        subChallenges.forEach(sc => {
+                            // The result of the join is nested.
+                            const batch = sc.overall_challenges?.training_batches;
+                            // The joined result might be null or an array if the relationship isn't one-to-one, so we check.
+                            if (batch && !Array.isArray(batch)) {
+                                 batchMap.set(batch.id, batch);
+                            }
+                        });
                     }
                 }
+                
+                finalBatches = Array.from(batchMap.values());
+                finalBatches.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
             }
+
+            // Auto-redirect logic for non-managers with exactly one batch.
+            // This is a UX improvement to skip the selection screen.
+            if (currentUser.role !== Role.MANAGER && finalBatches.length === 1) {
+                const batchId = finalBatches[0].id;
+                // The default path is to the Level 4 (Tour de Prior Art) module for the user's role.
+                const rolePath = currentUser.role === Role.TRAINEE ? 'trainee' : 'evaluator';
+                navigate(`/batch/${batchId}/level/4/${rolePath}`);
+                return; // Skip setting state as we are redirecting
+            }
+            
+            setBatches(finalBatches);
             setLoading(false);
         };
+
         fetchBatches();
     }, [currentUser, navigate]);
     
