@@ -6,6 +6,7 @@ import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { BackButton } from '../../components/ui/BackButton';
 import { ManageParticipantsModal } from './ManageParticipantsModal';
+import { ManageLevelClustersModal } from './ManageLevelClustersModal';
 
 interface BatchDashboardProps {
     currentUser: Profile;
@@ -27,7 +28,8 @@ export const BatchDashboard: React.FC<BatchDashboardProps> = ({ currentUser }) =
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [activeTab, setActiveTab] = useState<'levels' | 'participants'>('levels');
-    const [isModalOpen, setIsModalOpen] = useState(false);
+    const [isParticipantsModalOpen, setIsParticipantsModalOpen] = useState(false);
+    const [editingLevel, setEditingLevel] = useState<string | null>(null);
 
     const fetchBatchData = useCallback(async () => {
         if (!batchId) return;
@@ -109,11 +111,17 @@ export const BatchDashboard: React.FC<BatchDashboardProps> = ({ currentUser }) =
                         participant_id: profile.id,
                         created_at: new Date().toISOString(),
                         overall_cluster: null,
+                        overall_comments: null,
                         level_1_cluster: null,
+                        level_1_comments: null,
                         level_2_cluster: null,
+                        level_2_comments: null,
                         level_3_cluster: null,
+                        level_3_comments: null,
                         level_4_cluster: null,
+                        level_4_comments: null,
                         level_5_cluster: null,
+                        level_5_comments: null,
                         profiles: profile,
                     });
                 });
@@ -145,12 +153,22 @@ export const BatchDashboard: React.FC<BatchDashboardProps> = ({ currentUser }) =
         return `/batch/${batchId}/level/${levelId}`;
     };
 
+    // Helper component for clickable table headers
+    const ThButton: React.FC<{ children: React.ReactNode; onClick: () => void }> = ({ children, onClick }) => (
+        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+            <button onClick={onClick} className="w-full text-left hover:text-blue-600 dark:hover:text-blue-400 font-medium flex items-center gap-1">
+                {children}
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="opacity-50"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+            </button>
+        </th>
+    );
+
     return (
         <div className="container mx-auto p-4 sm:p-6 lg:p-8">
             <BackButton to="/batches" text="Back to All Batches" />
             <div className="flex justify-between items-center mb-6 flex-wrap gap-4">
                 <h1 className="text-3xl font-bold">{batch.name}</h1>
-                <Button onClick={() => setIsModalOpen(true)}>Manage Participants & Clusters</Button>
+                <Button onClick={() => setIsParticipantsModalOpen(true)}>Manage Participants</Button>
             </div>
 
             <div className="border-b border-gray-200 dark:border-gray-700 mb-6">
@@ -184,21 +202,29 @@ export const BatchDashboard: React.FC<BatchDashboardProps> = ({ currentUser }) =
                         <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
                             <thead className="bg-gray-50 dark:bg-gray-700">
                                 <tr>
-                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
-                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Overall Cluster</th>
-                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Level 4 Cluster</th>
+                                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
+                                    <ThButton onClick={() => setEditingLevel('overall')}>Overall Cluster</ThButton>
+                                    <ThButton onClick={() => setEditingLevel('1')}>Lvl 1 Cluster</ThButton>
+                                    <ThButton onClick={() => setEditingLevel('2')}>Lvl 2 Cluster</ThButton>
+                                    <ThButton onClick={() => setEditingLevel('3')}>Lvl 3 Cluster</ThButton>
+                                    <ThButton onClick={() => setEditingLevel('4')}>Lvl 4 Cluster</ThButton>
+                                    <ThButton onClick={() => setEditingLevel('5')}>Lvl 5 Cluster</ThButton>
                                 </tr>
                             </thead>
                              <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
                                 {participants.map(p => (
                                     <tr key={p.participant_id}>
-                                        <td className="px-6 py-4 whitespace-nowrap">
+                                        <td className="px-4 py-4 whitespace-nowrap">
                                             <Link to={`/batch/${batchId}/participant/${p.participant_id}`} className="font-medium text-blue-600 hover:underline">
                                                 {p.profiles?.name || 'Unknown User'}
                                             </Link>
                                         </td>
-                                        <td className="px-6 py-4 whitespace-nowrap">{p.overall_cluster || 'N/A'}</td>
-                                        <td className="px-6 py-4 whitespace-nowrap">{p.level_4_cluster || 'N/A'}</td>
+                                        <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500">{p.overall_cluster || 'N/A'}</td>
+                                        <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500">{p.level_1_cluster || 'N/A'}</td>
+                                        <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500">{p.level_2_cluster || 'N/A'}</td>
+                                        <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500">{p.level_3_cluster || 'N/A'}</td>
+                                        <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500">{p.level_4_cluster || 'N/A'}</td>
+                                        <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500">{p.level_5_cluster || 'N/A'}</td>
                                     </tr>
                                 ))}
                              </tbody>
@@ -207,13 +233,26 @@ export const BatchDashboard: React.FC<BatchDashboardProps> = ({ currentUser }) =
                 </Card>
             )}
 
-            {isModalOpen && (
+            {isParticipantsModalOpen && (
                 <ManageParticipantsModal
                     batchId={batchId!}
                     existingParticipants={participants}
-                    onClose={() => setIsModalOpen(false)}
+                    onClose={() => setIsParticipantsModalOpen(false)}
                     onSave={() => {
-                        setIsModalOpen(false);
+                        setIsParticipantsModalOpen(false);
+                        fetchBatchData(); // Refresh data after save
+                    }}
+                />
+            )}
+
+            {editingLevel && (
+                <ManageLevelClustersModal
+                    batchId={batchId!}
+                    levelId={editingLevel}
+                    participants={participants}
+                    onClose={() => setEditingLevel(null)}
+                    onSave={() => {
+                        setEditingLevel(null);
                         fetchBatchData(); // Refresh data after save
                     }}
                 />

@@ -15,11 +15,17 @@ export type Database = {
           created_at: string
           id: string
           level_1_cluster: string | null
+          level_1_comments: string | null
           level_2_cluster: string | null
+          level_2_comments: string | null
           level_3_cluster: string | null
+          level_3_comments: string | null
           level_4_cluster: string | null
+          level_4_comments: string | null
           level_5_cluster: string | null
+          level_5_comments: string | null
           overall_cluster: string | null
+          overall_comments: string | null
           participant_id: string
         }
         Insert: {
@@ -27,11 +33,17 @@ export type Database = {
           created_at?: string
           id?: string
           level_1_cluster?: string | null
+          level_1_comments?: string | null
           level_2_cluster?: string | null
+          level_2_comments?: string | null
           level_3_cluster?: string | null
+          level_3_comments?: string | null
           level_4_cluster?: string | null
+          level_4_comments?: string | null
           level_5_cluster?: string | null
+          level_5_comments?: string | null
           overall_cluster?: string | null
+          overall_comments?: string | null
           participant_id: string
         }
         Update: {
@@ -39,11 +51,17 @@ export type Database = {
           created_at?: string
           id?: string
           level_1_cluster?: string | null
+          level_1_comments?: string | null
           level_2_cluster?: string | null
+          level_2_comments?: string | null
           level_3_cluster?: string | null
+          level_3_comments?: string | null
           level_4_cluster?: string | null
+          level_4_comments?: string | null
           level_5_cluster?: string | null
+          level_5_comments?: string | null
           overall_cluster?: string | null
+          overall_comments?: string | null
           participant_id?: string
         }
         Relationships: [
@@ -385,6 +403,16 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      get_my_evaluator_batches: {
+        Args: Record<string, never>
+        Returns: {
+          created_at: string
+          evaluator_ids: string[] | null
+          id: string
+          manager_ids: string[]
+          name: string
+        }[]
+      }
       get_public_leaderboard: {
         Args: {
           p_challenge_id: string
