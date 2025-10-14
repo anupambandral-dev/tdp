@@ -1,5 +1,4 @@
-
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { Profile, SubChallengeForEvaluator, Role } from '../../types';
 import { supabase } from '../../supabaseClient';
@@ -17,88 +16,28 @@ export const EvaluatorDashboard: React.FC<EvaluatorDashboardProps> = ({ currentU
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchChallenges = useCallback(async () => {
-    if (!batchId) {
-        setAssignedChallenges([]);
-        return;
-    }
-    setLoading(true);
-    setError(null);
-
-    // 1. Get all overall_challenges in the current batch
-    const { data: ocInBatch, error: ocError } = await supabase
-        .from('overall_challenges')
-        .select('id, manager_ids')
-        .eq('batch_id', batchId);
-
-    if (ocError) {
-        setError(ocError.message);
-        setLoading(false);
-        return;
-    }
-    if (!ocInBatch || ocInBatch.length === 0) {
-        setAssignedChallenges([]);
-        setLoading(false);
-        return;
-    }
-
-    const ocIdsInBatch = ocInBatch.map(oc => oc.id);
-    const isManager = currentUser.role === Role.MANAGER;
-    let managedOcIds: string[] = [];
-
-    if (isManager) {
-        managedOcIds = ocInBatch
-            .filter(oc => oc.manager_ids.includes(currentUser.id))
-            .map(oc => oc.id);
-    }
-    
-    // 2. Build a query to get all potentially relevant sub-challenges
-    let query = supabase
-        .from('sub_challenges')
-        .select('*, submissions(*, profiles(*))')
-        .in('overall_challenge_id', ocIdsInBatch);
-
-    const orConditions = [`evaluator_ids.cs.{${currentUser.id}}`];
-    if (isManager && managedOcIds.length > 0) {
-        orConditions.push(`overall_challenge_id.in.(${managedOcIds.join(',')})`);
-    }
-    query = query.or(orConditions.join(','));
-
-    const { data: potentialChallenges, error: scError } = await query;
-    
-    if (scError) {
-        setError(scError.message);
-        setLoading(false);
-        return;
-    }
-
-    // 3. Client-side filter to apply the precise logic
-    if (potentialChallenges) {
-        const finalChallenges = potentialChallenges.filter(sc => {
-            // A user can see a challenge if:
-            // a) They are explicitly assigned as an evaluator.
-            const isExplicitlyAssigned = sc.evaluator_ids?.includes(currentUser.id);
-            if (isExplicitlyAssigned) return true;
-
-            // b) They are a manager, AND the challenge has no explicit evaluators, AND they manage the parent overall challenge.
-            if (isManager) {
-                const isImplicitlyAssigned =
-                    (!sc.evaluator_ids || sc.evaluator_ids.length === 0) &&
-                    managedOcIds.includes(sc.overall_challenge_id);
-                if (isImplicitlyAssigned) return true;
-            }
-            return false;
-        });
-        setAssignedChallenges(finalChallenges as unknown as SubChallengeForEvaluator[]);
-    } else {
-        setAssignedChallenges([]);
-    }
-
-    setLoading(false);
-}, [batchId, currentUser.id, currentUser.role]);
-
-
   useEffect(() => {
+    const fetchChallenges = async () => {
+      if (!batchId) return;
+      
+      // With RLS policies in place, we can simplify this fetch significantly.
+      // The database will automatically filter the sub-challenges to only those
+      // the current user (manager or evaluator) is allowed to see. We just need
+      // to join to filter by the batch ID.
+      const { data, error } = await supabase
+        .from('sub_challenges')
+        .select('*, submissions(*, profiles(*)), overall_challenges!inner(id)')
+        .eq('overall_challenges.batch_id', batchId);
+
+      if (error) {
+          setError(error.message);
+          console.error('Error fetching challenges:', error);
+      } else if (data) {
+          // The data is already correctly filtered by the RLS policies.
+          setAssignedChallenges(data as unknown as SubChallengeForEvaluator[]);
+      }
+    };
+    
     const initialFetch = async () => {
         setLoading(true);
         await fetchChallenges();
@@ -106,31 +45,33 @@ export const EvaluatorDashboard: React.FC<EvaluatorDashboardProps> = ({ currentU
     }
     initialFetch();
 
-    // Set up real-time subscription
-    const channel = supabase
-      .channel(`evaluator-dashboard-challenges-${batchId}`)
+    // Set up real-time subscription for sub-challenges in the current batch
+    const subChallengesChannel = supabase
+      .channel(`evaluator-dashboard-sc-${batchId}`)
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'sub_challenges' },
         () => fetchChallenges()
       )
-      .on(
+      .subscribe();
+      
+    // Set up a separate real-time subscription for submissions in the current batch
+    const submissionsChannel = supabase
+      .channel(`evaluator-dashboard-submissions-${batchId}`)
+       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'submissions' },
         () => fetchChallenges()
       )
-       .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'overall_challenges', filter: `batch_id=eq.${batchId}` },
-        () => fetchChallenges()
-      )
       .subscribe();
+
 
     // Cleanup subscription on component unmount
     return () => {
-      supabase.removeChannel(channel);
+      supabase.removeChannel(subChallengesChannel);
+      supabase.removeChannel(submissionsChannel);
     };
-  }, [batchId, fetchChallenges]);
+  }, [currentUser.id, currentUser.role, batchId]);
 
   const getEvaluationStats = (challenge: SubChallengeForEvaluator) => {
     const totalSubmissions = challenge.submissions?.length || 0;
@@ -143,7 +84,7 @@ export const EvaluatorDashboard: React.FC<EvaluatorDashboardProps> = ({ currentU
       {currentUser.role === Role.MANAGER && batchId && (
         <BackButton to={`/batch/${batchId}/level/4/manager`} text="Back to Manager Dashboard" />
       )}
-      <h1 className="text-3xl font-bold mb-6">Evaluator Dashboard</h1>
+      <h1 className="text-3xl font-bold mb-6">Evaluation Queue</h1>
       
       {loading && <p>Loading evaluation queue...</p>}
       {error && <p className="text-red-500">Error: {error}</p>}
