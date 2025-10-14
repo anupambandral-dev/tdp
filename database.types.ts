@@ -359,18 +359,21 @@ export type Database = {
       training_batches: {
         Row: {
           created_at: string
+          evaluator_ids: string[] | null
           id: string
           manager_ids: string[]
           name: string
         }
         Insert: {
           created_at?: string
+          evaluator_ids?: string[] | null
           id?: string
           manager_ids: string[]
           name: string
         }
         Update: {
           created_at?: string
+          evaluator_ids?: string[] | null
           id?: string
           manager_ids?: string[]
           name?: string
