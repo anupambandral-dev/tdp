@@ -322,6 +322,9 @@ export const EvaluateSubmission: React.FC<EvaluateSubmissionProps> = ({ currentU
     const submittedResults = (selectedSubmission?.results as unknown as SubmittedResult[]) || [];
     const rules = challenge.evaluation_rules as unknown as EvaluationRules;
     const isChallengeEnded = !!challenge.overall_challenges?.ended_at;
+    const reportFile = selectedSubmission?.report_file as { name: string; path: string; } | null;
+    const downloadFilename = reportFile ? `${challenge.title}_${selectedSubmission.profiles?.name}_${reportFile.name}`.replace(/[\s/\\?%*:|"<>]/g, '_') : 'report';
+
 
     return (
         <div className="container mx-auto p-4 sm:p-6 lg:p-8">
@@ -450,9 +453,15 @@ export const EvaluateSubmission: React.FC<EvaluateSubmissionProps> = ({ currentU
                                                     <div>
                                                         <label htmlFor="reportScore">Report Score (Max: {rules.report.maxScore})</label>
                                                         <input id="reportScore" type="number" max={rules.report.maxScore} min="0" value={reportScore} onChange={e => setReportScore(e.target.value)} className="input" disabled={isChallengeEnded} />
-                                                        {reportUrl && (
-                                                            <a href={reportUrl} target="_blank" rel="noopener noreferrer" className="text-sm text-blue-600 dark:text-blue-400 hover:underline mt-1 block">
-                                                                View Submitted Report
+                                                        {reportUrl && reportFile && (
+                                                            <a
+                                                                href={reportUrl}
+                                                                download={downloadFilename}
+                                                                target="_blank"
+                                                                rel="noopener noreferrer"
+                                                                className="text-sm text-blue-600 dark:text-blue-400 hover:underline mt-1 block"
+                                                            >
+                                                                Download Submitted Report ({reportFile.name})
                                                             </a>
                                                         )}
                                                     </div>
