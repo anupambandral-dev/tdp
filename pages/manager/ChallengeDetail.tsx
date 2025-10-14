@@ -288,6 +288,10 @@ export const ChallengeDetail: React.FC<ChallengeDetailProps> = ({ currentUser })
             score: getTraineeScore(trainee.id),
         }))
         .sort((a, b) => b.score - a.score);
+        
+    const sortedSubChallenges = [...challenge.sub_challenges].sort((a, b) => 
+        a.title.localeCompare(b.title, undefined, { numeric: true })
+    );
 
     return (
         <div className="container mx-auto p-4 sm:p-6 lg:p-8">
@@ -326,7 +330,7 @@ export const ChallengeDetail: React.FC<ChallengeDetailProps> = ({ currentUser })
                 <div className="lg:col-span-2">
                     <h2 className="text-2xl font-semibold mb-4">Sub-Challenges</h2>
                     <div className="space-y-4">
-                        {challenge.sub_challenges.map(sc => (
+                        {sortedSubChallenges.map(sc => (
                              <Card key={sc.id} className="hover:shadow-lg transition-shadow duration-200">
                                 <Link to={`/batch/${batchId}/level/4/sub-challenge/${sc.id}`}>
                                     <h3 className="text-lg font-semibold text-blue-600 dark:text-blue-400">{sc.title}</h3>
