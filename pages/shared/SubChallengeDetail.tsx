@@ -1,8 +1,5 @@
-
-
 import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import JSZip from 'jszip';
 import { Profile, Role, SubChallenge, OverallChallenge, Submission, IncorrectMarking, ResultTier, Evaluation, EvaluationRules, SubChallengeWithSubmissions, SubmittedResult, ResultType } from '../../types';
 import { supabase } from '../../supabaseClient';
 import { Card } from '../../components/ui/Card';
@@ -246,10 +243,6 @@ const TraineeView: React.FC<TraineeViewProps> = ({ batchId, subChallenge, overal
     );
 };
 
-const DownloadIcon = () => (
-    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4 mr-2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-);
-
 export const SubChallengeDetail: React.FC<SubChallengeDetailProps> = ({ currentUser }) => {
     const { batchId, subChallengeId } = useParams<{ batchId: string, subChallengeId: string }>();
     const [subChallenge, setSubChallenge] = useState<SubChallengeWithSubmissions | null>(null);
@@ -257,8 +250,6 @@ export const SubChallengeDetail: React.FC<SubChallengeDetailProps> = ({ currentU
     const [evaluators, setEvaluators] = useState<Profile[]>([]);
     const [loading, setLoading] = useState(true);
     const [linkCopied, setLinkCopied] = useState(false);
-    const [isDownloading, setIsDownloading] = useState(false);
-    const [downloadError, setDownloadError] = useState<string | null>(null);
 
     useEffect(() => {
         const fetchDetails = async () => {
@@ -319,74 +310,6 @@ export const SubChallengeDetail: React.FC<SubChallengeDetailProps> = ({ currentU
         });
     };
 
-    const handleDownloadAllReports = async () => {
-        if (!subChallenge) return;
-        
-        setIsDownloading(true);
-        setDownloadError(null);
-
-        const submissionsWithReports = subChallenge.submissions.filter(
-            s => s.report_file && s.profiles
-        );
-
-        if (submissionsWithReports.length === 0) {
-            alert('No reports have been submitted for this challenge.');
-            setIsDownloading(false);
-            return;
-        }
-
-        try {
-            const zip = new JSZip();
-            const mainFolderName = subChallenge.title.replace(/[\/\?<>\\:\*\|"]/g, "_");
-            const mainFolder = zip.folder(mainFolderName);
-
-            if (!mainFolder) {
-                throw new Error("Could not create main folder in zip file.");
-            }
-
-            const downloadPromises = submissionsWithReports.map(async (submission) => {
-                const reportFile = submission.report_file as { path: string; name: string };
-                const traineeName = submission.profiles!.name.replace(/[\/\?<>\\:\*\|"]/g, "_");
-                
-                const { data, error } = await supabase.storage
-                    .from('reports')
-                    .createSignedUrl(reportFile.path, 60); // 1-minute URL
-
-                if (error) {
-                    throw new Error(`Failed to get URL for ${traineeName}'s report: ${error.message}`);
-                }
-
-                const response = await fetch(data.signedUrl);
-                if (!response.ok) {
-                    throw new Error(`Failed to download report for ${traineeName}. Status: ${response.statusText}`);
-                }
-
-                const reportBlob = await response.blob();
-                const traineeFolder = mainFolder.folder(traineeName);
-                traineeFolder?.file(reportFile.name, reportBlob);
-            });
-
-            await Promise.all(downloadPromises);
-
-            const zipContent = await zip.generateAsync({ type: 'blob' });
-            
-            const link = document.createElement('a');
-            link.href = URL.createObjectURL(zipContent);
-            link.download = `${mainFolderName}.zip`;
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-            URL.revokeObjectURL(link.href);
-
-        } catch (error: any) {
-            console.error("Error during report download:", error);
-            setDownloadError(error.message || 'An unknown error occurred.');
-        } finally {
-            setIsDownloading(false);
-        }
-    };
-
-
     if (loading) return <div className="p-8">Loading details...</div>;
     if (!subChallenge || !overallChallenge) {
         return <div className="text-center p-8">Challenge not found.</div>;
@@ -410,10 +333,6 @@ export const SubChallengeDetail: React.FC<SubChallengeDetailProps> = ({ currentU
                     </div>
                     {currentUser.role === Role.MANAGER && (
                          <div className="flex items-center space-x-2">
-                             <Button onClick={handleDownloadAllReports} variant="secondary" disabled={isDownloading}>
-                                <DownloadIcon />
-                                {isDownloading ? 'Downloading...' : 'Download All Reports'}
-                             </Button>
                              <Button onClick={handleCopyPublicLink} variant="secondary">
                                 <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4 mr-2"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.72"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.72-1.72"></path></svg>
                                 {linkCopied ? 'Copied!' : 'Copy Public Link'}
@@ -421,7 +340,6 @@ export const SubChallengeDetail: React.FC<SubChallengeDetailProps> = ({ currentU
                          </div>
                     )}
                 </div>
-                {downloadError && <p className="mt-4 text-sm text-red-600 dark:text-red-400">{downloadError}</p>}
                 <div className="mt-4 border-t dark:border-gray-700 pt-4 grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4 text-sm">
                     <div>
                         <p className="font-semibold">Results Deadline</p>
