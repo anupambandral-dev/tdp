@@ -74,7 +74,7 @@ export const EvaluatorDashboard: React.FC<EvaluatorDashboardProps> = ({ currentU
             setAssignedChallenges([]);
         }
 
-    } else { // Role.EVALUATOR
+    } else if (currentUser.role === Role.EVALUATOR) {
         const { data, error } = await supabase
             .from('sub_challenges')
             .select('*, submissions(*, profiles(*))')
@@ -86,6 +86,9 @@ export const EvaluatorDashboard: React.FC<EvaluatorDashboardProps> = ({ currentU
         } else if (data) {
             setAssignedChallenges(data as unknown as SubChallengeForEvaluator[]);
         }
+    } else {
+        // Other roles like Mentor will not see any challenges here for now.
+        setAssignedChallenges([]);
     }
   }, [batchId, currentUser.id, currentUser.role]);
 
