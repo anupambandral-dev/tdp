@@ -23,81 +23,85 @@ export const BatchSelectionPage: React.FC<BatchSelectionPageProps> = ({ currentU
         const fetchBatches = async () => {
             setLoading(true);
             setError(null);
+            
+            const batchMap = new Map<string, TrainingBatch>();
 
-            let finalBatches: TrainingBatch[] = [];
+            // 1. Batches where user is a participant (covers Trainees, and Evaluators/Managers added as participants)
+            const { data: participantData, error: participantError } = await supabase
+                .from('batch_participants')
+                .select('training_batches!inner(*)')
+                .eq('participant_id', currentUser.id);
 
+            if (participantError) {
+                setError(participantError.message);
+                setLoading(false);
+                return;
+            }
+            participantData?.forEach(p => p.training_batches && batchMap.set(p.training_batches.id, p.training_batches));
+
+            // 2. Batches where user is an explicit evaluator on a sub-challenge
+            const { data: evaluatorData, error: evaluatorError } = await supabase
+                .from('sub_challenges')
+                .select('overall_challenges!inner(training_batches!inner(*))')
+                .contains('evaluator_ids', [currentUser.id]);
+
+            if (evaluatorError) {
+                setError(evaluatorError.message);
+                setLoading(false);
+                return;
+            }
+            evaluatorData?.forEach(sc => {
+                const batch = sc.overall_challenges?.training_batches;
+                if (batch && !Array.isArray(batch)) {
+                    batchMap.set(batch.id, batch);
+                }
+            });
+
+            // 3. Additional logic for Managers
             if (currentUser.role === Role.MANAGER) {
-                const { data, error } = await supabase
+                // 3a. Batches they manage directly
+                const { data: managedBatches, error: managedBatchesError } = await supabase
                     .from('training_batches')
                     .select('*')
-                    .contains('manager_ids', [currentUser.id])
-                    .order('created_at', { ascending: false });
+                    .contains('manager_ids', [currentUser.id]);
                 
-                if (error) {
-                    setError(error.message);
+                if (managedBatchesError) {
+                    setError(managedBatchesError.message);
                     setLoading(false);
                     return;
                 }
-                finalBatches = data || [];
+                managedBatches?.forEach(b => batchMap.set(b.id, b));
 
-            } else { // Trainee or Evaluator
-                const batchMap = new Map<string, TrainingBatch>();
-
-                // 1. All non-managers find batches they are participants of
-                const { data: participantData, error: participantError } = await supabase
-                    .from('batch_participants')
+                // 3b. Batches containing overall challenges they manage
+                const { data: ocManagedBatches, error: ocManagedError } = await supabase
+                    .from('overall_challenges')
                     .select('training_batches!inner(*)')
-                    .eq('participant_id', currentUser.id);
+                    .contains('manager_ids', [currentUser.id]);
                 
-                if (participantError) {
-                    setError(participantError.message);
+                if (ocManagedError) {
+                    setError(ocManagedError.message);
                     setLoading(false);
                     return;
                 }
-
-                const participantBatches = participantData ? participantData.map(p => p.training_batches).filter(Boolean) as TrainingBatch[] : [];
-                participantBatches.forEach(b => b && batchMap.set(b.id, b));
-                
-                // 2. Evaluators ALSO find batches where they are assigned to a sub-challenge
-                // This ensures evaluators see batches they are assigned to evaluate in, even if not explicitly a "participant".
-                if (currentUser.role === Role.EVALUATOR) {
-                    const { data: subChallenges, error: scError } = await supabase
-                        .from('sub_challenges')
-                        .select('overall_challenges(training_batches(*))')
-                        .contains('evaluator_ids', [currentUser.id]);
-                    
-                    if (scError) {
-                        setError(scError.message);
-                        setLoading(false);
-                        return;
+                ocManagedBatches?.forEach(oc => {
+                    const batch = oc.training_batches;
+                    if (batch && !Array.isArray(batch)) {
+                        batchMap.set(batch.id, batch);
                     }
-
-                    if (subChallenges) {
-                        subChallenges.forEach(sc => {
-                            // The result of the join is nested.
-                            const batch = sc.overall_challenges?.training_batches;
-                            // The joined result might be null or an array if the relationship isn't one-to-one, so we check.
-                            if (batch && !Array.isArray(batch)) {
-                                 batchMap.set(batch.id, batch);
-                            }
-                        });
-                    }
-                }
-                
-                finalBatches = Array.from(batchMap.values());
-                finalBatches.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+                });
             }
+            
+            const finalBatches = Array.from(batchMap.values());
+            finalBatches.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
 
-            // Auto-redirect logic for non-managers with exactly one batch.
-            // This is a UX improvement to skip the selection screen.
+            // Auto-redirect for non-managers with exactly one batch to improve UX.
             if (currentUser.role !== Role.MANAGER && finalBatches.length === 1) {
                 const batchId = finalBatches[0].id;
-                // The default path is to the Level 4 (Tour de Prior Art) module for the user's role.
                 const rolePath = currentUser.role === Role.TRAINEE ? 'trainee' : 'evaluator';
                 navigate(`/batch/${batchId}/level/4/${rolePath}`);
                 return; // Skip setting state as we are redirecting
             }
-            
+
             setBatches(finalBatches);
             setLoading(false);
         };
