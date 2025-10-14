@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { supabase } from '../../supabaseClient';
-import { Profile, TrainingBatch, BatchParticipantWithProfile } from '../../types';
+import { Profile, TrainingBatch, BatchParticipantWithProfile, Role } from '../../types';
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { BackButton } from '../../components/ui/BackButton';
@@ -21,6 +21,22 @@ const levelData = [
     { id: "quiz", name: "Quizzes", description: "Create and manage real-time quizzes for this batch.", icon: "❓" },
 ];
 
+// Helper component for clickable table headers, visible only to managers
+const ThButton: React.FC<{ children: React.ReactNode; onClick: () => void }> = ({ children, onClick }) => (
+    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+        <button onClick={onClick} className="w-full text-left hover:text-blue-600 dark:hover:text-blue-400 font-medium flex items-center gap-1">
+            {children}
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="opacity-50"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+        </button>
+    </th>
+);
+
+// Helper for static, non-clickable headers for other roles
+const ThStatic: React.FC<{ children: React.ReactNode }> = ({ children }) => (
+     <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{children}</th>
+);
+
+
 export const BatchDashboard: React.FC<BatchDashboardProps> = ({ currentUser }) => {
     const { batchId } = useParams<{ batchId: string }>();
     const [batch, setBatch] = useState<TrainingBatch | null>(null);
@@ -30,6 +46,8 @@ export const BatchDashboard: React.FC<BatchDashboardProps> = ({ currentUser }) =
     const [activeTab, setActiveTab] = useState<'levels' | 'participants'>('levels');
     const [isParticipantsModalOpen, setIsParticipantsModalOpen] = useState(false);
     const [editingLevel, setEditingLevel] = useState<string | null>(null);
+
+    const isManager = currentUser.role === Role.MANAGER;
 
     const fetchBatchData = useCallback(async () => {
         if (!batchId) return;
@@ -90,7 +108,6 @@ export const BatchDashboard: React.FC<BatchDashboardProps> = ({ currentUser }) =
         const challengeTraineeIds = [...new Set(challenges?.flatMap(c => c.trainee_ids) || [])];
 
         // 4. Find which challenge trainees are NOT already in our map
-        // FIX: Cast `id` to string as it's inferred as `unknown` from the flatMap operation on a Supabase response.
         const newTraineeIdsToFetch = challengeTraineeIds.filter(id => !participantMap.has(id as string));
 
         // 5. If there are new trainees found only in challenges, fetch their profiles
@@ -153,22 +170,12 @@ export const BatchDashboard: React.FC<BatchDashboardProps> = ({ currentUser }) =
         return `/batch/${batchId}/level/${levelId}`;
     };
 
-    // Helper component for clickable table headers
-    const ThButton: React.FC<{ children: React.ReactNode; onClick: () => void }> = ({ children, onClick }) => (
-        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-            <button onClick={onClick} className="w-full text-left hover:text-blue-600 dark:hover:text-blue-400 font-medium flex items-center gap-1">
-                {children}
-                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="opacity-50"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-            </button>
-        </th>
-    );
-
     return (
         <div className="container mx-auto p-4 sm:p-6 lg:p-8">
             <BackButton to="/batches" text="Back to All Batches" />
             <div className="flex justify-between items-center mb-6 flex-wrap gap-4">
                 <h1 className="text-3xl font-bold">{batch.name}</h1>
-                <Button onClick={() => setIsParticipantsModalOpen(true)}>Manage Participants</Button>
+                {isManager && <Button onClick={() => setIsParticipantsModalOpen(true)}>Manage Participants</Button>}
             </div>
 
             <div className="border-b border-gray-200 dark:border-gray-700 mb-6">
@@ -203,12 +210,12 @@ export const BatchDashboard: React.FC<BatchDashboardProps> = ({ currentUser }) =
                             <thead className="bg-gray-50 dark:bg-gray-700">
                                 <tr>
                                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
-                                    <ThButton onClick={() => setEditingLevel('overall')}>Overall Cluster</ThButton>
-                                    <ThButton onClick={() => setEditingLevel('1')}>Lvl 1 Cluster</ThButton>
-                                    <ThButton onClick={() => setEditingLevel('2')}>Lvl 2 Cluster</ThButton>
-                                    <ThButton onClick={() => setEditingLevel('3')}>Lvl 3 Cluster</ThButton>
-                                    <ThButton onClick={() => setEditingLevel('4')}>Lvl 4 Cluster</ThButton>
-                                    <ThButton onClick={() => setEditingLevel('5')}>Lvl 5 Cluster</ThButton>
+                                    {isManager ? <ThButton onClick={() => setEditingLevel('overall')}>Overall Cluster</ThButton> : <ThStatic>Overall Cluster</ThStatic>}
+                                    {isManager ? <ThButton onClick={() => setEditingLevel('1')}>Lvl 1 Cluster</ThButton> : <ThStatic>Lvl 1 Cluster</ThStatic>}
+                                    {isManager ? <ThButton onClick={() => setEditingLevel('2')}>Lvl 2 Cluster</ThButton> : <ThStatic>Lvl 2 Cluster</ThStatic>}
+                                    {isManager ? <ThButton onClick={() => setEditingLevel('3')}>Lvl 3 Cluster</ThButton> : <ThStatic>Lvl 3 Cluster</ThStatic>}
+                                    {isManager ? <ThButton onClick={() => setEditingLevel('4')}>Lvl 4 Cluster</ThButton> : <ThStatic>Lvl 4 Cluster</ThStatic>}
+                                    {isManager ? <ThButton onClick={() => setEditingLevel('5')}>Lvl 5 Cluster</ThButton> : <ThStatic>Lvl 5 Cluster</ThStatic>}
                                 </tr>
                             </thead>
                              <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
@@ -233,7 +240,7 @@ export const BatchDashboard: React.FC<BatchDashboardProps> = ({ currentUser }) =
                 </Card>
             )}
 
-            {isParticipantsModalOpen && (
+            {isManager && isParticipantsModalOpen && (
                 <ManageParticipantsModal
                     batchId={batchId!}
                     existingParticipants={participants}
@@ -245,7 +252,7 @@ export const BatchDashboard: React.FC<BatchDashboardProps> = ({ currentUser }) =
                 />
             )}
 
-            {editingLevel && (
+            {isManager && editingLevel && (
                 <ManageLevelClustersModal
                     batchId={batchId!}
                     levelId={editingLevel}
