@@ -22,8 +22,10 @@ export const EvaluatorDashboard: React.FC<EvaluatorDashboardProps> = ({ currentU
         setAssignedChallenges([]);
         return;
     }
+    setLoading(true);
+    setError(null);
 
-    // Get all overall_challenge IDs for the current batch
+    // 1. Get all overall_challenges in the current batch
     const { data: ocInBatch, error: ocError } = await supabase
         .from('overall_challenges')
         .select('id, manager_ids')
@@ -31,66 +33,69 @@ export const EvaluatorDashboard: React.FC<EvaluatorDashboardProps> = ({ currentU
 
     if (ocError) {
         setError(ocError.message);
+        setLoading(false);
         return;
     }
     if (!ocInBatch || ocInBatch.length === 0) {
         setAssignedChallenges([]);
+        setLoading(false);
         return;
     }
 
     const ocIdsInBatch = ocInBatch.map(oc => oc.id);
+    const isManager = currentUser.role === Role.MANAGER;
+    let managedOcIds: string[] = [];
 
-    if (currentUser.role === Role.MANAGER) {
-        const managedOcIds = ocInBatch
+    if (isManager) {
+        managedOcIds = ocInBatch
             .filter(oc => oc.manager_ids.includes(currentUser.id))
             .map(oc => oc.id);
+    }
+    
+    // 2. Build a query to get all potentially relevant sub-challenges
+    let query = supabase
+        .from('sub_challenges')
+        .select('*, submissions(*, profiles(*))')
+        .in('overall_challenge_id', ocIdsInBatch);
 
-        // Fetch all sub-challenges in this batch that this manager could potentially evaluate.
-        const { data: potentialChallenges, error: scError } = await supabase
-            .from('sub_challenges')
-            .select('*, submissions(*, profiles(*))')
-            .in('overall_challenge_id', ocIdsInBatch)
-            .or(
-                `evaluator_ids.cs.{${currentUser.id}},` +
-                // Add a filter for managed challenges only if the manager actually manages challenges in this batch
-                (managedOcIds.length > 0 ? `overall_challenge_id.in.(${managedOcIds.join(',')})` : 'id.is.null') // Use a condition that won't match if array is empty
-            );
+    const orConditions = [`evaluator_ids.cs.{${currentUser.id}}`];
+    if (isManager && managedOcIds.length > 0) {
+        orConditions.push(`overall_challenge_id.in.(${managedOcIds.join(',')})`);
+    }
+    query = query.or(orConditions.join(','));
 
-        if (scError) {
-            setError(scError.message);
-            return;
-        }
+    const { data: potentialChallenges, error: scError } = await query;
+    
+    if (scError) {
+        setError(scError.message);
+        setLoading(false);
+        return;
+    }
 
-        if (potentialChallenges) {
-            const challengesForManager = potentialChallenges.filter(sc => {
-                const isExplicitlyAssigned = sc.evaluator_ids?.includes(currentUser.id);
-                const isImplicitlyAssigned = 
-                    (!sc.evaluator_ids || sc.evaluator_ids.length === 0) && 
+    // 3. Client-side filter to apply the precise logic
+    if (potentialChallenges) {
+        const finalChallenges = potentialChallenges.filter(sc => {
+            // A user can see a challenge if:
+            // a) They are explicitly assigned as an evaluator.
+            const isExplicitlyAssigned = sc.evaluator_ids?.includes(currentUser.id);
+            if (isExplicitlyAssigned) return true;
+
+            // b) They are a manager, AND the challenge has no explicit evaluators, AND they manage the parent overall challenge.
+            if (isManager) {
+                const isImplicitlyAssigned =
+                    (!sc.evaluator_ids || sc.evaluator_ids.length === 0) &&
                     managedOcIds.includes(sc.overall_challenge_id);
-                return isExplicitlyAssigned || isImplicitlyAssigned;
-            });
-            setAssignedChallenges(challengesForManager as unknown as SubChallengeForEvaluator[]);
-        } else {
-            setAssignedChallenges([]);
-        }
-
-    } else if (currentUser.role === Role.EVALUATOR) {
-        const { data, error } = await supabase
-            .from('sub_challenges')
-            .select('*, submissions(*, profiles(*))')
-            .in('overall_challenge_id', ocIdsInBatch) // Filter by batch
-            .contains('evaluator_ids', [currentUser.id]);
-
-        if (error) {
-            setError(error.message);
-        } else if (data) {
-            setAssignedChallenges(data as unknown as SubChallengeForEvaluator[]);
-        }
+                if (isImplicitlyAssigned) return true;
+            }
+            return false;
+        });
+        setAssignedChallenges(finalChallenges as unknown as SubChallengeForEvaluator[]);
     } else {
-        // Other roles like Mentor will not see any challenges here for now.
         setAssignedChallenges([]);
     }
-  }, [batchId, currentUser.id, currentUser.role]);
+
+    setLoading(false);
+}, [batchId, currentUser.id, currentUser.role]);
 
 
   useEffect(() => {
