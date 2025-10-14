@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { supabase } from '../supabaseClient';
@@ -13,6 +14,8 @@ const PlusIcon = () => (
     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5 mr-2"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
 );
 
+type ParticipantBatch = { batch_id: string; training_batches: TrainingBatch };
+
 export const BatchSelectionPage: React.FC<BatchSelectionPageProps> = ({ currentUser }) => {
     const [batches, setBatches] = useState<TrainingBatch[]>([]);
     const [loading, setLoading] = useState(true);
@@ -23,93 +26,61 @@ export const BatchSelectionPage: React.FC<BatchSelectionPageProps> = ({ currentU
         const fetchBatches = async () => {
             setLoading(true);
             setError(null);
-            
-            const batchMap = new Map<string, TrainingBatch>();
-
-            // Query 1: Batches from direct participation
-            const { data: participantData, error: participantError } = await supabase
-                .from('batch_participants')
-                .select('training_batches!inner(*)')
-                .eq('participant_id', currentUser.id);
-
-            if (participantError) { setError(participantError.message); setLoading(false); return; }
-            participantData?.forEach(p => p.training_batches && batchMap.set(p.training_batches.id, p.training_batches));
-
-            // Query 2: Batches from evaluation duties (more robustly)
-            const { data: subChallenges, error: scError } = await supabase
-                .from('sub_challenges')
-                .select('overall_challenge_id')
-                .contains('evaluator_ids', [currentUser.id]);
-            
-            if (scError) { setError(scError.message); setLoading(false); return; }
-            
-            if (subChallenges && subChallenges.length > 0) {
-                const overallChallengeIds = [...new Set(subChallenges.map(sc => sc.overall_challenge_id))];
-                
-                const { data: ocData, error: ocError } = await supabase
-                    .from('overall_challenges')
-                    .select('batch_id')
-                    .in('id', overallChallengeIds);
-                
-                if (ocError) { setError(ocError.message); setLoading(false); return; }
-                
-                if (ocData && ocData.length > 0) {
-                    const batchIds = [...new Set(ocData.map(oc => oc.batch_id).filter(Boolean))];
-                    
-                    if (batchIds.length > 0) {
-                        const { data: batchDetails, error: batchError } = await supabase
-                            .from('training_batches')
-                            .select('*')
-                            .in('id', batchIds as string[]);
-                        if (batchError) { setError(batchError.message); setLoading(false); return; }
-                        batchDetails?.forEach(b => batchMap.set(b.id, b));
-                    }
-                }
-            }
-
-            // Query 3: For managers
+    
+            let finalBatches: TrainingBatch[] = [];
+            let fetchError: string | null = null;
+    
             if (currentUser.role === Role.MANAGER) {
-                const { data: managedBatches, error: managedBatchesError } = await supabase
+                const { data, error } = await supabase
                     .from('training_batches')
                     .select('*')
-                    .contains('manager_ids', [currentUser.id]);
-                if (managedBatchesError) { setError(managedBatchesError.message); setLoading(false); return; }
-                managedBatches?.forEach(b => batchMap.set(b.id, b));
-
-                const { data: ocManaged, error: ocManagedError } = await supabase
-                    .from('overall_challenges')
-                    .select('batch_id')
-                    .contains('manager_ids', [currentUser.id]);
-
-                if (ocManagedError) { setError(ocManagedError.message); setLoading(false); return; }
-
-                if (ocManaged && ocManaged.length > 0) {
-                     const batchIds = [...new Set(ocManaged.map(oc => oc.batch_id).filter(Boolean))];
-                     if (batchIds.length > 0) {
-                         const { data: batchDetails, error: batchDetailsError } = await supabase
-                            .from('training_batches')
-                            .select('*')
-                            .in('id', batchIds as string[]);
-                        if (batchDetailsError) { setError(batchDetailsError.message); setLoading(false); return; }
-                        batchDetails?.forEach(b => batchMap.set(b.id, b));
-                     }
+                    .contains('manager_ids', [currentUser.id])
+                    .order('created_at', { ascending: false });
+                
+                if (error) fetchError = error.message;
+                else finalBatches = data || [];
+    
+            } else if (currentUser.role === Role.EVALUATOR) {
+                const { data, error } = await supabase.rpc('get_my_evaluator_batches');
+                
+                if (error) {
+                    fetchError = error.message;
+                    console.error("RPC error fetching evaluator batches:", error);
+                } else {
+                    finalBatches = (data as TrainingBatch[] || []).sort((a,b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+                }
+            } else { // Role.TRAINEE or other participant roles
+                const { data, error } = await supabase
+                    .from('batch_participants')
+                    .select('batch_id, training_batches!inner(*)')
+                    .eq('participant_id', currentUser.id);
+                
+                if (error) {
+                    fetchError = error.message;
+                } else if (data) {
+                    const participantBatches = data as ParticipantBatch[];
+                    finalBatches = participantBatches.map(pb => pb.training_batches).sort((a,b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
                 }
             }
             
-            const finalBatches = Array.from(batchMap.values());
-            finalBatches.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
-            
-            if (currentUser.role !== Role.MANAGER && finalBatches.length === 1) {
-                const batchId = finalBatches[0].id;
-                const rolePath = currentUser.role === Role.TRAINEE ? 'trainee' : 'evaluator';
-                navigate(`/batch/${batchId}/level/4/${rolePath}`);
+            if (fetchError) {
+                setError(fetchError);
+                setLoading(false);
                 return;
             }
-
+    
+            // Auto-redirect if user has exactly one batch and is not a manager
+            if (finalBatches.length === 1 && currentUser.role !== Role.MANAGER) {
+                const batchId = finalBatches[0].id;
+                const rolePath = currentUser.role === Role.TRAINEE ? 'trainee' : 'evaluator';
+                // Hardcoded to level 4 as per existing logic in the app
+                navigate(`/batch/${batchId}/level/4/${rolePath}`, { replace: true });
+                return; // Don't proceed to set state, as we are navigating away
+            }
+    
             setBatches(finalBatches);
             setLoading(false);
         };
-
         fetchBatches();
     }, [currentUser, navigate]);
     
