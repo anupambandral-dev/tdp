@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import Papa from 'papaparse';
+import JSZip from 'jszip';
 import { supabase } from '../../supabaseClient';
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { BackButton } from '../../components/ui/BackButton';
-import { ResultTier, IncorrectMarking, OverallChallenge, SubChallenge, Profile, Submission, OverallChallengeWithSubChallenges, EvaluationRules, SubmittedResult, Evaluation, ResultType, EvaluationResultTier } from '../../types';
+import { ResultTier, IncorrectMarking, OverallChallenge, SubChallenge, Profile, Submission, OverallChallengeWithSubChallenges, EvaluationRules, SubmittedResult, Evaluation, ResultType, EvaluationResultTier, SubChallengeWithSubmissions } from '../../types';
 
 interface ChallengeDetailProps {
   currentUser: Profile;
@@ -49,6 +50,10 @@ const ClipboardIcon = () => (
     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5 mr-2"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path><rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect></svg>
 );
 
+const DownloadIcon = () => (
+    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4 mr-2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+);
+
 
 export const ChallengeDetail: React.FC<ChallengeDetailProps> = ({ currentUser }) => {
     const { batchId, challengeId } = useParams();
@@ -58,6 +63,8 @@ export const ChallengeDetail: React.FC<ChallengeDetailProps> = ({ currentUser })
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [linkCopied, setLinkCopied] = useState(false);
+    const [downloadingSubChallengeId, setDownloadingSubChallengeId] = useState<string | null>(null);
+    const [downloadError, setDownloadError] = useState<string | null>(null);
 
     const fetchChallengeDetails = async () => {
         if (!challengeId) return;
@@ -277,6 +284,73 @@ export const ChallengeDetail: React.FC<ChallengeDetailProps> = ({ currentUser })
         });
     };
 
+    const handleDownloadAllReports = async (subChallenge: SubChallengeWithSubmissions) => {
+        if (!subChallenge) return;
+        
+        setDownloadingSubChallengeId(subChallenge.id);
+        setDownloadError(null);
+
+        const submissionsWithReports = subChallenge.submissions.filter(
+            s => s.report_file && s.profiles
+        );
+
+        if (submissionsWithReports.length === 0) {
+            alert('No reports have been submitted for this challenge.');
+            setDownloadingSubChallengeId(null);
+            return;
+        }
+
+        try {
+            const zip = new JSZip();
+            const mainFolderName = subChallenge.title.replace(/[\/\?<>\\:\*\|"]/g, "_");
+            const mainFolder = zip.folder(mainFolderName);
+
+            if (!mainFolder) {
+                throw new Error("Could not create main folder in zip file.");
+            }
+
+            const downloadPromises = submissionsWithReports.map(async (submission) => {
+                const reportFile = submission.report_file as { path: string; name: string };
+                const traineeName = submission.profiles!.name.replace(/[\/\?<>\\:\*\|"]/g, "_");
+                
+                const { data, error } = await supabase.storage
+                    .from('reports')
+                    .createSignedUrl(reportFile.path, 60); // 1-minute URL
+
+                if (error) {
+                    throw new Error(`Failed to get URL for ${traineeName}'s report: ${error.message}`);
+                }
+
+                const response = await fetch(data.signedUrl);
+                if (!response.ok) {
+                    throw new Error(`Failed to download report for ${traineeName}. Status: ${response.statusText}`);
+                }
+
+                const reportBlob = await response.blob();
+                const traineeFolder = mainFolder.folder(traineeName);
+                traineeFolder?.file(reportFile.name, reportBlob);
+            });
+
+            await Promise.all(downloadPromises);
+
+            const zipContent = await zip.generateAsync({ type: 'blob' });
+            
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(zipContent);
+            link.download = `${mainFolderName}.zip`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(link.href);
+
+        } catch (error: any) {
+            console.error("Error during report download:", error);
+            setDownloadError(error.message || 'An unknown error occurred.');
+        } finally {
+            setDownloadingSubChallengeId(null);
+        }
+    };
+
     if (loading) return <div className="p-8">Loading challenge details...</div>;
     if (error) return <div className="p-8 text-red-500">Error: {error}</div>;
     if (!challenge) return <div className="p-8 text-center">Challenge not found.</div>;
@@ -329,14 +403,29 @@ export const ChallengeDetail: React.FC<ChallengeDetailProps> = ({ currentUser })
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                 <div className="lg:col-span-2">
                     <h2 className="text-2xl font-semibold mb-4">Sub-Challenges</h2>
+                    {downloadError && <p className="mb-4 text-sm text-red-600 dark:text-red-400">{downloadError}</p>}
                     <div className="space-y-4">
                         {sortedSubChallenges.map(sc => (
                              <Card key={sc.id} className="hover:shadow-lg transition-shadow duration-200">
-                                <Link to={`/batch/${batchId}/level/4/sub-challenge/${sc.id}`}>
-                                    <h3 className="text-lg font-semibold text-blue-600 dark:text-blue-400">{sc.title}</h3>
-                                    <p className="text-sm text-gray-500 dark:text-gray-400">{sc.patent_number}</p>
-                                    <p className="text-sm mt-2">{sc.submissions?.length || 0} submissions</p>
-                                </Link>
+                                <div className="flex justify-between items-start gap-4">
+                                    <Link to={`/batch/${batchId}/level/4/sub-challenge/${sc.id}`} className="flex-grow">
+                                        <h3 className="text-lg font-semibold text-blue-600 dark:text-blue-400">{sc.title}</h3>
+                                        <p className="text-sm text-gray-500 dark:text-gray-400">{sc.patent_number}</p>
+                                        <p className="text-sm mt-2">{sc.submissions?.length || 0} submissions</p>
+                                    </Link>
+                                    <div className="flex-shrink-0">
+                                         <Button 
+                                            onClick={() => handleDownloadAllReports(sc)} 
+                                            variant="secondary" 
+                                            size="sm" 
+                                            disabled={downloadingSubChallengeId === sc.id || (sc.submissions?.filter(s => s.report_file).length === 0)}
+                                            title={sc.submissions?.filter(s => s.report_file).length === 0 ? "No reports submitted" : "Download all reports"}
+                                        >
+                                            <DownloadIcon />
+                                            {downloadingSubChallengeId === sc.id ? 'Zipping...' : 'Reports'}
+                                        </Button>
+                                    </div>
+                                </div>
                             </Card>
                         ))}
                         {challenge.sub_challenges.length === 0 && (
