@@ -32,26 +32,103 @@ export const BatchDashboard: React.FC<BatchDashboardProps> = ({ currentUser }) =
     const fetchBatchData = useCallback(async () => {
         if (!batchId) return;
         setLoading(true);
+        setError(null);
 
-        const batchPromise = supabase.from('training_batches').select('*').eq('id', batchId).single();
-        const participantsPromise = supabase.from('batch_participants').select('*, profiles(*)').eq('batch_id', batchId);
+        // Fetch the batch details itself
+        const { data: batchData, error: batchError } = await supabase
+            .from('training_batches')
+            .select('*')
+            .eq('id', batchId)
+            .single();
+        
+        if (batchError) {
+            setError(batchError.message);
+            setLoading(false);
+            return;
+        }
+        setBatch(batchData);
 
-        const [batchResult, participantsResult] = await Promise.all([batchPromise, participantsPromise]);
+        // --- CONSOLIDATED PARTICIPANT FETCHING LOGIC ---
 
-        if (batchResult.error) {
-            setError(batchResult.error.message);
-        } else {
-            setBatch(batchResult.data);
+        // 1. Fetch participants explicitly added to the batch
+        const { data: directParticipants, error: directParticipantsError } = await supabase
+            .from('batch_participants')
+            .select('*, profiles(*)')
+            .eq('batch_id', batchId);
+
+        if (directParticipantsError) {
+            setError(directParticipantsError.message);
+            setLoading(false);
+            return;
         }
 
-        if (participantsResult.error) {
-            setError(participantsResult.error.message);
-        } else {
-            setParticipants(participantsResult.data as BatchParticipantWithProfile[]);
+        // 2. Fetch challenges in the batch to find implicitly added participants (trainees)
+        const { data: challenges, error: challengesError } = await supabase
+            .from('overall_challenges')
+            .select('trainee_ids')
+            .eq('batch_id', batchId);
+
+        if (challengesError) {
+            setError(challengesError.message);
+            setLoading(false);
+            return;
         }
 
+        // 3. Consolidate all participant IDs into a map to handle unique entries
+        const participantMap = new Map<string, BatchParticipantWithProfile>();
+
+        // Add direct participants to the map first
+        (directParticipants as BatchParticipantWithProfile[]).forEach(p => {
+            if (p.profiles) { // Ensure profile data exists
+                participantMap.set(p.profiles.id, p);
+            }
+        });
+
+        // Get all trainee IDs from all challenges, flatten the array, and make it unique
+        const challengeTraineeIds = [...new Set(challenges?.flatMap(c => c.trainee_ids) || [])];
+
+        // 4. Find which challenge trainees are NOT already in our map
+        // FIX: Cast `id` to string as it's inferred as `unknown` from the flatMap operation on a Supabase response.
+        const newTraineeIdsToFetch = challengeTraineeIds.filter(id => !participantMap.has(id as string));
+
+        // 5. If there are new trainees found only in challenges, fetch their profiles
+        if (newTraineeIdsToFetch.length > 0) {
+            const { data: newProfiles, error: profilesError } = await supabase
+                .from('profiles')
+                .select('*')
+                .in('id', newTraineeIdsToFetch);
+
+            if (profilesError) {
+                setError(profilesError.message);
+            } else if (newProfiles) {
+                // Add these new trainees to the map with placeholder batch_participant data
+                (newProfiles as Profile[]).forEach(profile => {
+                    participantMap.set(profile.id, {
+                        id: `temp-${profile.id}`, // Placeholder for React key, DB will generate real one on save
+                        batch_id: batchId,
+                        participant_id: profile.id,
+                        created_at: new Date().toISOString(),
+                        overall_cluster: null,
+                        level_1_cluster: null,
+                        level_2_cluster: null,
+                        level_3_cluster: null,
+                        level_4_cluster: null,
+                        level_5_cluster: null,
+                        profiles: profile,
+                    });
+                });
+            }
+        }
+
+        // 6. Convert map back to an array, sort by name, and set state
+        const allParticipants = Array.from(participantMap.values()).sort((a, b) => 
+            a.profiles?.name.localeCompare(b.profiles?.name || '') || 0
+        );
+        
+        setParticipants(allParticipants);
         setLoading(false);
     }, [batchId]);
+
 
     useEffect(() => {
         fetchBatchData();
@@ -114,7 +191,7 @@ export const BatchDashboard: React.FC<BatchDashboardProps> = ({ currentUser }) =
                             </thead>
                              <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
                                 {participants.map(p => (
-                                    <tr key={p.id}>
+                                    <tr key={p.participant_id}>
                                         <td className="px-6 py-4 whitespace-nowrap">
                                             <Link to={`/batch/${batchId}/participant/${p.participant_id}`} className="font-medium text-blue-600 hover:underline">
                                                 {p.profiles?.name || 'Unknown User'}
