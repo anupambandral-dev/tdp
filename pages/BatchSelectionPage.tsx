@@ -1,4 +1,5 @@
 
+
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { supabase } from '../supabaseClient';
@@ -50,16 +51,49 @@ export const BatchSelectionPage: React.FC<BatchSelectionPageProps> = ({ currentU
                     finalBatches = (data as TrainingBatch[] || []).sort((a,b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
                 }
             } else { // Role.TRAINEE or other participant roles
-                const { data, error } = await supabase
-                    .from('batch_participants')
-                    .select('batch_id, training_batches!inner(*)')
-                    .eq('participant_id', currentUser.id);
-                
-                if (error) {
-                    fetchError = error.message;
-                } else if (data) {
-                    const participantBatches = data as ParticipantBatch[];
-                    finalBatches = participantBatches.map(pb => pb.training_batches).sort((a,b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+                try {
+                    // A participant can be in a batch explicitly (batch_participants) or implicitly (overall_challenges for Level 4).
+                    // We need to fetch both and merge them.
+
+                    // 1. Get batches from batch_participants (explicit assignment)
+                    const { data: explicitRelations, error: explicitError } = await supabase
+                        .from('batch_participants')
+                        .select('training_batches!inner(*)')
+                        .eq('participant_id', currentUser.id);
+                    
+                    if (explicitError) throw explicitError;
+
+                    // 2. Get batches from overall_challenges (implicit assignment via Tour de Prior Art)
+                    const { data: implicitRelations, error: implicitError } = await supabase
+                        .from('overall_challenges')
+                        .select('training_batches!inner(*)')
+                        .contains('trainee_ids', [currentUser.id]);
+                    
+                    if (implicitError) throw implicitError;
+                    
+                    // 3. Merge and de-duplicate results
+                    const batchMap = new Map<string, TrainingBatch>();
+
+                    if (explicitRelations) {
+                        (explicitRelations as { training_batches: TrainingBatch }[]).forEach(relation => {
+                            if (relation.training_batches) {
+                                batchMap.set(relation.training_batches.id, relation.training_batches);
+                            }
+                        });
+                    }
+                    
+                    if (implicitRelations) {
+                        (implicitRelations as { training_batches: TrainingBatch | null }[]).forEach(relation => {
+                            if (relation.training_batches) {
+                                batchMap.set(relation.training_batches.id, relation.training_batches);
+                            }
+                        });
+                    }
+
+                    finalBatches = Array.from(batchMap.values()).sort((a,b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+
+                } catch (e: any) {
+                    fetchError = e.message;
                 }
             }
             
