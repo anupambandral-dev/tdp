@@ -1,5 +1,4 @@
 
-
 import React, { useState, useEffect } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { Profile, OverallChallenge } from '../../types';
@@ -61,7 +60,10 @@ export const ManagerDashboard: React.FC<ManagerDashboardProps> = ({ currentUser 
         const formattedData = typedData.map(d => ({
             ...d,
             sub_challenges_count: d.sub_challenges[0]?.count ?? 0
-        }))
+        }));
+        
+        formattedData.sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true }));
+        
         setChallenges(formattedData);
       }
     };

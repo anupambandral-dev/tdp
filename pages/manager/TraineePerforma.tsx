@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { supabase } from '../../supabaseClient';
@@ -130,6 +131,10 @@ export const TraineePerforma: React.FC = () => {
         return <div className="text-center p-8">Trainee or Challenge not found.</div>;
     }
 
+    const sortedSubChallenges = [...overallChallenge.sub_challenges].sort((a, b) =>
+        a.title.localeCompare(b.title, undefined, { numeric: true })
+    );
+
     return (
         <div className="container mx-auto p-4 sm:p-6 lg:p-8">
             <BackButton to={`/batch/${batchId}/level/4/challenge/${challengeId}`} text="Back to Leaderboard" />
@@ -141,7 +146,7 @@ export const TraineePerforma: React.FC = () => {
 
             <div className="space-y-6">
                 <h2 className="text-2xl font-semibold border-b pb-2 dark:border-gray-700">Sub-Challenge Performance</h2>
-                {overallChallenge.sub_challenges.map(subChallenge => {
+                {sortedSubChallenges.map(subChallenge => {
                     const submission = subChallenge.submissions?.find(s => s.trainee_id === traineeId);
                     const evaluation = submission?.evaluation as unknown as Evaluation | null;
                     const results = submission?.results as unknown as SubmittedResult[] | null;
@@ -219,7 +224,7 @@ export const TraineePerforma: React.FC = () => {
                         </Card>
                     );
                 })}
-                 {overallChallenge.sub_challenges.length === 0 && (
+                 {sortedSubChallenges.length === 0 && (
                     <Card><p className="text-center text-gray-500">No sub-challenges in this challenge yet.</p></Card>
                  )}
             </div>

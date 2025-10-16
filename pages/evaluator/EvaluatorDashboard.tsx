@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { Profile, SubChallengeForEvaluator, Role } from '../../types';
@@ -34,7 +35,10 @@ export const EvaluatorDashboard: React.FC<EvaluatorDashboardProps> = ({ currentU
           console.error('Error fetching challenges:', error);
       } else if (data) {
           // The data is already correctly filtered by the RLS policies.
-          setAssignedChallenges(data as unknown as SubChallengeForEvaluator[]);
+          const sortedData = (data as unknown as SubChallengeForEvaluator[]).sort((a, b) =>
+            a.title.localeCompare(b.title, undefined, { numeric: true })
+          );
+          setAssignedChallenges(sortedData);
       }
     };
     
