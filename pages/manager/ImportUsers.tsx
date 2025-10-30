@@ -53,15 +53,11 @@ export const ImportUsers: React.FC = () => {
 
                 const profilesToImport: TablesInsert<'profiles'>[] = results.data
                     .map(row => {
-                        // Coerce to string to handle potential null/undefined from papaparse gracefully
                         const name = String(row.name || '').trim();
                         const email = String(row.email || '').trim().toLowerCase();
-
-                        // Safely determine role, defaulting to Trainee
                         let role: Role = Role.TRAINEE;
                         const roleValue = row.role;
                         
-                        // Only process role if the value is a non-empty string
                         if (roleValue && typeof roleValue === 'string' && roleValue.trim() !== '') {
                              const lowerCaseRole = roleValue.trim().toLowerCase();
                              const mappedRole = roleMap.get(lowerCaseRole);
@@ -80,14 +76,29 @@ export const ImportUsers: React.FC = () => {
                     return;
                 }
 
+                // FIX: De-duplicate profiles from the CSV before upserting.
+                // The DB throws an error if the same conflict target (email) appears multiple times in one upsert command.
+                const uniqueProfilesMap = new Map<string, TablesInsert<'profiles'>>();
+                profilesToImport.forEach(profile => {
+                    if (profile.email) {
+                        uniqueProfilesMap.set(profile.email, profile);
+                    }
+                });
+                const uniqueProfilesToImport = Array.from(uniqueProfilesMap.values());
+                const duplicatesFound = profilesToImport.length - uniqueProfilesToImport.length;
+
                 const { error: upsertError } = await supabase
                     .from('profiles')
-                    .upsert(profilesToImport, { onConflict: 'email' });
+                    .upsert(uniqueProfilesToImport, { onConflict: 'email' });
 
                 if (upsertError) {
                     setError(`Error importing users: ${upsertError.message}`);
                 } else {
-                    setSuccessMessage(`${profilesToImport.length} users were successfully imported or updated.`);
+                    let successMsg = `${uniqueProfilesToImport.length} users were successfully imported or updated.`;
+                    if (duplicatesFound > 0) {
+                        successMsg += ` ${duplicatesFound} duplicate email(s) were found in the file and were ignored (the last entry for each duplicate was used).`;
+                    }
+                    setSuccessMessage(successMsg);
                     setFile(null); // Reset file input
                 }
                 setImporting(false);
