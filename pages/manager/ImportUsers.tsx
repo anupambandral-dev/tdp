@@ -47,17 +47,26 @@ export const ImportUsers: React.FC = () => {
                     return;
                 }
 
+                // FIX: Create a case-insensitive map for roles to improve user experience.
+                const roleMap = new Map<string, Role>(
+                    Object.values(Role).map(r => [r.toLowerCase(), r])
+                );
+
+                // FIX: Process and trim data *before* filtering to prevent errors from whitespace-only rows.
                 const profilesToImport: TablesInsert<'profiles'>[] = results.data
-                    .filter(row => row.name && row.email) // Ensure required fields are not empty
-                    .map(row => ({
-                        name: row.name,
-                        email: row.email.toLowerCase().trim(),
-                        // Default to 'Trainee' if role is not specified or invalid
-                        role: Object.values(Role).includes(row.role) ? row.role : Role.TRAINEE,
-                    }));
+                    .map(row => {
+                        const lowerCaseRole = row.role ? String(row.role).trim().toLowerCase() : '';
+                        const mappedRole = roleMap.get(lowerCaseRole);
+                        return {
+                            name: row.name ? String(row.name).trim() : '',
+                            email: row.email ? String(row.email).trim().toLowerCase() : '',
+                            role: mappedRole || Role.TRAINEE,
+                        };
+                    })
+                    .filter(profile => profile.name && profile.email);
                 
                 if (profilesToImport.length === 0) {
-                    setError("No valid user data found in the file. Please check the file content.");
+                    setError("No valid user data found in the file. Please check for rows with missing names or emails, or an empty file.");
                     setImporting(false);
                     return;
                 }
@@ -95,7 +104,7 @@ export const ImportUsers: React.FC = () => {
                     <ul className="list-disc list-inside">
                         <li>The file must have a header row.</li>
                         <li>Required columns: <strong>name</strong>, <strong>email</strong>.</li>
-                        <li>Optional column: <strong>role</strong> (Accepted values: 'Manager', 'Trainee', 'Evaluator'. Defaults to 'Trainee' if omitted or invalid).</li>
+                        <li>Optional column: <strong>role</strong> (Accepted values: 'Manager', 'Trainee', 'Evaluator'. This is case-insensitive. Defaults to 'Trainee' if omitted or invalid).</li>
                         <li>Profiles will be matched and updated based on the <strong>email</strong> address.</li>
                     </ul>
                      <p className="font-semibold pt-2">Important Note:</p>
