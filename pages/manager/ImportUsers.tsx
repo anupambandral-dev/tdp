@@ -47,21 +47,30 @@ export const ImportUsers: React.FC = () => {
                     return;
                 }
 
-                // FIX: Create a case-insensitive map for roles to improve user experience.
                 const roleMap = new Map<string, Role>(
                     Object.values(Role).map(r => [r.toLowerCase(), r])
                 );
 
-                // FIX: Process and trim data *before* filtering to prevent errors from whitespace-only rows.
                 const profilesToImport: TablesInsert<'profiles'>[] = results.data
                     .map(row => {
-                        const lowerCaseRole = row.role ? String(row.role).trim().toLowerCase() : '';
-                        const mappedRole = roleMap.get(lowerCaseRole);
-                        return {
-                            name: row.name ? String(row.name).trim() : '',
-                            email: row.email ? String(row.email).trim().toLowerCase() : '',
-                            role: mappedRole || Role.TRAINEE,
-                        };
+                        // Coerce to string to handle potential null/undefined from papaparse gracefully
+                        const name = String(row.name || '').trim();
+                        const email = String(row.email || '').trim().toLowerCase();
+
+                        // Safely determine role, defaulting to Trainee
+                        let role: Role = Role.TRAINEE;
+                        const roleValue = row.role;
+                        
+                        // Only process role if the value is a non-empty string
+                        if (roleValue && typeof roleValue === 'string' && roleValue.trim() !== '') {
+                             const lowerCaseRole = roleValue.trim().toLowerCase();
+                             const mappedRole = roleMap.get(lowerCaseRole);
+                             if (mappedRole) {
+                                 role = mappedRole;
+                             }
+                        }
+
+                        return { name, email, role };
                     })
                     .filter(profile => profile.name && profile.email);
                 
