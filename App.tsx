@@ -69,7 +69,22 @@ const AppContent: React.FC = () => {
       }
     );
 
-    return () => subscription.unsubscribe();
+    // With autoRefreshToken disabled in supabaseClient.ts, we manually refresh the session
+    // every 30 minutes to prevent it from expiring during long sessions. This avoids the
+    // disruptive on-focus refresh behavior.
+    const sessionRefreshInterval = setInterval(() => {
+      supabase.auth.getSession().then(({ data: { session: currentSession } }) => {
+        if (currentSession) {
+          // This will trigger onAuthStateChange with a TOKEN_REFRESHED event
+          supabase.auth.refreshSession();
+        }
+      });
+    }, 30 * 60 * 1000); // every 30 minutes
+
+    return () => {
+      subscription.unsubscribe();
+      clearInterval(sessionRefreshInterval);
+    };
   }, []);
 
   useEffect(() => {
