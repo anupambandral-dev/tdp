@@ -12,4 +12,13 @@ if (!supabaseUrl || !supabaseAnonKey) {
 
 // Pass empty strings if the vars are missing to prevent a hard crash.
 // The App component will check for initializationError and show a user-friendly message.
-export const supabase = createClient<Database>(supabaseUrl || '', supabaseAnonKey || '');
+export const supabase = createClient<Database>(supabaseUrl || '', supabaseAnonKey || '', {
+  auth: {
+    // This is disabled to prevent the Supabase client from automatically
+    // refreshing the session when the browser window is focused, which can
+    // cause the user to be logged out unexpectedly on tab switch.
+    autoRefreshToken: false,
+    persistSession: true,
+    detectSessionInUrl: true, // Keep this true for password recovery links
+  },
+});
