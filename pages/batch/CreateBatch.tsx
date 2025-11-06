@@ -28,7 +28,8 @@ export const CreateBatch: React.FC<CreateBatchProps> = ({ currentUser }) => {
             setLoading(true);
             const { data, error } = await supabase.from('profiles').select('*').order('name');
             if (data) {
-                setAllProfiles(data);
+                // FIX: Cast Supabase response data to the expected Profile[] type.
+                setAllProfiles(data as unknown as Profile[]);
             }
             if (error) {
                 console.error("Error fetching profiles:", error);
@@ -59,12 +60,13 @@ export const CreateBatch: React.FC<CreateBatchProps> = ({ currentUser }) => {
 
         setSaving(true);
         // Step 1: Create the new training batch
+        // FIX: The .insert() method expects an array of objects.
         const { data: newBatch, error: batchError } = await supabase
             .from('training_batches')
-            .insert({
+            .insert([{
                 name: batchName,
                 manager_ids: [currentUser.id]
-            })
+            }])
             .select()
             .single();
 

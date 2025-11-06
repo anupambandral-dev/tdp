@@ -66,7 +66,7 @@ export const BatchDashboard: React.FC<BatchDashboardProps> = ({ currentUser }) =
             setLoading(false);
             return;
         }
-        setBatch(batchData);
+        setBatch(batchData as TrainingBatch);
 
         // --- CONSOLIDATED PARTICIPANT FETCHING LOGIC ---
 

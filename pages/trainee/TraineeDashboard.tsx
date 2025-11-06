@@ -1,4 +1,5 @@
 
+
 import React, { useState, useEffect } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { Profile, ResultTier, IncorrectMarking, Evaluation, EvaluationRules, SubmittedResult, Submission, SubChallengeWithOverallChallenge, ResultType } from '../../types';
@@ -35,7 +36,8 @@ export const TraineeDashboard: React.FC<TraineeDashboardProps> = ({ currentUser 
         return;
       }
 
-      const challengeIds = overallChallenges.map(oc => oc.id);
+      // FIX: Handle nullable 'overallChallenges' data before mapping to prevent runtime errors.
+      const challengeIds = overallChallenges ? overallChallenges.map(oc => oc.id) : [];
 
       if (challengeIds.length === 0) {
         setTraineeChallenges([]);

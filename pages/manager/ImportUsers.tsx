@@ -47,58 +47,29 @@ export const ImportUsers: React.FC = () => {
                     return;
                 }
 
-                const roleMap = new Map<string, Role>(
-                    Object.values(Role).map(r => [r.toLowerCase(), r])
-                );
-
                 const profilesToImport: TablesInsert<'profiles'>[] = results.data
-                    .map(row => {
-                        const name = String(row.name || '').trim();
-                        const email = String(row.email || '').trim().toLowerCase();
-                        let role: Role = Role.TRAINEE;
-                        const roleValue = row.role;
-                        
-                        if (roleValue && typeof roleValue === 'string' && roleValue.trim() !== '') {
-                             const lowerCaseRole = roleValue.trim().toLowerCase();
-                             const mappedRole = roleMap.get(lowerCaseRole);
-                             if (mappedRole) {
-                                 role = mappedRole;
-                             }
-                        }
-
-                        return { name, email, role };
-                    })
-                    .filter(profile => profile.name && profile.email);
+                    .filter(row => row.name && row.email) // Ensure required fields are not empty
+                    .map(row => ({
+                        name: row.name,
+                        email: row.email.toLowerCase().trim(),
+                        // Default to 'Trainee' if role is not specified or invalid
+                        role: Object.values(Role).includes(row.role) ? row.role : Role.TRAINEE,
+                    }));
                 
                 if (profilesToImport.length === 0) {
-                    setError("No valid user data found in the file. Please check for rows with missing names or emails, or an empty file.");
+                    setError("No valid user data found in the file. Please check the file content.");
                     setImporting(false);
                     return;
                 }
 
-                // FIX: De-duplicate profiles from the CSV before upserting.
-                // The DB throws an error if the same conflict target (email) appears multiple times in one upsert command.
-                const uniqueProfilesMap = new Map<string, TablesInsert<'profiles'>>();
-                profilesToImport.forEach(profile => {
-                    if (profile.email) {
-                        uniqueProfilesMap.set(profile.email, profile);
-                    }
-                });
-                const uniqueProfilesToImport = Array.from(uniqueProfilesMap.values());
-                const duplicatesFound = profilesToImport.length - uniqueProfilesToImport.length;
-
                 const { error: upsertError } = await supabase
                     .from('profiles')
-                    .upsert(uniqueProfilesToImport, { onConflict: 'email' });
+                    .upsert(profilesToImport, { onConflict: 'email' });
 
                 if (upsertError) {
                     setError(`Error importing users: ${upsertError.message}`);
                 } else {
-                    let successMsg = `${uniqueProfilesToImport.length} users were successfully imported or updated.`;
-                    if (duplicatesFound > 0) {
-                        successMsg += ` ${duplicatesFound} duplicate email(s) were found in the file and were ignored (the last entry for each duplicate was used).`;
-                    }
-                    setSuccessMessage(successMsg);
+                    setSuccessMessage(`${profilesToImport.length} users were successfully imported or updated.`);
                     setFile(null); // Reset file input
                 }
                 setImporting(false);
@@ -124,7 +95,7 @@ export const ImportUsers: React.FC = () => {
                     <ul className="list-disc list-inside">
                         <li>The file must have a header row.</li>
                         <li>Required columns: <strong>name</strong>, <strong>email</strong>.</li>
-                        <li>Optional column: <strong>role</strong> (Accepted values: 'Manager', 'Trainee', 'Evaluator'. This is case-insensitive. Defaults to 'Trainee' if omitted or invalid).</li>
+                        <li>Optional column: <strong>role</strong> (Accepted values: 'Manager', 'Trainee', 'Evaluator'. Defaults to 'Trainee' if omitted or invalid).</li>
                         <li>Profiles will be matched and updated based on the <strong>email</strong> address.</li>
                     </ul>
                      <p className="font-semibold pt-2">Important Note:</p>

@@ -27,7 +27,8 @@ export const CreateChallenge: React.FC<CreateChallengeProps> = ({ currentUser })
             setLoading(true);
             const { data, error } = await supabase.from('profiles').select('*').order('name', { ascending: true });
             if (data) {
-                setAllProfiles(data);
+                // FIX: Cast Supabase response data to the expected Profile[] type.
+                setAllProfiles(data as Profile[]);
             }
             if (error) {
                 console.error("Error fetching profiles:", error);

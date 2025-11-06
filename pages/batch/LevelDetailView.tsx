@@ -66,7 +66,8 @@ export const LevelDetailView: React.FC<{ currentUser: Profile }> = ({ currentUse
             if (error) {
                 setError(error.message);
             } else {
-                setParticipants(data as BatchParticipantWithProfile[]);
+                // FIX: Cast Supabase response to the expected type to resolve compiler error.
+                setParticipants(data as unknown as BatchParticipantWithProfile[]);
             }
             setLoading(false);
         };

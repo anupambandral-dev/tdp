@@ -24,7 +24,7 @@ export const ManageParticipantsModal: React.FC<ManageParticipantsModalProps> = (
             setLoading(true);
             const { data, error } = await supabase.from('profiles').select('*').order('name');
             if (data) {
-                setAllProfiles(data);
+                setAllProfiles(data as unknown as Profile[]);
             }
             if (error) {
                 console.error(error);

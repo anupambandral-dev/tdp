@@ -1,4 +1,5 @@
 
+
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { supabase } from '../supabaseClient';
@@ -47,7 +48,8 @@ export const BatchSelectionPage: React.FC<BatchSelectionPageProps> = ({ currentU
                     fetchError = error.message;
                     console.error("RPC error fetching evaluator batches:", error);
                 } else {
-                    finalBatches = (data as TrainingBatch[] || []).sort((a,b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+                    // FIX: Safely cast RPC response to the expected type.
+                    finalBatches = ((data as unknown as TrainingBatch[]) || []).sort((a,b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
                 }
             } else { // Role.TRAINEE or other participant roles
                 const { data, error } = await supabase.rpc('get_my_participant_batches');
@@ -56,7 +58,8 @@ export const BatchSelectionPage: React.FC<BatchSelectionPageProps> = ({ currentU
                     fetchError = error.message;
                     console.error("RPC error fetching participant batches:", error);
                 } else {
-                    finalBatches = (data as TrainingBatch[] || []).sort((a,b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+                    // FIX: Safely cast RPC response to the expected type.
+                    finalBatches = ((data as unknown as TrainingBatch[]) || []).sort((a,b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
                 }
             }
             

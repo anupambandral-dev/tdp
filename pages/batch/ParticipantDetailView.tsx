@@ -41,7 +41,7 @@ export const ParticipantDetailView: React.FC = () => {
                 // This is not a fatal error for this view.
                 console.warn(batchInfoResult.error.message);
             } else {
-                setBatchInfo(batchInfoResult.data);
+                setBatchInfo(batchInfoResult.data as BatchParticipant);
             }
 
             setLoading(false);

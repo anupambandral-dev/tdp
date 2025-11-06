@@ -6,6 +6,7 @@ import { Profile, QuizOption, Json } from '../../types';
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { BackButton } from '../../components/ui/BackButton';
+import { TablesInsert } from '../../database.types';
 
 interface CreateQuizProps {
     currentUser: Profile;
@@ -90,9 +91,10 @@ export const CreateQuiz: React.FC<CreateQuizProps> = ({ currentUser }) => {
 
         setLoading(true);
         
+        // FIX: Supabase insert expects an array of objects.
         const { data: quizData, error: quizError } = await supabase
             .from('quizzes')
-            .insert({ title, created_by: currentUser.id, batch_id: batchId! })
+            .insert([{ title, created_by: currentUser.id, batch_id: batchId! }])
             .select()
             .single();
 
@@ -102,7 +104,7 @@ export const CreateQuiz: React.FC<CreateQuizProps> = ({ currentUser }) => {
             return;
         }
 
-        const questionsToInsert = questions.map(q => ({
+        const questionsToInsert: TablesInsert<'quiz_questions'>[] = questions.map(q => ({
             quiz_id: quizData.id,
             question_text: q.text,
             // FIX: Cast 'options' to 'unknown' then 'Json' to match the Supabase table type.

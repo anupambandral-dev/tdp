@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { supabase } from '../../supabaseClient';
 import { BatchParticipantWithProfile } from '../../types';
 import { Button } from '../../components/ui/Button';
+import { TablesInsert } from '../../database.types';
 
 // Define a type for the updates we're tracking
 type ParticipantUpdate = {
@@ -50,7 +51,8 @@ export const ManageLevelClustersModal: React.FC<ManageLevelClustersModalProps> =
     const handleSaveChanges = async () => {
         setSaving(true);
         
-        const upsertData = updates.map(update => ({
+        // FIX: Ensure the upsert data conforms to the expected type for batch_participants table.
+        const upsertData: TablesInsert<'batch_participants'>[] = updates.map(update => ({
             batch_id: batchId,
             participant_id: update.participant_id,
             [clusterKey]: update.cluster === 'N/A' ? null : update.cluster,

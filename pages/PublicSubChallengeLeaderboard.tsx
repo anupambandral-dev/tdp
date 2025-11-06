@@ -94,7 +94,8 @@ export const PublicSubChallengeLeaderboard: React.FC = () => {
                 return;
             }
             
-            const subChallenge = subChallengeData as SubChallenge & { submissions: (Submission & { profiles: {id: string; name: string} | null })[] };
+            // FIX: Cast Supabase response to unknown first to safely convert to the expected type.
+            const subChallenge = subChallengeData as unknown as SubChallenge & { submissions: (Submission & { profiles: {id: string; name: string} | null })[] };
             const evaluatedSubmissions = subChallenge.submissions.filter(s => s.evaluation && s.profiles);
 
             // --- Process Data Client-Side for Highlights ---

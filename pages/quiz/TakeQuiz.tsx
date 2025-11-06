@@ -55,14 +55,14 @@ export const TakeQuiz: React.FC<TakeQuizProps> = ({ currentUser }) => {
             if (quizData.status !== QuizStatusEnum.LIVE) {
                 setError("This quiz is not currently live."); setLoading(false); return;
             }
-            setQuiz(quizData);
+            setQuiz(quizData as Quiz);
 
             // Fetch questions
             const { data: questionsData, error: questionsError } = await supabase.from('quiz_questions').select('*').eq('quiz_id', quizId);
             if (questionsError) {
                 setError("Failed to load questions."); setLoading(false); return;
             }
-            setQuestions(questionsData);
+            setQuestions(questionsData as QuizQuestion[]);
             setLoading(false);
         };
         fetchQuiz();

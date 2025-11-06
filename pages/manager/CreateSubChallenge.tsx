@@ -7,7 +7,7 @@ import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { BackButton } from '../../components/ui/BackButton';
 import { EvaluationRules, ResultTier, IncorrectMarking, OverallChallenge, Json, Profile, Role, ResultType } from '../../types';
-import { TablesInsert } from '../../database.types';
+import { TablesInsert, TablesUpdate } from '../../database.types';
 import { RichTextInput } from '../../components/ui/RichTextInput';
 
 export const CreateSubChallenge: React.FC = () => {

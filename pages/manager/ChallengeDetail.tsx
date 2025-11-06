@@ -7,6 +7,7 @@ import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { BackButton } from '../../components/ui/BackButton';
 import { ResultTier, IncorrectMarking, OverallChallenge, SubChallenge, Profile, Submission, OverallChallengeWithSubChallenges, EvaluationRules, SubmittedResult, Evaluation, ResultType, EvaluationResultTier, SubChallengeWithSubmissions } from '../../types';
+import { TablesUpdate } from '../../database.types';
 
 interface ChallengeDetailProps {
   currentUser: Profile;
@@ -112,7 +113,7 @@ export const ChallengeDetail: React.FC<ChallengeDetailProps> = ({ currentUser })
             setLoading(true);
             const { error } = await supabase
                 .from('overall_challenges')
-                .update({ ended_at: new Date().toISOString() })
+                .update({ ended_at: new Date().toISOString() } as TablesUpdate<'overall_challenges'>)
                 .eq('id', challengeId);
             
             if (error) {

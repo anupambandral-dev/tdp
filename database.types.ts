@@ -83,7 +83,7 @@ export type Database = {
       }
       overall_challenges: {
         Row: {
-          batch_id: string | null
+          batch_id: string
           created_at: string
           ended_at: string | null
           id: string
@@ -92,7 +92,7 @@ export type Database = {
           trainee_ids: string[]
         }
         Insert: {
-          batch_id?: string | null
+          batch_id: string
           created_at?: string
           ended_at?: string | null
           id?: string
@@ -101,7 +101,7 @@ export type Database = {
           trainee_ids: string[]
         }
         Update: {
-          batch_id?: string | null
+          batch_id?: string
           created_at?: string
           ended_at?: string | null
           id?: string
@@ -404,6 +404,17 @@ export type Database = {
     }
     Functions: {
       get_my_evaluator_batches: {
+        Args: Record<string, never>
+        Returns: {
+          created_at: string
+          evaluator_ids: string[] | null
+          id: string
+          manager_ids: string[]
+          name: string
+        }[]
+      }
+      // FIX: Add missing function definition for get_my_participant_batches.
+      get_my_participant_batches: {
         Args: Record<string, never>
         Returns: {
           created_at: string
