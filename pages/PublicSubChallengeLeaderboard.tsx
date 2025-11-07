@@ -45,7 +45,7 @@ const calculateScore = (submission: Submission, subChallenge: SubChallenge): num
             if (resultEvaluation.score_override != null) {
                 totalScore += resultEvaluation.score_override;
             } else {
-                if (result.trainee_tier === (resultEvaluation.evaluator_tier as any)) {
+                if ((result.trainee_tier as any) === resultEvaluation.evaluator_tier) {
                     const resultTypeScores = rules.tierScores[result.type as ResultType];
                     if (resultTypeScores) {
                         totalScore += resultTypeScores[result.trainee_tier as ResultTier] || 0;
@@ -84,7 +84,7 @@ export const PublicSubChallengeLeaderboard: React.FC = () => {
             const { data: subChallengeData, error: fetchError } = await supabase
                 .from('sub_challenges')
                 .select('*, submissions(*, profiles(id, name))')
-                .eq('id', subChallengeId)
+                .eq('id', subChallengeId!)
                 .single();
 
             if (fetchError || !subChallengeData) {
@@ -94,7 +94,6 @@ export const PublicSubChallengeLeaderboard: React.FC = () => {
                 return;
             }
             
-            // FIX: Cast Supabase response to unknown first to safely convert to the expected type.
             const subChallenge = subChallengeData as unknown as SubChallenge & { submissions: (Submission & { profiles: {id: string; name: string} | null })[] };
             const evaluatedSubmissions = subChallenge.submissions.filter(s => s.evaluation && s.profiles);
 

@@ -1,4 +1,5 @@
 
+
 import React, { useState, useEffect } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { Profile, OverallChallenge } from '../../types';
@@ -30,12 +31,12 @@ const CalendarIcon = () => (
     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4 mr-1 text-gray-500 dark:text-gray-400"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
 );
 
-interface ChallengeWithCounts extends OverallChallenge {
+type ChallengeWithCounts = OverallChallenge & {
     sub_challenges_count: number;
-}
-interface ChallengeWithSubChallengeCount extends OverallChallenge {
+};
+type ChallengeWithSubChallengeCount = OverallChallenge & {
     sub_challenges: { count: number }[];
-}
+};
 
 
 export const ManagerDashboard: React.FC<ManagerDashboardProps> = ({ currentUser }) => {
@@ -50,7 +51,7 @@ export const ManagerDashboard: React.FC<ManagerDashboardProps> = ({ currentUser 
       const { data, error } = await supabase
         .from('overall_challenges')
         .select('*, sub_challenges(count)')
-        .eq('batch_id', batchId);
+        .eq('batch_id', batchId!);
         
       if (error) {
         setError(error.message);

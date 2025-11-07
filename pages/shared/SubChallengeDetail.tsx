@@ -24,8 +24,7 @@ const getTotalScore = (submission: Submission, subChallenge: SubChallenge) => {
             if (resultEvaluation.score_override != null) {
                 totalScore += resultEvaluation.score_override;
             } else {
-                // FIX: Cast for enum comparison
-                if (result.trainee_tier === (resultEvaluation.evaluator_tier as any)) {
+                if ((result.trainee_tier as any) === resultEvaluation.evaluator_tier) {
                     const resultTypeScores = rules.tierScores[result.type as ResultType];
                     if (resultTypeScores) {
                         totalScore += resultTypeScores[result.trainee_tier as ResultTier] || 0;
@@ -209,8 +208,7 @@ const TraineeView: React.FC<TraineeViewProps> = ({ batchId, subChallenge, overal
                                {results?.map(result => {
                                     const evalResult = evaluation.result_evaluations.find(e => e.result_id === result.id);
                                     if (!evalResult) return null;
-                                    // FIX: Cast for enum comparison
-                                    const isCorrect = evalResult.evaluator_tier === (result.trainee_tier as any);
+                                    const isCorrect = (evalResult.evaluator_tier as any) === result.trainee_tier;
                                     return (
                                     <div key={result.id} className="p-2 bg-gray-50 dark:bg-gray-700 rounded-md text-sm">
                                         <p className="font-mono truncate">{result.value}</p>
@@ -258,7 +256,7 @@ export const SubChallengeDetail: React.FC<SubChallengeDetailProps> = ({ currentU
             const { data: scData, error: scError } = await supabase
                 .from('sub_challenges')
                 .select('*, submissions(*, profiles(id, name, avatar_url, email, role))')
-                .eq('id', subChallengeId)
+                .eq('id', subChallengeId!)
                 .single<SubChallengeWithSubmissions>();
             
             if (scError) {

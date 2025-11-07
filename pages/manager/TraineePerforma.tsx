@@ -21,8 +21,7 @@ const getTotalScore = (submission: Submission, subChallenge: SubChallenge) => {
             if (resultEvaluation.score_override != null) {
                 totalScore += resultEvaluation.score_override;
             } else {
-                // FIX: Cast for enum comparison
-                if (result.trainee_tier === (resultEvaluation.evaluator_tier as any)) {
+                if ((result.trainee_tier as any) === resultEvaluation.evaluator_tier) {
                     const resultTypeScores = rules.tierScores[result.type as ResultType];
                     if (resultTypeScores) {
                         totalScore += resultTypeScores[result.trainee_tier as ResultTier] || 0;
@@ -42,9 +41,9 @@ const getTotalScore = (submission: Submission, subChallenge: SubChallenge) => {
     return { score: Math.round(totalScore) };
 }
 
-interface FetchedOverallChallenge extends OverallChallenge {
+type FetchedOverallChallenge = OverallChallenge & {
     sub_challenges: (SubChallenge & { submissions: Submission[] })[];
-}
+};
 
 const ReportLink: React.FC<{ reportFile: { name: string; path: string } | null }> = ({ reportFile }) => {
     const [url, setUrl] = useState<string | null>(null);
@@ -98,8 +97,8 @@ export const TraineePerforma: React.FC = () => {
             const { data: challengeData, error } = await supabase
                 .from('overall_challenges')
                 .select('*, sub_challenges!inner(*, submissions!inner(*))')
-                .eq('id', challengeId)
-                .eq('sub_challenges.submissions.trainee_id', traineeId)
+                .eq('id', challengeId!)
+                .eq('sub_challenges.submissions.trainee_id', traineeId!)
                 .single();
             
             if (error && error.code !== 'PGRST116') { // Ignore 'PGRST116' (single row not found) if trainee has no submissions
@@ -111,7 +110,7 @@ export const TraineePerforma: React.FC = () => {
                 const { data: shellData } = await supabase
                     .from('overall_challenges')
                     .select('*, sub_challenges(*)')
-                    .eq('id', challengeId)
+                    .eq('id', challengeId!)
                     .single();
                 if (shellData) {
                     const typedShellData = shellData as unknown as (OverallChallenge & { sub_challenges: SubChallenge[] });
@@ -196,8 +195,7 @@ export const TraineePerforma: React.FC = () => {
                                                     {evaluation.result_evaluations.map(re => {
                                                         const result = results?.find(r => r.id === re.result_id);
                                                         if (!result) return null;
-                                                        // FIX: Cast for enum comparison
-                                                        const isCorrect = result.trainee_tier === (re.evaluator_tier as any);
+                                                        const isCorrect = (result.trainee_tier as any) === re.evaluator_tier;
                                                         return (
                                                         <li key={re.result_id} className="flex justify-between p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700">
                                                             <span className="font-mono text-xs truncate w-3/5">{result.value}</span>

@@ -27,7 +27,7 @@ const calculateSubChallengeScore = (submission: Submission, subChallenge: SubCha
             if (resultEvaluation.score_override != null) {
                 totalScore += resultEvaluation.score_override;
             } else {
-                if (result.trainee_tier === (resultEvaluation.evaluator_tier as any)) {
+                if ((result.trainee_tier as any) === resultEvaluation.evaluator_tier) {
                     const resultTypeScores = rules.tierScores[result.type as ResultType];
                     if (resultTypeScores) {
                         totalScore += resultTypeScores[result.trainee_tier as ResultTier] || 0;
@@ -74,7 +74,7 @@ export const ChallengeDetail: React.FC<ChallengeDetailProps> = ({ currentUser })
         const { data, error } = await supabase
             .from('overall_challenges')
             .select('*, sub_challenges(*, submissions(*, profiles(id, name, email, role)))')
-            .eq('id', challengeId)
+            .eq('id', challengeId!)
             .single<OverallChallengeWithSubChallenges>();
         
         if (error) {
@@ -114,7 +114,7 @@ export const ChallengeDetail: React.FC<ChallengeDetailProps> = ({ currentUser })
             const { error } = await supabase
                 .from('overall_challenges')
                 .update({ ended_at: new Date().toISOString() } as TablesUpdate<'overall_challenges'>)
-                .eq('id', challengeId);
+                .eq('id', challengeId!);
             
             if (error) {
                 setError(error.message);
@@ -140,7 +140,7 @@ export const ChallengeDetail: React.FC<ChallengeDetailProps> = ({ currentUser })
             const { error } = await supabase
                 .from('overall_challenges')
                 .delete()
-                .eq('id', challengeId);
+                .eq('id', challengeId!);
 
             if (error) {
                 setError(error.message);
@@ -178,7 +178,7 @@ export const ChallengeDetail: React.FC<ChallengeDetailProps> = ({ currentUser })
             if (evalResult.score_override != null) {
                 return evalResult.score_override;
             }
-            if (result.trainee_tier === (evalResult.evaluator_tier as any)) {
+            if ((result.trainee_tier as any) === evalResult.evaluator_tier) {
                  const resultTypeScores = rules.tierScores[result.type as ResultType];
                  if (resultTypeScores) {
                     return resultTypeScores[result.trainee_tier as ResultTier] || 0;
@@ -192,12 +192,11 @@ export const ChallengeDetail: React.FC<ChallengeDetailProps> = ({ currentUser })
         };
         
         const getStatus = (traineeTier: ResultTier, evaluatorTier: EvaluationResultTier) => {
-            // FIX: Cast to `any` to allow comparing `ResultTier` and `EvaluationResultTier` enum values.
-            if (traineeTier === (evaluatorTier as any)) return 'Correct';
+            if ((traineeTier as any) === evaluatorTier) return 'Correct';
 
             const tierValues: Record<string, number> = { [ResultTier.TIER_1]: 1, [ResultTier.TIER_2]: 2, [ResultTier.TIER_3]: 3 };
             const traineeValue = tierValues[traineeTier];
-            const evaluatorValue = tierValues[evaluatorTier];
+            const evaluatorValue = tierValues[evaluatorTier as string];
 
             if (traineeValue && evaluatorValue) {
                 if (evaluatorValue < traineeValue) return 'Upgraded';

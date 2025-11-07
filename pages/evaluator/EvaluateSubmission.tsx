@@ -164,7 +164,7 @@ export const EvaluateSubmission: React.FC<EvaluateSubmissionProps> = ({ currentU
         const { data, error } = await supabase
             .from('sub_challenges')
             .select('*, submissions(*, profiles(id, name, avatar_url, email, role)), overall_challenges(ended_at)')
-            .eq('id', challengeId)
+            .eq('id', challengeId!)
             .single<SubChallengeForEvaluation>();
         
         if (error) {
@@ -276,7 +276,7 @@ export const EvaluateSubmission: React.FC<EvaluateSubmissionProps> = ({ currentU
         const { error: updateError } = await supabase
             .from('submissions')
             .update({ evaluation: newEvaluation as unknown as Json })
-            .eq('id', selectedSubmission.id);
+            .eq('id', selectedSubmission.id!);
         
         setIsSaving(false);
 
@@ -318,12 +318,11 @@ export const EvaluateSubmission: React.FC<EvaluateSubmissionProps> = ({ currentU
         );
     }
     
-    // FIX: Cast to unknown first to safely convert from Json type to SubmittedResult[]
     const submittedResults = (selectedSubmission?.results as unknown as SubmittedResult[]) || [];
     const rules = challenge.evaluation_rules as unknown as EvaluationRules;
     const isChallengeEnded = !!challenge.overall_challenges?.ended_at;
     const reportFile = selectedSubmission?.report_file as { name: string; path: string; } | null;
-    const downloadFilename = reportFile ? `${challenge.title}_${selectedSubmission.profiles?.name}_${reportFile.name}`.replace(/[\s/\\?%*:|"<>]/g, '_') : 'report';
+    const downloadFilename = reportFile ? `${challenge.title}_${selectedSubmission?.profiles?.name}_${reportFile.name}`.replace(/[\s/\\?%*:|"<>]/g, '_') : 'report';
 
 
     return (

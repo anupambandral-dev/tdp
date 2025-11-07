@@ -101,7 +101,7 @@ const AppContent: React.FC = () => {
           .single();
 
         if (profileData) {
-          setCurrentUser(profileData as Profile);
+          setCurrentUser(profileData as unknown as Profile);
           setLoading(false);
           return;
         }
@@ -124,7 +124,6 @@ const AppContent: React.FC = () => {
                 setCurrentUser(null);
             } else if (linkedProfile && linkedProfile.length > 0) {
                 console.log('Profile successfully linked.');
-                // FIX: Cast the RPC response to the correct Profile[] type.
                 setCurrentUser((linkedProfile as unknown as Profile[])[0]);
             } else {
                 console.error("Could not find a profile to link for this user. Signing out.");

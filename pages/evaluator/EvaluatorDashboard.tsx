@@ -1,4 +1,5 @@
 
+
 import React, { useState, useEffect } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { Profile, SubChallengeForEvaluator, Role } from '../../types';
@@ -28,7 +29,7 @@ export const EvaluatorDashboard: React.FC<EvaluatorDashboardProps> = ({ currentU
       const { data, error } = await supabase
         .from('sub_challenges')
         .select('*, submissions(*, profiles(*)), overall_challenges!inner(id)')
-        .eq('overall_challenges.batch_id', batchId);
+        .eq('overall_challenges.batch_id', batchId!);
 
       if (error) {
           setError(error.message);

@@ -81,9 +81,14 @@ export const SubmitChallenge: React.FC<SubmitChallengeProps> = ({ currentUser })
             .eq('trainee_id', currentUser.id)
             .single();
 
+        if (submissionError && submissionError.code !== 'PGRST116') { // Ignore 'single row not found' error
+            console.error("Error fetching existing submission:", submissionError);
+            setErrorMessage("Could not fetch latest submission data.");
+            return;
+        }
+
         if (submissionData) {
-            setExistingSubmission(submissionData);
-            // FIX: Cast to 'unknown' first to handle Supabase's 'Json' type correctly.
+            setExistingSubmission(submissionData as Submission);
             setResults((submissionData.results as unknown as SubmittedResult[]) || []);
             const report = submissionData.report_file as { name: string; path: string } | null;
             if (report) {
@@ -95,10 +100,6 @@ export const SubmitChallenge: React.FC<SubmitChallengeProps> = ({ currentUser })
             setExistingSubmission(null);
             setResults([]);
             setExistingReportName(null);
-        }
-        if (submissionError && submissionError.code !== 'PGRST116') { // Ignore 'single row not found' error
-            console.error("Error fetching existing submission:", submissionError);
-            setErrorMessage("Could not fetch latest submission data.");
         }
     }, [subChallengeId, currentUser.id]);
 
@@ -116,10 +117,11 @@ export const SubmitChallenge: React.FC<SubmitChallengeProps> = ({ currentUser })
 
             if (scError) {
                 console.error("Error fetching sub-challenge:", scError);
+                setErrorMessage("Could not load challenge details.");
                 setLoading(false);
                 return;
             }
-            setSubChallenge(scData);
+            setSubChallenge(scData as SubChallenge);
 
             const { data: ocData, error: ocError } = await supabase
                 .from('overall_challenges')
@@ -130,7 +132,7 @@ export const SubmitChallenge: React.FC<SubmitChallengeProps> = ({ currentUser })
             if (ocError) {
                 console.error("Error fetching overall challenge:", ocError);
             } else {
-                setOverallChallenge(ocData);
+                setOverallChallenge(ocData as OverallChallenge);
             }
 
             await fetchSubmission();
@@ -193,7 +195,6 @@ export const SubmitChallenge: React.FC<SubmitChallengeProps> = ({ currentUser })
         let dbError = null;
 
         if (latestSubmission) { // Submission exists, so UPDATE it
-            // FIX: Cast to 'unknown' first to handle Supabase's 'Json' type correctly.
             const currentResults = (latestSubmission.results as unknown as SubmittedResult[] | null) || [];
 
             if (currentResults.length >= MAX_RESULTS) {
@@ -213,11 +214,11 @@ export const SubmitChallenge: React.FC<SubmitChallengeProps> = ({ currentUser })
             const newResultsArray = [newResult];
             const { error: insertError } = await supabase
                 .from('submissions')
-                .insert({
+                .insert([{
                     sub_challenge_id: subChallengeId!,
                     trainee_id: currentUser.id,
                     results: newResultsArray as unknown as Json,
-                });
+                }]);
             dbError = insertError;
         }
         
@@ -293,11 +294,11 @@ export const SubmitChallenge: React.FC<SubmitChallengeProps> = ({ currentUser })
         } else { // INSERT new submission
             const { error: insertError } = await supabase
                 .from('submissions')
-                .insert({
+                .insert([{
                     sub_challenge_id: subChallengeId!,
                     trainee_id: currentUser.id,
                     report_file: reportFileData as unknown as Json,
-                });
+                }]);
             dbError = insertError;
         }
 

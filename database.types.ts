@@ -413,7 +413,6 @@ export type Database = {
           name: string
         }[]
       }
-      // FIX: Add missing function definition for get_my_participant_batches.
       get_my_participant_batches: {
         Args: Record<string, never>
         Returns: {

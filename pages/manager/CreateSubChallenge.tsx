@@ -52,7 +52,7 @@ export const CreateSubChallenge: React.FC = () => {
             const challengePromise = supabase
                 .from('overall_challenges')
                 .select('*')
-                .eq('id', challengeId)
+                .eq('id', challengeId!)
                 .single<OverallChallenge>();
             
             const profilesPromise = supabase
@@ -117,7 +117,7 @@ export const CreateSubChallenge: React.FC = () => {
 
         if (evaluatorsToUpdate.length > 0) {
             const updates = evaluatorsToUpdate.map(p => 
-                supabase.from('profiles').update({ role: Role.EVALUATOR }).eq('id', p.id)
+                supabase.from('profiles').update({ role: Role.EVALUATOR as 'Evaluator' }).eq('id', p.id)
             );
             const results = await Promise.all(updates);
             const updateError = results.find(res => res.error);

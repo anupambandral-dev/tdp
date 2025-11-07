@@ -61,12 +61,11 @@ export const LevelDetailView: React.FC<{ currentUser: Profile }> = ({ currentUse
             const { data, error } = await supabase
                 .from('batch_participants')
                 .select('*, profiles(*)')
-                .eq('batch_id', batchId);
+                .eq('batch_id', batchId!);
             
             if (error) {
                 setError(error.message);
             } else {
-                // FIX: Cast Supabase response to the expected type to resolve compiler error.
                 setParticipants(data as unknown as BatchParticipantWithProfile[]);
             }
             setLoading(false);

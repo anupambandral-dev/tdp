@@ -58,7 +58,7 @@ export const BatchDashboard: React.FC<BatchDashboardProps> = ({ currentUser }) =
         const { data: batchData, error: batchError } = await supabase
             .from('training_batches')
             .select('*')
-            .eq('id', batchId)
+            .eq('id', batchId!)
             .single();
         
         if (batchError) {
@@ -74,7 +74,7 @@ export const BatchDashboard: React.FC<BatchDashboardProps> = ({ currentUser }) =
         const { data: directParticipants, error: directParticipantsError } = await supabase
             .from('batch_participants')
             .select('*, profiles(*)')
-            .eq('batch_id', batchId);
+            .eq('batch_id', batchId!);
 
         if (directParticipantsError) {
             setError(directParticipantsError.message);
@@ -86,7 +86,7 @@ export const BatchDashboard: React.FC<BatchDashboardProps> = ({ currentUser }) =
         const { data: challenges, error: challengesError } = await supabase
             .from('overall_challenges')
             .select('trainee_ids')
-            .eq('batch_id', batchId);
+            .eq('batch_id', batchId!);
 
         if (challengesError) {
             setError(challengesError.message);
@@ -98,7 +98,7 @@ export const BatchDashboard: React.FC<BatchDashboardProps> = ({ currentUser }) =
         const participantMap = new Map<string, BatchParticipantWithProfile>();
 
         // Add direct participants to the map first
-        (directParticipants as BatchParticipantWithProfile[]).forEach(p => {
+        (directParticipants as unknown as BatchParticipantWithProfile[]).forEach(p => {
             if (p.profiles) { // Ensure profile data exists
                 participantMap.set(p.profiles.id, p);
             }
@@ -121,10 +121,10 @@ export const BatchDashboard: React.FC<BatchDashboardProps> = ({ currentUser }) =
                 setError(profilesError.message);
             } else if (newProfiles) {
                 // Add these new trainees to the map with placeholder batch_participant data
-                (newProfiles as Profile[]).forEach(profile => {
+                (newProfiles as unknown as Profile[]).forEach(profile => {
                     participantMap.set(profile.id, {
                         id: `temp-${profile.id}`, // Placeholder for React key, DB will generate real one on save
-                        batch_id: batchId,
+                        batch_id: batchId!,
                         participant_id: profile.id,
                         created_at: new Date().toISOString(),
                         overall_cluster: null,

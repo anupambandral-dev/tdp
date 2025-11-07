@@ -28,7 +28,7 @@ export const TraineeDashboard: React.FC<TraineeDashboardProps> = ({ currentUser 
       const { data: overallChallenges, error: ocError } = await supabase
         .from('overall_challenges')
         .select('id')
-        .eq('batch_id', batchId)
+        .eq('batch_id', batchId!)
         .contains('trainee_ids', [currentUser.id]);
 
       if (ocError) {
@@ -36,7 +36,6 @@ export const TraineeDashboard: React.FC<TraineeDashboardProps> = ({ currentUser 
         return;
       }
 
-      // FIX: Handle nullable 'overallChallenges' data before mapping to prevent runtime errors.
       const challengeIds = overallChallenges ? overallChallenges.map(oc => oc.id) : [];
 
       if (challengeIds.length === 0) {
@@ -129,8 +128,7 @@ export const TraineeDashboard: React.FC<TraineeDashboardProps> = ({ currentUser 
         if (resultEvaluation.score_override != null) {
           totalScore += resultEvaluation.score_override;
         } else {
-          // FIX: Cast for enum comparison
-          if (result.trainee_tier === (resultEvaluation.evaluator_tier as any)) {
+          if ((result.trainee_tier as any) === resultEvaluation.evaluator_tier) {
             const resultTypeScores = rules.tierScores[result.type as ResultType];
             if (resultTypeScores) {
                 totalScore += resultTypeScores[result.trainee_tier as ResultTier] || 0;

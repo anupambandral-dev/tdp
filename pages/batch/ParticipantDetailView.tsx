@@ -25,15 +25,15 @@ export const ParticipantDetailView: React.FC = () => {
             if (!batchId || !participantId) return;
             setLoading(true);
 
-            const profilePromise = supabase.from('profiles').select('*').eq('id', participantId).single();
-            const batchInfoPromise = supabase.from('batch_participants').select('*').eq('batch_id', batchId).eq('participant_id', participantId).single();
+            const profilePromise = supabase.from('profiles').select('*').eq('id', participantId!).single();
+            const batchInfoPromise = supabase.from('batch_participants').select('*').eq('batch_id', batchId!).eq('participant_id', participantId!).single();
 
             const [profileResult, batchInfoResult] = await Promise.all([profilePromise, batchInfoPromise]);
 
             if (profileResult.error) {
                 setError(profileResult.error.message);
             } else {
-                setParticipant(profileResult.data as Profile);
+                setParticipant(profileResult.data as unknown as Profile);
             }
 
             if (batchInfoResult.error && batchInfoResult.error.code !== 'PGRST116') {
@@ -41,7 +41,7 @@ export const ParticipantDetailView: React.FC = () => {
                 // This is not a fatal error for this view.
                 console.warn(batchInfoResult.error.message);
             } else {
-                setBatchInfo(batchInfoResult.data as BatchParticipant);
+                setBatchInfo(batchInfoResult.data as unknown as BatchParticipant);
             }
 
             setLoading(false);

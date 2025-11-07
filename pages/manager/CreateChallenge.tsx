@@ -27,8 +27,7 @@ export const CreateChallenge: React.FC<CreateChallengeProps> = ({ currentUser })
             setLoading(true);
             const { data, error } = await supabase.from('profiles').select('*').order('name', { ascending: true });
             if (data) {
-                // FIX: Cast Supabase response data to the expected Profile[] type.
-                setAllProfiles(data as Profile[]);
+                setAllProfiles(data as unknown as Profile[]);
             }
             if (error) {
                 console.error("Error fetching profiles:", error);
@@ -72,7 +71,6 @@ export const CreateChallenge: React.FC<CreateChallengeProps> = ({ currentUser })
 
         setLoading(true);
 
-        // FIX: The batch_id is a required field for a new challenge.
         const newChallenge: TablesInsert<'overall_challenges'> = {
             name: challengeName,
             manager_ids: selectedManagerIds,

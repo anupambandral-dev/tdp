@@ -14,7 +14,6 @@ const PlusIcon = () => (
     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5 mr-2"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
 );
 
-// FIX: Complete and export the QuizDashboard component.
 export const QuizDashboard: React.FC<QuizDashboardProps> = ({ currentUser }) => {
     const { batchId } = useParams<{ batchId: string }>();
     const [quizzes, setQuizzes] = useState<QuizWithSubmission[]>([]);
@@ -37,12 +36,12 @@ export const QuizDashboard: React.FC<QuizDashboardProps> = ({ currentUser }) => 
                 setError(error.message);
                 console.error("Error fetching quizzes:", error);
             } else {
-                setQuizzes(data as QuizWithSubmission[]);
+                setQuizzes(data as unknown as QuizWithSubmission[]);
             }
             setLoading(false);
         };
         fetchQuizzes();
-    }, [batchId]);
+    }, [batchId, currentUser.id]);
     
     const getTraineeQuizStatus = (quiz: QuizWithSubmission) => {
         const hasSubmitted = quiz.quiz_submissions.some(sub => sub.participant_id === currentUser.id);
