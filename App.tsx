@@ -135,7 +135,8 @@ const AppContent: React.FC = () => {
       };
       fetchProfile();
     } else {
-      setCurrentUser(null);
+      // We no longer set currentUser to null here. This prevents logout on session flicker.
+      // The 'SIGNED_OUT' event in onAuthStateChange is now the single source of truth for logging out.
       if (!isPasswordRecovery) {
           setLoading(false);
       }
