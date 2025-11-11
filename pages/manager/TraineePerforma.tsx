@@ -5,41 +5,8 @@ import { useParams, Link } from 'react-router-dom';
 import { supabase } from '../../supabaseClient';
 import { Card } from '../../components/ui/Card';
 import { BackButton } from '../../components/ui/BackButton';
-import { SubChallenge, Submission, IncorrectMarking, ResultTier, OverallChallenge, Profile, EvaluationRules, SubmittedResult, Evaluation, ResultType } from '../../types';
-
-const getTotalScore = (submission: Submission, subChallenge: SubChallenge) => {
-    const evaluation = submission.evaluation as unknown as Evaluation | null;
-    const results = submission.results as unknown as SubmittedResult[] | null;
-    if (!evaluation || !results) return { score: 0 };
-    
-    const rules = subChallenge.evaluation_rules as unknown as EvaluationRules;
-    let totalScore = 0;
-
-    results.forEach(result => {
-        const resultEvaluation = evaluation.result_evaluations.find(re => re.result_id === result.id);
-        if (resultEvaluation) {
-            if (resultEvaluation.score_override != null) {
-                totalScore += resultEvaluation.score_override;
-            } else {
-                if ((result.trainee_tier as any) === resultEvaluation.evaluator_tier) {
-                    const resultTypeScores = rules.tierScores[result.type as ResultType];
-                    if (resultTypeScores) {
-                        totalScore += resultTypeScores[result.trainee_tier as ResultTier] || 0;
-                    }
-                } else {
-                    if (rules.incorrectMarking === IncorrectMarking.PENALTY) {
-                        totalScore += rules.incorrectPenalty;
-                    }
-                }
-            }
-        }
-    });
-
-    if (rules.report.enabled && evaluation.report_score) {
-        totalScore += evaluation.report_score;
-    }
-    return { score: Math.round(totalScore) };
-}
+import { SubChallenge, Submission, OverallChallenge, Profile, Evaluation, SubmittedResult, EvaluationRules } from '../../types';
+import { calculateScore } from '../../utils/score';
 
 type FetchedOverallChallenge = OverallChallenge & {
     sub_challenges: (SubChallenge & { submissions: Submission[] })[];
@@ -189,7 +156,7 @@ export const TraineePerforma: React.FC = () => {
                                             <div className="mt-2 space-y-3">
                                                 <div className="flex justify-between items-baseline pb-2 border-b dark:border-gray-700">
                                                     <span className="font-bold">Total Score:</span>
-                                                    <span className="text-xl font-bold">{getTotalScore(submission, subChallenge).score}</span>
+                                                    <span className="text-xl font-bold">{calculateScore(submission, subChallenge)}</span>
                                                 </div>
                                                 <ul className="space-y-1 text-sm pt-2">
                                                     {evaluation.result_evaluations.map(re => {

@@ -92,7 +92,10 @@ export const ManageParticipantsModal: React.FC<ManageParticipantsModalProps> = (
 
         // Handle additions
         if (addedIds.length > 0) {
-            const addedParticipantsData: TablesInsert<'batch_participants'>[] = addedIds.map(id => ({
+            // FIX: Removed explicit type annotation that was causing a TypeScript inference issue,
+            // resulting in participant_id being typed as 'unknown'. Type inference now correctly
+            // handles the object shape for the Supabase client.
+            const addedParticipantsData = addedIds.map(id => ({
                 batch_id: batchId,
                 participant_id: id,
             }));

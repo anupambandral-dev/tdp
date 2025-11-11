@@ -8,43 +8,10 @@ import { Button } from '../../components/ui/Button';
 import { BackButton } from '../../components/ui/BackButton';
 import { ResultTier, IncorrectMarking, OverallChallenge, SubChallenge, Profile, Submission, OverallChallengeWithSubChallenges, EvaluationRules, SubmittedResult, Evaluation, ResultType, EvaluationResultTier, SubChallengeWithSubmissions } from '../../types';
 import { TablesUpdate } from '../../database.types';
+import { calculateScore } from '../../utils/score';
 
 interface ChallengeDetailProps {
   currentUser: Profile;
-}
-
-const calculateSubChallengeScore = (submission: Submission, subChallenge: SubChallenge) => {
-    const evaluation = submission.evaluation as unknown as Evaluation | null;
-    const results = submission.results as unknown as SubmittedResult[] | null;
-    if (!evaluation || !results) return 0;
-    
-    const rules = subChallenge.evaluation_rules as unknown as EvaluationRules;
-    let totalScore = 0;
-
-    results.forEach(result => {
-        const resultEvaluation = evaluation.result_evaluations.find(re => re.result_id === result.id);
-        if (resultEvaluation) {
-            if (resultEvaluation.score_override != null) {
-                totalScore += resultEvaluation.score_override;
-            } else {
-                if ((result.trainee_tier as any) === resultEvaluation.evaluator_tier) {
-                    const resultTypeScores = rules.tierScores[result.type as ResultType];
-                    if (resultTypeScores) {
-                        totalScore += resultTypeScores[result.trainee_tier as ResultTier] || 0;
-                    }
-                } else {
-                    if (rules.incorrectMarking === IncorrectMarking.PENALTY) {
-                        totalScore += rules.incorrectPenalty;
-                    }
-                }
-            }
-        }
-    });
-
-    if (rules.report.enabled && evaluation.report_score) {
-        totalScore += evaluation.report_score;
-    }
-    return Math.round(totalScore);
 }
 
 const ClipboardIcon = () => (
@@ -159,7 +126,7 @@ export const ChallengeDetail: React.FC<ChallengeDetailProps> = ({ currentUser })
         challenge.sub_challenges.forEach(sc => {
             const submission = sc.submissions?.find(s => s.trainee_id === traineeId);
             if (submission) {
-                totalScore += calculateSubChallengeScore(submission, sc);
+                totalScore += calculateScore(submission, sc);
             }
         });
         return totalScore;
@@ -217,7 +184,7 @@ export const ChallengeDetail: React.FC<ChallengeDetailProps> = ({ currentUser })
                 const results = (submission.results as unknown as SubmittedResult[]) || [];
                 const evaluation = submission.evaluation as unknown as Evaluation | null;
                 const rules = sc.evaluation_rules as unknown as EvaluationRules;
-                const subChallengeScore = calculateSubChallengeScore(submission, sc);
+                const subChallengeScore = calculateScore(submission, sc);
                 const overallScore = overallScores.get(trainee.id) || 0;
 
                 if (results.length === 0) {

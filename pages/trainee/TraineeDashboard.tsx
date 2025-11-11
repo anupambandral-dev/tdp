@@ -2,10 +2,10 @@
 
 import React, { useState, useEffect } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { Profile, ResultTier, IncorrectMarking, Evaluation, EvaluationRules, SubmittedResult, Submission, SubChallengeWithOverallChallenge, ResultType } from '../../types';
+import { Profile, EvaluationRules, Submission, SubChallengeWithOverallChallenge } from '../../types';
 import { supabase } from '../../supabaseClient';
 import { Card } from '../../components/ui/Card';
-import { Button } from '../../components/ui/Button';
+import { calculateScore } from '../../utils/score';
 
 interface TraineeDashboardProps {
   currentUser: Profile;
@@ -111,43 +111,6 @@ export const TraineeDashboard: React.FC<TraineeDashboardProps> = ({ currentUser 
 
     return 'Ended';
   };
-  
-  const getScore = (challenge: SubChallengeWithOverallChallenge) => {
-    const submission = challenge.submissions?.find(s => s.trainee_id === currentUser.id);
-    const evaluation = submission?.evaluation as unknown as Evaluation | null;
-    const results = submission?.results as unknown as SubmittedResult[] | null;
-
-    if (!evaluation || !results) return 'N/A';
-    
-    const rules = challenge.evaluation_rules as unknown as EvaluationRules;
-    let totalScore = 0;
-
-    results.forEach(result => {
-      const resultEvaluation = evaluation.result_evaluations.find(re => re.result_id === result.id);
-      if (resultEvaluation) {
-        if (resultEvaluation.score_override != null) {
-          totalScore += resultEvaluation.score_override;
-        } else {
-          if ((result.trainee_tier as any) === resultEvaluation.evaluator_tier) {
-            const resultTypeScores = rules.tierScores[result.type as ResultType];
-            if (resultTypeScores) {
-                totalScore += resultTypeScores[result.trainee_tier as ResultTier] || 0;
-            }
-          } else {
-            if (rules.incorrectMarking === IncorrectMarking.PENALTY) {
-              totalScore += rules.incorrectPenalty;
-            }
-          }
-        }
-      }
-    });
-
-    if (rules.report.enabled && evaluation.report_score) {
-      totalScore += evaluation.report_score;
-    }
-    
-    return `${Math.round(totalScore)}`;
-  }
 
   const getDeadlineDisplay = (challenge: SubChallengeWithOverallChallenge) => {
     const resultsEndTime = new Date(challenge.submission_end_time);
@@ -175,7 +138,8 @@ export const TraineeDashboard: React.FC<TraineeDashboardProps> = ({ currentUser 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {traineeChallenges.map((challenge) => {
             const status = getStatus(challenge);
-            const score = getScore(challenge);
+            const submission = challenge.submissions?.find(s => s.trainee_id === currentUser.id);
+            const score = submission?.evaluation ? calculateScore(submission, challenge) : 'N/A';
             const deadlineDisplay = getDeadlineDisplay(challenge);
             return (
                <Link to={`/batch/${batchId}/level/4/trainee/sub-challenge/${challenge.id}`} key={challenge.id} className="block">

@@ -7,12 +7,10 @@ import {
     Submission, 
     Evaluation, 
     SubmittedResult, 
-    EvaluationRules, 
-    ResultTier, 
     EvaluationResultTier, 
-    IncorrectMarking, 
-    ResultType 
+    ResultTier 
 } from '../types';
+import { calculateScore } from '../utils/score';
 
 const TrophyIcon = () => (
     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-8 w-8 text-yellow-400"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/></svg>
@@ -29,41 +27,6 @@ interface SubChallengeLeaderboardData {
     leaderboard: LeaderboardEntry[];
     highlights: string[];
 }
-
-// Helper function to calculate score, moved from other components to make this self-contained.
-const calculateScore = (submission: Submission, subChallenge: SubChallenge): number => {
-    const evaluation = submission.evaluation as unknown as Evaluation | null;
-    const results = submission.results as unknown as SubmittedResult[] | null;
-    if (!evaluation || !results) return 0;
-    
-    const rules = subChallenge.evaluation_rules as unknown as EvaluationRules;
-    let totalScore = 0;
-
-    results.forEach(result => {
-        const resultEvaluation = evaluation.result_evaluations.find(re => re.result_id === result.id);
-        if (resultEvaluation) {
-            if (resultEvaluation.score_override != null) {
-                totalScore += resultEvaluation.score_override;
-            } else {
-                if ((result.trainee_tier as any) === resultEvaluation.evaluator_tier) {
-                    const resultTypeScores = rules.tierScores[result.type as ResultType];
-                    if (resultTypeScores) {
-                        totalScore += resultTypeScores[result.trainee_tier as ResultTier] || 0;
-                    }
-                } else {
-                    if (rules.incorrectMarking === IncorrectMarking.PENALTY) {
-                        totalScore += rules.incorrectPenalty;
-                    }
-                }
-            }
-        }
-    });
-
-    if (rules.report.enabled && evaluation.report_score) {
-        totalScore += evaluation.report_score;
-    }
-    return Math.round(totalScore);
-};
 
 export const PublicSubChallengeLeaderboard: React.FC = () => {
     const { subChallengeId } = useParams<{ subChallengeId: string }>();

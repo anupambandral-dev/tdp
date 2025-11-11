@@ -1,47 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { Profile, Role, SubChallenge, OverallChallenge, Submission, IncorrectMarking, ResultTier, Evaluation, EvaluationRules, SubChallengeWithSubmissions, SubmittedResult, ResultType } from '../../types';
+import { Profile, Role, SubChallenge, OverallChallenge, Submission, Evaluation, SubChallengeWithSubmissions, SubmittedResult, EvaluationRules } from '../../types';
 import { supabase } from '../../supabaseClient';
 import { Card } from '../../components/ui/Card';
 import { BackButton } from '../../components/ui/BackButton';
 import { Button } from '../../components/ui/Button';
+import { calculateScore } from '../../utils/score';
 
 interface SubChallengeDetailProps {
     currentUser: Profile;
-}
-
-const getTotalScore = (submission: Submission, subChallenge: SubChallenge) => {
-    const evaluation = submission.evaluation as unknown as Evaluation | null;
-    const results = submission.results as unknown as SubmittedResult[] | null;
-    if (!evaluation || !results) return { score: 0 };
-    
-    const rules = subChallenge.evaluation_rules as unknown as EvaluationRules;
-    let totalScore = 0;
-
-    results.forEach(result => {
-        const resultEvaluation = evaluation.result_evaluations.find(re => re.result_id === result.id);
-        if (resultEvaluation) {
-            if (resultEvaluation.score_override != null) {
-                totalScore += resultEvaluation.score_override;
-            } else {
-                if ((result.trainee_tier as any) === resultEvaluation.evaluator_tier) {
-                    const resultTypeScores = rules.tierScores[result.type as ResultType];
-                    if (resultTypeScores) {
-                        totalScore += resultTypeScores[result.trainee_tier as ResultTier] || 0;
-                    }
-                } else {
-                    if (rules.incorrectMarking === IncorrectMarking.PENALTY) {
-                        totalScore += rules.incorrectPenalty;
-                    }
-                }
-            }
-        }
-    });
-
-    if (rules.report.enabled && evaluation.report_score) {
-        totalScore += evaluation.report_score;
-    }
-    return { score: Math.round(totalScore) };
 }
 
 // Manager's view of all submissions
@@ -63,7 +30,7 @@ const ManagerView: React.FC<{ subChallenge: SubChallengeWithSubmissions }> = ({ 
                         <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
                             {subChallenge.submissions?.map(submission => {
                                 const trainee = submission.profiles;
-                                const { score } = getTotalScore(submission, subChallenge);
+                                const score = calculateScore(submission, subChallenge);
                                 return (
                                     <tr key={submission.trainee_id}>
                                         <td className="px-6 py-4 whitespace-nowrap">
@@ -143,7 +110,7 @@ const TraineeView: React.FC<TraineeViewProps> = ({ batchId, subChallenge, overal
         }
     }
     
-    const { score } = getTotalScore(submission, subChallenge);
+    const score = calculateScore(submission, subChallenge);
     const evaluation = submission.evaluation as unknown as Evaluation | null;
     const results = submission.results as unknown as SubmittedResult[] | null;
     const reportFile = submission.report_file as { name: string; path: string; } | null;
@@ -210,13 +177,24 @@ const TraineeView: React.FC<TraineeViewProps> = ({ batchId, subChallenge, overal
                                     if (!evalResult) return null;
                                     const isCorrect = (evalResult.evaluator_tier as any) === result.trainee_tier;
                                     return (
-                                    <div key={result.id} className="p-2 bg-gray-50 dark:bg-gray-700 rounded-md text-sm">
-                                        <p className="font-mono truncate">{result.value}</p>
-                                        <div className="flex justify-between items-center">
-                                          <p>Your Tier: <span className="font-semibold">{result.trainee_tier}</span></p>
-                                          <p>Evaluator Tier: <span className="font-semibold">{evalResult.evaluator_tier}</span></p>
-                                          {isCorrect ? <span className="text-green-500 font-bold">Correct</span> : <span className="text-orange-500 font-bold">Incorrect</span>}
+                                    <div key={result.id} className="p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg text-sm space-y-2">
+                                        <p className="font-mono truncate font-medium">{result.value}</p>
+                                        <div className="flex justify-between items-center text-xs flex-wrap gap-2">
+                                          <p>Your Tier: <span className="font-semibold bg-gray-200 dark:bg-gray-600 px-2 py-0.5 rounded-full">{result.trainee_tier}</span></p>
+                                          <p>Evaluator Tier: <span className="font-semibold bg-gray-200 dark:bg-gray-600 px-2 py-0.5 rounded-full">{evalResult.evaluator_tier}</span></p>
+                                          {isCorrect ? 
+                                            <span className="font-bold px-2 py-0.5 rounded-full bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">Correct</span> : 
+                                            <span className="font-bold px-2 py-0.5 rounded-full bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200">Changed</span>
+                                          }
                                         </div>
+                                        {evalResult.override_reason && (
+                                            <div className="pt-2 border-t border-gray-200 dark:border-gray-600">
+                                                <p className="text-xs text-gray-500 dark:text-gray-400 flex items-start gap-2">
+                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4 flex-shrink-0 mt-0.5"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
+                                                    <span className="italic">{evalResult.override_reason}</span>
+                                                </p>
+                                            </div>
+                                        )}
                                     </div>
                                     )
                                })}
