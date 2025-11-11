@@ -11,12 +11,30 @@ interface SubChallengeDetailProps {
     currentUser: Profile;
 }
 
+interface ManagerViewProps {
+    subChallenge: SubChallengeWithSubmissions;
+    onPublish: () => void;
+    isPublishing: boolean;
+}
+
+
 // Manager's view of all submissions
-const ManagerView: React.FC<{ subChallenge: SubChallengeWithSubmissions }> = ({ subChallenge }) => {
+const ManagerView: React.FC<ManagerViewProps> = ({ subChallenge, onPublish, isPublishing }) => {
     const scoresPublished = !!subChallenge.scores_published_at;
+    const allEvaluated = (subChallenge.submissions?.length || 0) > 0 && subChallenge.submissions.every(s => !!s.evaluation);
+
     return (
         <div>
-            <h2 className="text-2xl font-semibold mb-4">Submissions Overview</h2>
+            <div className="flex justify-between items-center mb-4 flex-wrap gap-2">
+                <h2 className="text-2xl font-semibold">Submissions Overview</h2>
+                 <Button 
+                    onClick={onPublish} 
+                    disabled={!allEvaluated || scoresPublished || isPublishing}
+                    title={!allEvaluated ? "All submissions must be evaluated before publishing." : scoresPublished ? "Scores have already been published." : ""}
+                >
+                    {isPublishing ? 'Publishing...' : (scoresPublished ? 'Scores Published' : 'Publish All Scores')}
+                </Button>
+            </div>
             <Card>
                 <div className="overflow-x-auto">
                     <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
@@ -232,53 +250,91 @@ export const SubChallengeDetail: React.FC<SubChallengeDetailProps> = ({ currentU
     const [loading, setLoading] = useState(true);
     const [linkCopied, setLinkCopied] = useState(false);
 
-    useEffect(() => {
-        const fetchDetails = async () => {
-            if (!subChallengeId) return;
-            setLoading(true);
-            const { data: scData, error: scError } = await supabase
-                .from('sub_challenges')
-                .select('*, submissions(*, profiles(id, name, avatar_url, email, role))')
-                .eq('id', subChallengeId!)
-                .single<SubChallengeWithSubmissions>();
-            
-            if (scError) {
-                console.error(scError);
-                setLoading(false);
-                return;
-            }
+    // State for publishing action
+    const [isPublishing, setIsPublishing] = useState(false);
+    const [publishError, setPublishError] = useState<string | null>(null);
+    const [publishSuccess, setPublishSuccess] = useState<string | null>(null);
 
-            if (scData) {
-                setSubChallenge(scData);
-
-                const overallChallengePromise = supabase
-                    .from('overall_challenges')
-                    .select('*')
-                    .eq('id', scData.overall_challenge_id)
-                    .single();
-
-                const evaluatorsPromise = (scData.evaluator_ids && scData.evaluator_ids.length > 0)
-                    ? supabase.from('profiles').select('*').in('id', scData.evaluator_ids)
-                    : Promise.resolve({ data: [], error: null });
-
-                const [ocResult, evaluatorsResult] = await Promise.all([overallChallengePromise, evaluatorsPromise]);
-                
-                if (ocResult.error) {
-                    console.error(ocResult.error);
-                } else if (ocResult.data) {
-                    setOverallChallenge(ocResult.data as unknown as OverallChallenge);
-                }
-
-                if (evaluatorsResult.error) {
-                    console.error('Error fetching evaluators:', evaluatorsResult.error);
-                } else if (evaluatorsResult.data) {
-                    setEvaluators(evaluatorsResult.data as Profile[]);
-                }
-            }
+    const fetchDetails = async () => {
+        if (!subChallengeId) return;
+        setLoading(true);
+        const { data: scData, error: scError } = await supabase
+            .from('sub_challenges')
+            .select('*, submissions(*, profiles(id, name, avatar_url, email, role))')
+            .eq('id', subChallengeId!)
+            .single<SubChallengeWithSubmissions>();
+        
+        if (scError) {
+            console.error(scError);
             setLoading(false);
-        };
+            return;
+        }
+
+        if (scData) {
+            setSubChallenge(scData);
+
+            const overallChallengePromise = supabase
+                .from('overall_challenges')
+                .select('*')
+                .eq('id', scData.overall_challenge_id)
+                .single();
+
+            const evaluatorsPromise = (scData.evaluator_ids && scData.evaluator_ids.length > 0)
+                ? supabase.from('profiles').select('*').in('id', scData.evaluator_ids)
+                : Promise.resolve({ data: [], error: null });
+
+            const [ocResult, evaluatorsResult] = await Promise.all([overallChallengePromise, evaluatorsPromise]);
+            
+            if (ocResult.error) {
+                console.error(ocResult.error);
+            } else if (ocResult.data) {
+                setOverallChallenge(ocResult.data as unknown as OverallChallenge);
+            }
+
+            if (evaluatorsResult.error) {
+                console.error('Error fetching evaluators:', evaluatorsResult.error);
+            } else if (evaluatorsResult.data) {
+                setEvaluators(evaluatorsResult.data as Profile[]);
+            }
+        }
+        setLoading(false);
+    };
+
+    useEffect(() => {
         fetchDetails();
     }, [subChallengeId]);
+
+    const handlePublishScores = async () => {
+        if (!subChallengeId) return;
+        const isConfirmed = window.confirm("Are you sure you want to publish all scores? This action will make the leaderboard and results visible to all participants.");
+        if (isConfirmed) {
+            setIsPublishing(true);
+            setPublishError(null);
+            setPublishSuccess(null);
+
+            const { error } = await supabase
+                .from('sub_challenges')
+                .update({ scores_published_at: new Date().toISOString() })
+                .eq('id', subChallengeId);
+            
+            if (error) {
+                setPublishError(`Failed to publish scores: ${error.message}`);
+            } else {
+                setPublishSuccess("Scores published successfully!");
+                // Refetch just the subchallenge to update its status
+                const { data: scData } = await supabase
+                    .from('sub_challenges')
+                    .select('*, submissions(*, profiles(id, name, avatar_url, email, role))')
+                    .eq('id', subChallengeId!)
+                    .single<SubChallengeWithSubmissions>();
+                if (scData) {
+                    setSubChallenge(scData);
+                }
+                setTimeout(() => setPublishSuccess(null), 3000);
+            }
+            setIsPublishing(false);
+        }
+    };
 
     const handleCopyPublicLink = () => {
         const link = `${window.location.origin}/#/sub-challenge-leaderboard/${subChallengeId}`;
@@ -361,8 +417,19 @@ export const SubChallengeDetail: React.FC<SubChallengeDetailProps> = ({ currentU
                     </div>
                 )}
             </Card>
+            
+            {publishError && (
+                <div className="mb-4 p-3 rounded-md bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-200 text-sm" role="alert">
+                    {publishError}
+                </div>
+            )}
+            {publishSuccess && (
+                <div className="mb-4 p-3 rounded-md bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-200 text-sm" role="alert">
+                    {publishSuccess}
+                </div>
+            )}
 
-            {currentUser.role === Role.MANAGER && <ManagerView subChallenge={subChallenge} />}
+            {currentUser.role === Role.MANAGER && <ManagerView subChallenge={subChallenge} onPublish={handlePublishScores} isPublishing={isPublishing} />}
             {currentUser.role === Role.TRAINEE && batchId && <TraineeView batchId={batchId} subChallenge={subChallenge} overallChallenge={overallChallenge} currentUser={currentUser} />}
             <style>{`
             .prose mark {
