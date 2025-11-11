@@ -286,6 +286,7 @@ export type Database = {
           overall_challenge_id: string
           patent_number: string | null
           report_end_time: string | null
+          scores_published_at: string | null
           submission_end_time: string
           summary: string | null
           title: string
@@ -299,6 +300,7 @@ export type Database = {
           overall_challenge_id: string
           patent_number?: string | null
           report_end_time?: string | null
+          scores_published_at?: string | null
           submission_end_time: string
           summary?: string | null
           title: string
@@ -312,6 +314,7 @@ export type Database = {
           overall_challenge_id?: string
           patent_number?: string | null
           report_end_time?: string | null
+          scores_published_at?: string | null
           submission_end_time?: string
           summary?: string | null
           title?: string

@@ -13,6 +13,7 @@ interface SubChallengeDetailProps {
 
 // Manager's view of all submissions
 const ManagerView: React.FC<{ subChallenge: SubChallengeWithSubmissions }> = ({ subChallenge }) => {
+    const scoresPublished = !!subChallenge.scores_published_at;
     return (
         <div>
             <h2 className="text-2xl font-semibold mb-4">Submissions Overview</h2>
@@ -44,7 +45,9 @@ const ManagerView: React.FC<{ subChallenge: SubChallengeWithSubmissions }> = ({ 
                                                 <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200">Pending</span>
                                             )}
                                         </td>
-                                        <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold">{submission.evaluation ? score : 'N/A'}</td>
+                                        <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold">
+                                             {scoresPublished ? (submission.evaluation ? score : 'N/A') : 'Pending Publication'}
+                                        </td>
                                     </tr>
                                 );
                             })}
@@ -115,6 +118,7 @@ const TraineeView: React.FC<TraineeViewProps> = ({ batchId, subChallenge, overal
     const results = submission.results as unknown as SubmittedResult[] | null;
     const reportFile = submission.report_file as { name: string; path: string; } | null;
     const rules = subChallenge.evaluation_rules as unknown as EvaluationRules;
+    const scoresPublished = !!subChallenge.scores_published_at;
 
     const MAX_RESULTS = 6;
     const canSubmitMore = !results || results.length < MAX_RESULTS;
@@ -164,7 +168,7 @@ const TraineeView: React.FC<TraineeViewProps> = ({ batchId, subChallenge, overal
                 </div>
                 <div>
                     <h2 className="text-2xl font-semibold mb-4">Evaluation Result</h2>
-                    {evaluation ? (
+                    {scoresPublished && evaluation ? (
                         <Card>
                             <div className="mb-4 pb-4 border-b dark:border-gray-700">
                                 <h3 className="text-lg font-semibold">Final Score</h3>
@@ -210,7 +214,9 @@ const TraineeView: React.FC<TraineeViewProps> = ({ batchId, subChallenge, overal
                         </Card>
                     ) : (
                         <Card className="text-center py-10">
-                            <p className="text-gray-500">Your submission has not been evaluated yet.</p>
+                            <p className="text-gray-500">
+                                { submission.evaluation ? "Scores for this challenge have not been published yet." : "Your submission has not been evaluated yet."}
+                            </p>
                         </Card>
                     )}
                 </div>

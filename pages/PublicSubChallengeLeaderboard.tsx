@@ -58,6 +58,14 @@ export const PublicSubChallengeLeaderboard: React.FC = () => {
             }
             
             const subChallenge = subChallengeData as unknown as SubChallenge & { submissions: (Submission & { profiles: {id: string; name: string} | null })[] };
+            
+            // Check if scores have been published before proceeding
+            if (!subChallenge.scores_published_at) {
+                setError("Scores for this sub-challenge have not been published yet.");
+                setLoading(false);
+                return;
+            }
+            
             const evaluatedSubmissions = subChallenge.submissions.filter(s => s.evaluation && s.profiles);
 
             // --- Process Data Client-Side for Highlights ---

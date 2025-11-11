@@ -124,9 +124,12 @@ export const ChallengeDetail: React.FC<ChallengeDetailProps> = ({ currentUser })
         if (!challenge) return 0;
         let totalScore = 0;
         challenge.sub_challenges.forEach(sc => {
-            const submission = sc.submissions?.find(s => s.trainee_id === traineeId);
-            if (submission) {
-                totalScore += calculateScore(submission, sc);
+            // Only include scores from sub-challenges where they have been published
+            if (sc.scores_published_at) {
+                const submission = sc.submissions?.find(s => s.trainee_id === traineeId);
+                if (submission) {
+                    totalScore += calculateScore(submission, sc);
+                }
             }
         });
         return totalScore;
@@ -184,7 +187,7 @@ export const ChallengeDetail: React.FC<ChallengeDetailProps> = ({ currentUser })
                 const results = (submission.results as unknown as SubmittedResult[]) || [];
                 const evaluation = submission.evaluation as unknown as Evaluation | null;
                 const rules = sc.evaluation_rules as unknown as EvaluationRules;
-                const subChallengeScore = calculateScore(submission, sc);
+                const subChallengeScore = sc.scores_published_at ? calculateScore(submission, sc) : 'Pending Publication';
                 const overallScore = overallScores.get(trainee.id) || 0;
 
                 if (results.length === 0) {

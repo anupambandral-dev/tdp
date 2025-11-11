@@ -100,6 +100,7 @@ interface EvaluateSubmissionProps {
 }
 
 type SubChallengeForEvaluation = SubChallengeWithSubmissions & {
+    scores_published_at: string | null;
     overall_challenges: Pick<OverallChallenge, 'ended_at'> | null;
 };
 
@@ -305,6 +306,27 @@ export const EvaluateSubmission: React.FC<EvaluateSubmissionProps> = ({ currentU
         await fetchChallenge(); // Re-fetch to update progress bar on dashboard
     };
 
+    const handlePublishScores = async () => {
+        if (!challengeId) return;
+        const isConfirmed = window.confirm("Are you sure you want to publish all scores? This action will make the leaderboard and results visible to all participants.");
+        if (isConfirmed) {
+            setIsSaving(true);
+            const { error } = await supabase
+                .from('sub_challenges')
+                .update({ scores_published_at: new Date().toISOString() })
+                .eq('id', challengeId);
+            
+            if (error) {
+                setError(`Failed to publish scores: ${error.message}`);
+            } else {
+                setSuccess("Scores published successfully!");
+                fetchChallenge(); // Refresh to show updated status
+            }
+            setIsSaving(false);
+        }
+    };
+
+
     if (loading) return <div className="p-8">Loading evaluation...</div>;
     if (!challenge) return <div className="p-8 text-center">Challenge not found.</div>;
     if (challenge.submissions.length === 0) {
@@ -324,12 +346,28 @@ export const EvaluateSubmission: React.FC<EvaluateSubmissionProps> = ({ currentU
     const reportFile = selectedSubmission?.report_file as { name: string; path: string; } | null;
     const downloadFilename = reportFile ? `${challenge.title}_${selectedSubmission?.profiles?.name}_${reportFile.name}`.replace(/[\s/\\?%*:|"<>]/g, '_') : 'report';
 
+    const allEvaluated = challenge.submissions.length > 0 && challenge.submissions.every(s => !!s.evaluation);
+    const scoresPublished = !!challenge.scores_published_at;
+
 
     return (
         <div className="container mx-auto p-4 sm:p-6 lg:p-8">
             <BackButton to={`/batch/${batchId}/level/4/evaluator`} text="Back to Dashboard" />
-            <h1 className="text-3xl font-bold mb-2">{challenge.title}</h1>
-            <p className="text-gray-500 dark:text-gray-400 mb-6">Evaluation Form</p>
+            <div className="flex justify-between items-start flex-wrap gap-4 mb-6">
+                 <div>
+                    <h1 className="text-3xl font-bold mb-2">{challenge.title}</h1>
+                    <p className="text-gray-500 dark:text-gray-400">Evaluation Form</p>
+                </div>
+                <div>
+                    <Button 
+                        onClick={handlePublishScores} 
+                        disabled={!allEvaluated || scoresPublished || isSaving}
+                        title={!allEvaluated ? "All submissions must be evaluated before publishing." : scoresPublished ? "Scores have already been published." : ""}
+                    >
+                        {scoresPublished ? 'Scores Published' : 'Publish All Scores'}
+                    </Button>
+                </div>
+            </div>
             
             <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
                 <div className="lg:col-span-1">

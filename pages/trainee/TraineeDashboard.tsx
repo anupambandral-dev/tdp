@@ -139,8 +139,10 @@ export const TraineeDashboard: React.FC<TraineeDashboardProps> = ({ currentUser 
           {traineeChallenges.map((challenge) => {
             const status = getStatus(challenge);
             const submission = challenge.submissions?.find(s => s.trainee_id === currentUser.id);
-            const score = submission?.evaluation ? calculateScore(submission, challenge) : 'N/A';
+            const scoresPublished = !!challenge.scores_published_at;
+            const score = scoresPublished ? (submission?.evaluation ? calculateScore(submission, challenge) : 'N/A') : 'Pending Publication';
             const deadlineDisplay = getDeadlineDisplay(challenge);
+            
             return (
                <Link to={`/batch/${batchId}/level/4/trainee/sub-challenge/${challenge.id}`} key={challenge.id} className="block">
                 <Card className="h-full flex flex-col hover:shadow-xl transition-shadow duration-200">

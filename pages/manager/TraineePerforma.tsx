@@ -119,6 +119,7 @@ export const TraineePerforma: React.FC = () => {
                     const results = submission?.results as unknown as SubmittedResult[] | null;
                     const reportFile = submission?.report_file as { name: string; path: string } | null;
                     const rules = subChallenge.evaluation_rules as unknown as EvaluationRules;
+                    const scoresPublished = !!subChallenge.scores_published_at;
 
                     return (
                         <Card key={subChallenge.id}>
@@ -156,7 +157,9 @@ export const TraineePerforma: React.FC = () => {
                                             <div className="mt-2 space-y-3">
                                                 <div className="flex justify-between items-baseline pb-2 border-b dark:border-gray-700">
                                                     <span className="font-bold">Total Score:</span>
-                                                    <span className="text-xl font-bold">{calculateScore(submission, subChallenge)}</span>
+                                                    <span className="text-xl font-bold">
+                                                         {scoresPublished ? calculateScore(submission, subChallenge) : 'Pending Publication'}
+                                                    </span>
                                                 </div>
                                                 <ul className="space-y-1 text-sm pt-2">
                                                     {evaluation.result_evaluations.map(re => {
