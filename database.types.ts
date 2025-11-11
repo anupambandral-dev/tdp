@@ -288,6 +288,7 @@ export type Database = {
           report_end_time: string | null
           scores_published_at: string | null
           submission_end_time: string
+          submission_limit: number | null
           summary: string | null
           title: string
         }
@@ -302,6 +303,7 @@ export type Database = {
           report_end_time?: string | null
           scores_published_at?: string | null
           submission_end_time: string
+          submission_limit?: number | null
           summary?: string | null
           title: string
         }
@@ -316,6 +318,7 @@ export type Database = {
           report_end_time?: string | null
           scores_published_at?: string | null
           submission_end_time?: string
+          submission_limit?: number | null
           summary?: string | null
           title?: string
         }

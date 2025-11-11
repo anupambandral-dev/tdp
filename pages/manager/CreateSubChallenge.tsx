@@ -26,6 +26,7 @@ export const CreateSubChallenge: React.FC = () => {
     const [claimFocus, setClaimFocus] = useState('');
     const [submissionEndTime, setSubmissionEndTime] = useState('');
     const [reportEndTime, setReportEndTime] = useState('');
+    const [submissionLimit, setSubmissionLimit] = useState<number | string>(6);
     const [rules, setRules] = useState<EvaluationRules>({
         tierScores: {
             [ResultType.PATENT]: {
@@ -136,6 +137,7 @@ export const CreateSubChallenge: React.FC = () => {
             claim_focus: claimFocus,
             submission_end_time: new Date(submissionEndTime).toISOString(),
             report_end_time: rules.report.enabled ? new Date(reportEndTime).toISOString() : null,
+            submission_limit: submissionLimit === '' ? null : Number(submissionLimit),
             evaluation_rules: rules as unknown as Json,
             evaluator_ids: selectedEvaluatorIds,
         };
@@ -181,6 +183,11 @@ export const CreateSubChallenge: React.FC = () => {
                     <div>
                         <label htmlFor="submissionEndTime">Results Submission End Time</label>
                         <input id="submissionEndTime" type="datetime-local" value={submissionEndTime} onChange={e => setSubmissionEndTime(e.target.value)} required className="input" />
+                    </div>
+                    <div>
+                        <label htmlFor="submissionLimit">Max number of results per participant</label>
+                        <input id="submissionLimit" type="number" value={submissionLimit} onChange={e => setSubmissionLimit(e.target.value)} placeholder="e.g., 6" min="1" className="input" />
+                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Leave blank for no limit.</p>
                     </div>
                     <div>
                         <label htmlFor="summary">Summary</label>

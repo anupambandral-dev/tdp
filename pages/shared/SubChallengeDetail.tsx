@@ -120,8 +120,7 @@ const TraineeView: React.FC<TraineeViewProps> = ({ batchId, subChallenge, overal
     const rules = subChallenge.evaluation_rules as unknown as EvaluationRules;
     const scoresPublished = !!subChallenge.scores_published_at;
 
-    const MAX_RESULTS = 6;
-    const canSubmitMore = !results || results.length < MAX_RESULTS;
+    const canSubmitMore = !subChallenge.submission_limit || !results || results.length < subChallenge.submission_limit;
 
     return (
         <div className="space-y-6">
@@ -142,7 +141,7 @@ const TraineeView: React.FC<TraineeViewProps> = ({ batchId, subChallenge, overal
                             )}
                             {results && results.length > 0 && (
                                 <div>
-                                    <h3 className="text-md font-semibold text-gray-700 dark:text-gray-300">Submitted Results ({results.length}/{MAX_RESULTS})</h3>
+                                    <h3 className="text-md font-semibold text-gray-700 dark:text-gray-300">Submitted Results ({results.length}/{subChallenge.submission_limit ?? 'Unlimited'})</h3>
                                     <div className="mt-2 space-y-2">
                                         {results.map(result => (
                                         <div key={result.id} className="p-2 border-b dark:border-gray-700 last:border-b-0">

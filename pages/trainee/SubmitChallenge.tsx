@@ -38,8 +38,6 @@ export const SubmitChallenge: React.FC<SubmitChallengeProps> = ({ currentUser })
     const [errorMessage, setErrorMessage] = useState<string | null>(null);
     const [activeTab, setActiveTab] = useState<'results' | 'report'>('results');
 
-    const MAX_RESULTS = 6;
-
     const calculateTimeLeft = useCallback(() => {
         if (!subChallenge) return { results: '', report: '' };
         
@@ -197,8 +195,8 @@ export const SubmitChallenge: React.FC<SubmitChallengeProps> = ({ currentUser })
         if (latestSubmission) { // Submission exists, so UPDATE it
             const currentResults = (latestSubmission.results as unknown as SubmittedResult[] | null) || [];
 
-            if (currentResults.length >= MAX_RESULTS) {
-                setErrorMessage(`You cannot submit more than ${MAX_RESULTS} results.`);
+            if (subChallenge?.submission_limit !== null && currentResults.length >= subChallenge.submission_limit) {
+                setErrorMessage(`You cannot submit more than ${subChallenge.submission_limit} results.`);
                 setSubmitting(false);
                 return;
             }
@@ -376,7 +374,7 @@ export const SubmitChallenge: React.FC<SubmitChallengeProps> = ({ currentUser })
 
                 {activeTab === 'results' && (
                     <div className="py-6">
-                        <h2 className="text-xl font-semibold mb-4">Submitted Results ({results.length}/{MAX_RESULTS})</h2>
+                        <h2 className="text-xl font-semibold mb-4">Submitted Results ({results.length}/{subChallenge.submission_limit ?? 'Unlimited'})</h2>
                         <div className="space-y-4 mb-6">
                             {results.map(result => (
                                 <div key={result.id} className="flex items-center space-x-4 p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
@@ -393,7 +391,7 @@ export const SubmitChallenge: React.FC<SubmitChallengeProps> = ({ currentUser })
                             {results.length === 0 && <p className="text-center text-gray-500 py-4">No results submitted yet.</p>}
                         </div>
 
-                        {results.length < MAX_RESULTS && (
+                        {(!subChallenge.submission_limit || results.length < subChallenge.submission_limit) && (
                             <form onSubmit={handleResultSubmit} className={`p-4 border-t dark:border-gray-700 ${isResultsDisabled ? 'opacity-50' : ''}`}>
                                  <h3 className="font-medium mb-4">Add New Result</h3>
                                  <div className="space-y-4">
