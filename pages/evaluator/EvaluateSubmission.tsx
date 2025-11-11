@@ -4,7 +4,7 @@ import { supabase } from '../../supabaseClient';
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { BackButton } from '../../components/ui/BackButton';
-import { Profile, ResultEvaluation, SubmittedResult, SubChallenge, Submission, Evaluation, EvaluationRules, SubmissionWithProfile, SubChallengeWithSubmissions, Json, EvaluationResultTier, OverallChallenge, ResultType } from '../../types';
+import { Profile, ResultEvaluation, SubmittedResult, SubChallenge, Submission, Evaluation, EvaluationRules, SubmissionWithProfile, SubChallengeWithSubmissions, Json, EvaluationResultTier, OverallChallenge, ResultType, Role } from '../../types';
 
 const normalizeResultValue = (value: string, type: SubmittedResult['type']): string => {
     let normalized = value.trim().toLowerCase();
@@ -359,13 +359,15 @@ export const EvaluateSubmission: React.FC<EvaluateSubmissionProps> = ({ currentU
                     <p className="text-gray-500 dark:text-gray-400">Evaluation Form</p>
                 </div>
                 <div>
-                    <Button 
-                        onClick={handlePublishScores} 
-                        disabled={!allEvaluated || scoresPublished || isSaving}
-                        title={!allEvaluated ? "All submissions must be evaluated before publishing." : scoresPublished ? "Scores have already been published." : ""}
-                    >
-                        {scoresPublished ? 'Scores Published' : 'Publish All Scores'}
-                    </Button>
+                    {currentUser.role === Role.MANAGER && (
+                        <Button 
+                            onClick={handlePublishScores} 
+                            disabled={!allEvaluated || scoresPublished || isSaving}
+                            title={!allEvaluated ? "All submissions must be evaluated before publishing." : scoresPublished ? "Scores have already been published." : ""}
+                        >
+                            {scoresPublished ? 'Scores Published' : 'Publish All Scores'}
+                        </Button>
+                    )}
                 </div>
             </div>
             
