@@ -4,7 +4,7 @@ import { supabase } from '../../supabaseClient';
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { BackButton } from '../../components/ui/BackButton';
-import { Profile, ResultEvaluation, SubmittedResult, SubChallenge, Submission, Evaluation, EvaluationRules, SubmissionWithProfile, SubChallengeWithSubmissions, Json, EvaluationResultTier, OverallChallenge, ResultType, Role } from '../../types';
+import { Profile, ResultEvaluation, SubmittedResult, SubChallenge, Submission, Evaluation, EvaluationRules, SubmissionWithProfile, SubChallengeWithSubmissions, Json, EvaluationResultTier, OverallChallenge, ResultType, Role, ResultTier } from '../../types';
 
 const normalizeResultValue = (value: string, type: SubmittedResult['type']): string => {
     let normalized = value.trim().toLowerCase();
@@ -94,6 +94,66 @@ const DuplicateCheckView: React.FC<{ submissions: SubmissionWithProfile[] }> = (
     );
 };
 
+const TierSubmissionsView: React.FC<{ tier: ResultTier; submissions: SubmissionWithProfile[] }> = ({ tier, submissions }) => {
+    const tierResults = useMemo(() => {
+        const results: { value: string; profile: Profile | null; submittedAt: string }[] = [];
+        
+        submissions.forEach(sub => {
+            const submittedResults = (sub.results as unknown as SubmittedResult[]) || [];
+            submittedResults.forEach(result => {
+                if (result.trainee_tier === tier) {
+                    results.push({
+                        value: result.value,
+                        profile: sub.profiles,
+                        submittedAt: result.submitted_at || sub.submitted_at
+                    });
+                }
+            });
+        });
+
+        // Sort by submission time, earliest first
+        return results.sort((a, b) => new Date(a.submittedAt).getTime() - new Date(b.submittedAt).getTime());
+    }, [tier, submissions]);
+
+    if (tierResults.length === 0) {
+        return (
+            <Card>
+                <p className="text-center text-gray-500">No {tier} results submitted.</p>
+            </Card>
+        );
+    }
+
+    return (
+        <div className="space-y-4">
+            <h2 className="text-2xl font-semibold">{tier} Submissions ({tierResults.length})</h2>
+            <Card>
+                <div className="overflow-x-auto">
+                    <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                        <thead className="bg-gray-50 dark:bg-gray-700">
+                            <tr>
+                                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Result</th>
+                                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Submitted By</th>
+                                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Submitted At</th>
+                            </tr>
+                        </thead>
+                        <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+                            {tierResults.map((result, index) => (
+                                <tr key={index}>
+                                    <td className="px-6 py-4 whitespace-pre-wrap font-mono text-sm">{result.value}</td>
+                                    <td className="px-6 py-4 whitespace-nowrap">{result.profile?.name || 'Unknown'}</td>
+                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                                        {new Date(result.submittedAt).toLocaleString()}
+                                    </td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
+            </Card>
+        </div>
+    );
+};
+
 
 interface EvaluateSubmissionProps {
     currentUser: Profile;
@@ -104,6 +164,8 @@ type SubChallengeForEvaluation = SubChallengeWithSubmissions & {
     overall_challenges: Pick<OverallChallenge, 'ended_at'> | null;
 };
 
+type ActiveTab = 'evaluate' | 'duplicates' | 'tier1' | 'tier2' | 'tier3';
+
 export const EvaluateSubmission: React.FC<EvaluateSubmissionProps> = ({ currentUser }) => {
     const { batchId, challengeId } = useParams<{ batchId: string; challengeId: string }>();
     const navigate = useNavigate();
@@ -111,7 +173,7 @@ export const EvaluateSubmission: React.FC<EvaluateSubmissionProps> = ({ currentU
     const [loading, setLoading] = useState(true);
 
     const [selectedTraineeId, setSelectedTraineeId] = useState<string | null>(null);
-    const [activeTab, setActiveTab] = useState<'evaluate' | 'duplicates'>('evaluate');
+    const [activeTab, setActiveTab] = useState<ActiveTab>('evaluate');
     
     // Derived state for the selected submission
     const selectedSubmission = useMemo(() => {
@@ -357,12 +419,21 @@ export const EvaluateSubmission: React.FC<EvaluateSubmissionProps> = ({ currentU
 
                 <div className="lg:col-span-3">
                     <div className="border-b border-gray-200 dark:border-gray-700 mb-6">
-                        <nav className="-mb-px flex space-x-8" aria-label="Tabs">
+                        <nav className="-mb-px flex space-x-4 flex-wrap" aria-label="Tabs">
                             <button onClick={() => setActiveTab('evaluate')} className={`${activeTab === 'evaluate' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'} whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm`}>
                                 Evaluate Submission
                             </button>
                             <button onClick={() => setActiveTab('duplicates')} className={`${activeTab === 'duplicates' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'} whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm`}>
                                 Duplicate Check
+                            </button>
+                             <button onClick={() => setActiveTab('tier1')} className={`${activeTab === 'tier1' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'} whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm`}>
+                                Tier 1 Submissions
+                            </button>
+                             <button onClick={() => setActiveTab('tier2')} className={`${activeTab === 'tier2' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'} whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm`}>
+                                Tier 2 Submissions
+                            </button>
+                             <button onClick={() => setActiveTab('tier3')} className={`${activeTab === 'tier3' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'} whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm`}>
+                                Tier 3 Submissions
                             </button>
                         </nav>
                     </div>
@@ -496,6 +567,15 @@ export const EvaluateSubmission: React.FC<EvaluateSubmissionProps> = ({ currentU
                     
                     {activeTab === 'duplicates' && challenge && (
                         <DuplicateCheckView submissions={challenge.submissions} />
+                    )}
+                    {activeTab === 'tier1' && challenge && (
+                        <TierSubmissionsView tier={ResultTier.TIER_1} submissions={challenge.submissions} />
+                    )}
+                     {activeTab === 'tier2' && challenge && (
+                        <TierSubmissionsView tier={ResultTier.TIER_2} submissions={challenge.submissions} />
+                    )}
+                     {activeTab === 'tier3' && challenge && (
+                        <TierSubmissionsView tier={ResultTier.TIER_3} submissions={challenge.submissions} />
                     )}
                 </div>
             </div>
