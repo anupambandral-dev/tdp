@@ -1,5 +1,6 @@
 
 
+
 import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import { supabase } from '../supabaseClient';
@@ -58,7 +59,7 @@ export const PublicLeaderboard: React.FC = () => {
         return null;
     };
 
-    if (loading) return <div className="min-h-screen flex items-center justify-center p-4 bg-gray-100 dark:bg-gray-900"><p className="text-gray-500">Loading leaderboard...</p></div>;
+    if (loading) return <div className="min-h-screen flex items-center justify-center p-4 bg-gray-100 dark:bg-gray-900"><p className="text-gray-500 dark:text-gray-400">Loading leaderboard...</p></div>;
     if (error) return <div className="min-h-screen flex items-center justify-center p-4 bg-red-100 dark:bg-red-900"><Card><p className="text-red-700 dark:text-red-200">{error}</p></Card></div>;
     if (!leaderboardData || !leaderboardData.challenge_name) return <div className="min-h-screen flex items-center justify-center p-4"><p>Challenge not found.</p></div>;
 
@@ -97,12 +98,12 @@ export const PublicLeaderboard: React.FC = () => {
                             ))}
                         </ul>
                          {leaderboard.length === 0 && (
-                            <p className="text-center text-gray-500 py-6">No participants have submitted evaluated work yet.</p>
+                            <p className="text-center text-gray-500 dark:text-gray-400 py-6">No participants have submitted evaluated work yet.</p>
                         )}
                     </div>
                 </Card>
                  <footer className="text-center mt-4">
-                    <p className="text-xs text-gray-500">Tour de Prior Art</p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400">Tour de Prior Art</p>
                 </footer>
             </main>
         </div>

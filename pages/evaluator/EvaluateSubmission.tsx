@@ -386,6 +386,8 @@ export const EvaluateSubmission: React.FC<EvaluateSubmissionProps> = ({ currentU
     const isChallengeEnded = !!challenge.overall_challenges?.ended_at;
     const reportFile = selectedSubmission?.report_file as { name: string; path: string; } | null;
     const downloadFilename = reportFile ? `${challenge.title}_${selectedSubmission?.profiles?.name}_${reportFile.name}`.replace(/[\s/\\?%*:|"<>]/g, '_') : 'report';
+    const formInputClasses = "block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 p-2 text-sm";
+    const formLabelClasses = "block mb-1 text-sm font-medium";
 
     return (
         <div className="container mx-auto p-4 sm:p-6 lg:p-8">
@@ -487,7 +489,7 @@ export const EvaluateSubmission: React.FC<EvaluateSubmissionProps> = ({ currentU
                                                                 const newTier = e.target.value as EvaluationResultTier;
                                                                 setResultEvals(prev => prev.map(re => re.result_id === result.id ? { ...re, evaluator_tier: newTier } : re));
                                                             }}
-                                                            className="input w-32"
+                                                            className={`${formInputClasses} w-32`}
                                                             disabled={isChallengeEnded}
                                                         >
                                                             {Object.values(EvaluationResultTier).map(tier => <option key={tier} value={tier}>{tier}</option>)}
@@ -496,7 +498,7 @@ export const EvaluateSubmission: React.FC<EvaluateSubmissionProps> = ({ currentU
                                                             type="number" 
                                                             placeholder="Score" 
                                                             title="Override Score"
-                                                            className="input w-24"
+                                                            className={`${formInputClasses} w-24`}
                                                             value={currentEval?.score_override ?? ''}
                                                             onChange={(e) => {
                                                                 const value = e.target.value;
@@ -508,7 +510,7 @@ export const EvaluateSubmission: React.FC<EvaluateSubmissionProps> = ({ currentU
                                                             type="text" 
                                                             placeholder="Reason for override"
                                                             title="Reason for override"
-                                                            className="input flex-grow min-w-40"
+                                                            className={`${formInputClasses} flex-grow min-w-40`}
                                                             value={currentEval?.override_reason ?? ''}
                                                             onChange={(e) => {
                                                                 const value = e.target.value;
@@ -525,8 +527,8 @@ export const EvaluateSubmission: React.FC<EvaluateSubmissionProps> = ({ currentU
                                                 <h3 className="text-lg font-semibold mb-2">Report & Feedback</h3>
                                                 <div className="space-y-4">
                                                     <div>
-                                                        <label htmlFor="reportScore">Report Score (Max: {rules.report.maxScore})</label>
-                                                        <input id="reportScore" type="number" max={rules.report.maxScore} min="0" value={reportScore} onChange={e => setReportScore(e.target.value)} className="input" disabled={isChallengeEnded} />
+                                                        <label htmlFor="reportScore" className={formLabelClasses}>Report Score (Max: {rules.report.maxScore})</label>
+                                                        <input id="reportScore" type="number" max={rules.report.maxScore} min="0" value={reportScore} onChange={e => setReportScore(e.target.value)} className={formInputClasses} disabled={isChallengeEnded} />
                                                         {reportUrl && reportFile && (
                                                             <a
                                                                 href={reportUrl}
@@ -540,8 +542,8 @@ export const EvaluateSubmission: React.FC<EvaluateSubmissionProps> = ({ currentU
                                                         )}
                                                     </div>
                                                     <div>
-                                                        <label htmlFor="feedback">Overall Feedback</label>
-                                                        <textarea id="feedback" value={feedback} onChange={e => setFeedback(e.target.value)} rows={4} className="input" disabled={isChallengeEnded} />
+                                                        <label htmlFor="feedback" className={formLabelClasses}>Overall Feedback</label>
+                                                        <textarea id="feedback" value={feedback} onChange={e => setFeedback(e.target.value)} rows={4} className={formInputClasses} disabled={isChallengeEnded} />
                                                     </div>
                                                 </div>
                                             </div>
@@ -579,7 +581,6 @@ export const EvaluateSubmission: React.FC<EvaluateSubmissionProps> = ({ currentU
                     )}
                 </div>
             </div>
-            <style>{`.input { display: block; width: 100%; border-radius: 0.375rem; border: 1px solid #D1D5DB; padding: 0.5rem 0.75rem; } .dark .input { background-color: #374151; border-color: #4B5563; }`}</style>
         </div>
     );
 };

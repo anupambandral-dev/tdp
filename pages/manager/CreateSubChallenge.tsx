@@ -1,5 +1,6 @@
 
 
+
 import React, { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { supabase } from '../../supabaseClient';
@@ -163,6 +164,10 @@ export const CreateSubChallenge: React.FC = () => {
         return <div className="text-center p-8">Overall Challenge not found.</div>;
     }
 
+    const inputClasses = "block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 p-2";
+    const labelClasses = "block mb-1 text-sm font-medium text-gray-700 dark:text-gray-300";
+
+
     return (
         <div className="container mx-auto p-4 sm:p-6 lg:p-8 max-w-4xl">
             <BackButton to={`/batch/${batchId}/level/4/challenge/${challengeId}`} text="Back to Challenge" />
@@ -172,34 +177,34 @@ export const CreateSubChallenge: React.FC = () => {
                 <form onSubmit={handleSubmit} className="space-y-6">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div>
-                            <label htmlFor="title">Title</label>
-                            <input id="title" type="text" value={title} onChange={e => setTitle(e.target.value)} required className="input" />
+                            <label htmlFor="title" className={labelClasses}>Title</label>
+                            <input id="title" type="text" value={title} onChange={e => setTitle(e.target.value)} required className={inputClasses} />
                         </div>
                         <div>
-                            <label htmlFor="patentNumber">Patent Number</label>
-                            <input id="patentNumber" type="text" value={patentNumber} onChange={e => setPatentNumber(e.target.value)} className="input" />
+                            <label htmlFor="patentNumber" className={labelClasses}>Patent Number</label>
+                            <input id="patentNumber" type="text" value={patentNumber} onChange={e => setPatentNumber(e.target.value)} className={inputClasses} />
                         </div>
                     </div>
                     <div>
-                        <label htmlFor="submissionEndTime">Results Submission End Time</label>
-                        <input id="submissionEndTime" type="datetime-local" value={submissionEndTime} onChange={e => setSubmissionEndTime(e.target.value)} required className="input" />
+                        <label htmlFor="submissionEndTime" className={labelClasses}>Results Submission End Time</label>
+                        <input id="submissionEndTime" type="datetime-local" value={submissionEndTime} onChange={e => setSubmissionEndTime(e.target.value)} required className={inputClasses} />
                     </div>
                     <div>
-                        <label htmlFor="submissionLimit">Max number of results per participant</label>
-                        <input id="submissionLimit" type="number" value={submissionLimit} onChange={e => setSubmissionLimit(e.target.value)} placeholder="e.g., 6" min="1" className="input" />
+                        <label htmlFor="submissionLimit" className={labelClasses}>Max number of results per participant</label>
+                        <input id="submissionLimit" type="number" value={submissionLimit} onChange={e => setSubmissionLimit(e.target.value)} placeholder="e.g., 6" min="1" className={inputClasses} />
                         <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Leave blank for no limit.</p>
                     </div>
                     <div>
-                        <label htmlFor="summary">Summary</label>
+                        <label htmlFor="summary" className={labelClasses}>Summary</label>
                         <RichTextInput value={summary} onChange={setSummary} />
                     </div>
                     <div>
-                        <label htmlFor="claimFocus">Claim Focus</label>
-                        <textarea id="claimFocus" value={claimFocus} onChange={e => setClaimFocus(e.target.value)} rows={2} className="input" />
+                        <label htmlFor="claimFocus" className={labelClasses}>Claim Focus</label>
+                        <textarea id="claimFocus" value={claimFocus} onChange={e => setClaimFocus(e.target.value)} rows={2} className={inputClasses} />
                     </div>
                     
                     <div>
-                        <label htmlFor="search-evaluators" className="block text-sm font-medium text-gray-700 dark:text-gray-300">Assign Evaluators</label>
+                        <label htmlFor="search-evaluators" className={labelClasses}>Assign Evaluators</label>
                         <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">Select users to evaluate submissions for this sub-challenge. If a user is not an 'Evaluator', their role will be updated automatically.</p>
                         <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">If no evaluators are assigned, the challenge managers will be responsible for evaluation.</p>
                         <input
@@ -208,7 +213,7 @@ export const CreateSubChallenge: React.FC = () => {
                             placeholder="Search users..."
                             value={searchTerm}
                             onChange={e => setSearchTerm(e.target.value)}
-                            className="mt-1 block w-full input"
+                            className={`mt-1 block w-full ${inputClasses}`}
                         />
                         <div className="mt-2 border rounded-md max-h-48 overflow-y-auto p-2 space-y-1 bg-gray-50 dark:bg-gray-800">
                             {loading ? <p className="text-center p-4">Loading users...</p> : filteredProfiles.map(profile => (
@@ -241,26 +246,26 @@ export const CreateSubChallenge: React.FC = () => {
                                 {Object.values(ResultTier).map(tier => (
                                     <React.Fragment key={tier}>
                                         <div className="flex items-center gap-2">
-                                            <label htmlFor={`patent_tier_${tier}`} className="w-16 text-sm">{tier}</label>
-                                            <input id={`patent_tier_${tier}`} type="number" value={rules.tierScores[ResultType.PATENT][tier]} onChange={e => handleScoreChange(ResultType.PATENT, tier, Number(e.target.value))} className="input w-full" />
+                                            <label htmlFor={`patent_tier_${tier}`} className={`${labelClasses} w-16 !mb-0`}>{tier}</label>
+                                            <input id={`patent_tier_${tier}`} type="number" value={rules.tierScores[ResultType.PATENT][tier]} onChange={e => handleScoreChange(ResultType.PATENT, tier, Number(e.target.value))} className={`${inputClasses} w-full`} />
                                         </div>
                                         <div className="flex items-center gap-2">
                                             <label htmlFor={`npl_tier_${tier}`} className="sr-only">{tier} NPL</label>
-                                            <input id={`npl_tier_${tier}`} type="number" value={rules.tierScores[ResultType.NON_PATENT][tier]} onChange={e => handleScoreChange(ResultType.NON_PATENT, tier, Number(e.target.value))} className="input w-full" />
+                                            <input id={`npl_tier_${tier}`} type="number" value={rules.tierScores[ResultType.NON_PATENT][tier]} onChange={e => handleScoreChange(ResultType.NON_PATENT, tier, Number(e.target.value))} className={`${inputClasses} w-full`} />
                                         </div>
                                     </React.Fragment>
                                 ))}
                             </div>
                             <div>
                                 <h3 className="font-medium mb-2">Incorrect Result Marking</h3>
-                                <select value={rules.incorrectMarking} onChange={e => setRules(prev => ({...prev, incorrectMarking: e.target.value as IncorrectMarking}))} className="input w-full">
+                                <select value={rules.incorrectMarking} onChange={e => setRules(prev => ({...prev, incorrectMarking: e.target.value as IncorrectMarking}))} className={`${inputClasses} w-full`}>
                                     <option value={IncorrectMarking.ZERO}>Award Zero Points</option>
                                     <option value={IncorrectMarking.PENALTY}>Apply Penalty</option>
                                 </select>
                                 {rules.incorrectMarking === IncorrectMarking.PENALTY && (
                                     <div className="mt-2">
-                                        <label htmlFor="penalty">Penalty (negative value)</label>
-                                        <input id="penalty" type="number" value={rules.incorrectPenalty} onChange={e => setRules(prev => ({...prev, incorrectPenalty: Number(e.target.value)}))} className="input w-full" />
+                                        <label htmlFor="penalty" className={labelClasses}>Penalty (negative value)</label>
+                                        <input id="penalty" type="number" value={rules.incorrectPenalty} onChange={e => setRules(prev => ({...prev, incorrectPenalty: Number(e.target.value)}))} className={`${inputClasses} w-full`} />
                                     </div>
                                 )}
                                 <div className="mt-6">
@@ -272,12 +277,12 @@ export const CreateSubChallenge: React.FC = () => {
                                      {rules.report.enabled && (
                                         <>
                                             <div className="mt-2">
-                                                <label htmlFor="maxScore">Report Max Score</label>
-                                                <input id="maxScore" type="number" value={rules.report.maxScore} onChange={e => setRules(prev => ({...prev, report: {...prev.report, maxScore: Number(e.target.value)}}))} className="input w-full" />
+                                                <label htmlFor="maxScore" className={labelClasses}>Report Max Score</label>
+                                                <input id="maxScore" type="number" value={rules.report.maxScore} onChange={e => setRules(prev => ({...prev, report: {...prev.report, maxScore: Number(e.target.value)}}))} className={`${inputClasses} w-full`} />
                                             </div>
                                             <div className="mt-4">
-                                                <label htmlFor="reportEndTime">Report Submission End Time</label>
-                                                <input id="reportEndTime" type="datetime-local" value={reportEndTime} onChange={e => setReportEndTime(e.target.value)} required={rules.report.enabled} className="input w-full" />
+                                                <label htmlFor="reportEndTime" className={labelClasses}>Report Submission End Time</label>
+                                                <input id="reportEndTime" type="datetime-local" value={reportEndTime} onChange={e => setReportEndTime(e.target.value)} required={rules.report.enabled} className={`${inputClasses} w-full`} />
                                             </div>
                                         </>
                                     )}
@@ -291,7 +296,6 @@ export const CreateSubChallenge: React.FC = () => {
                     </div>
                 </form>
             </Card>
-            <style>{`label { display: block; margin-bottom: 0.25rem; font-weight: 500; } .input { display: block; width: 100%; border-radius: 0.375rem; border: 1px solid #D1D5DB; padding: 0.5rem 0.75rem; } .dark .input { background-color: #374151; border-color: #4B5563; }`}</style>
         </div>
     );
 };

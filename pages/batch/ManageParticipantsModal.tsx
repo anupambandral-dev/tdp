@@ -12,7 +12,7 @@ interface ManageParticipantsModalProps {
 }
 
 const TrashIcon = () => (
-    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4 text-gray-500 hover:text-red-500"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2-2h-4"></path></svg>
+    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4 text-gray-500 dark:text-gray-400 hover:text-red-500"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2-2h-4"></path></svg>
 );
 
 
@@ -148,7 +148,7 @@ export const ManageParticipantsModal: React.FC<ManageParticipantsModalProps> = (
                                         </li>
                                     ))
                                  ) : (
-                                    <li className="p-2 text-gray-500">No new users found.</li>
+                                    <li className="p-2 text-gray-500 dark:text-gray-400">No new users found.</li>
                                  )
                                 }
                             </ul>
@@ -170,7 +170,7 @@ export const ManageParticipantsModal: React.FC<ManageParticipantsModalProps> = (
                                 </div>
                             ))
                         ) : (
-                            <p className="text-center text-gray-500 p-4">No participants added yet.</p>
+                            <p className="text-center text-gray-500 dark:text-gray-400 p-4">No participants added yet.</p>
                         )}
                     </div>
                 </div>

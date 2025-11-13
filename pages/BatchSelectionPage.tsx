@@ -1,5 +1,6 @@
 
 
+
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { supabase } from '../supabaseClient';
@@ -136,7 +137,7 @@ export const BatchSelectionPage: React.FC<BatchSelectionPageProps> = ({ currentU
             {batches.length === 0 && (
                 <div className="col-span-full">
                     <Card className="text-center py-10">
-                        <p className="text-gray-500">
+                        <p className="text-gray-500 dark:text-gray-400">
                             {isManager
                                 ? "You have not created or been assigned to any training batches."
                                 : "You have not been assigned to a training batch yet. Please contact your manager."

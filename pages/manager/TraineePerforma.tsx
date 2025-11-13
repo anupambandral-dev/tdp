@@ -1,5 +1,6 @@
 
 
+
 import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { supabase } from '../../supabaseClient';
@@ -33,7 +34,7 @@ const ReportLink: React.FC<{ reportFile: { name: string; path: string } | null }
 
     if (!reportFile) return null;
 
-    if (!url) return <p className="text-gray-500 text-sm">Generating secure link...</p>;
+    if (!url) return <p className="text-gray-500 dark:text-gray-400 text-sm">Generating secure link...</p>;
 
     return (
         <a href={url} className="text-blue-600 dark:text-blue-400 hover:underline text-sm" target="_blank" rel="noopener noreferrer">
@@ -125,7 +126,7 @@ export const TraineePerforma: React.FC = () => {
                         <Card key={subChallenge.id}>
                             <h3 className="text-xl font-semibold text-blue-600 dark:text-blue-400">{subChallenge.title}</h3>
                             {!submission ? (
-                                <p className="mt-4 text-gray-500 text-center py-4">Not Submitted</p>
+                                <p className="mt-4 text-gray-500 dark:text-gray-400 text-center py-4">Not Submitted</p>
                             ) : (
                                 <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-6">
                                     <div>
@@ -138,7 +139,7 @@ export const TraineePerforma: React.FC = () => {
                                                     <div key={r.id} className="p-2 bg-gray-100 dark:bg-gray-700 rounded-md text-xs">
                                                         <p className="font-mono truncate">{r.value}</p>
                                                         <p>{r.type} - Submitted as {r.trainee_tier}</p>
-                                                        {r.submitted_at && <p className="text-gray-500">Submitted: {new Date(r.submitted_at).toLocaleString()}</p>}
+                                                        {r.submitted_at && <p className="text-gray-500 dark:text-gray-400">Submitted: {new Date(r.submitted_at).toLocaleString()}</p>}
                                                     </div>
                                                 ))}
                                                 </div>
@@ -169,7 +170,7 @@ export const TraineePerforma: React.FC = () => {
                                                         return (
                                                         <li key={re.result_id} className="flex justify-between p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700">
                                                             <span className="font-mono text-xs truncate w-3/5">{result.value}</span>
-                                                            <span className={isCorrect ? 'text-green-500' : 'text-orange-500'}>{isCorrect ? 'Correct' : 'Incorrect'}</span>
+                                                            <span className={isCorrect ? 'text-green-500 dark:text-green-400' : 'text-orange-500 dark:text-orange-400'}>{isCorrect ? 'Correct' : 'Incorrect'}</span>
                                                         </li>
                                                         )
                                                     })}
@@ -194,7 +195,7 @@ export const TraineePerforma: React.FC = () => {
                     );
                 })}
                  {sortedSubChallenges.length === 0 && (
-                    <Card><p className="text-center text-gray-500">No sub-challenges in this challenge yet.</p></Card>
+                    <Card><p className="text-center text-gray-500 dark:text-gray-400">No sub-challenges in this challenge yet.</p></Card>
                  )}
             </div>
         </div>

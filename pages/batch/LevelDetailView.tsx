@@ -23,9 +23,9 @@ const LevelPlaceholder: React.FC<{ levelId: string; participants: BatchParticipa
                 <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
                     <thead className="bg-gray-50 dark:bg-gray-700">
                         <tr>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Cluster</th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Performance</th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Name</th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Cluster</th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Performance</th>
                         </tr>
                     </thead>
                      <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
@@ -35,8 +35,8 @@ const LevelPlaceholder: React.FC<{ levelId: string; participants: BatchParticipa
                             return (
                                 <tr key={p.id}>
                                     <td className="px-6 py-4 whitespace-nowrap font-medium">{p.profiles?.name}</td>
-                                    <td className="px-6 py-4 whitespace-nowrap">{cluster}</td>
-                                    <td className="px-6 py-4 whitespace-nowrap text-gray-500">Coming Soon</td>
+                                    <td className="px-6 py-4 whitespace-nowrap text-gray-500 dark:text-gray-400">{cluster}</td>
+                                    <td className="px-6 py-4 whitespace-nowrap text-gray-500 dark:text-gray-400">Coming Soon</td>
                                 </tr>
                             )
                         })}
@@ -90,7 +90,7 @@ export const LevelDetailView: React.FC<{ currentUser: Profile }> = ({ currentUse
                 <BackButton to={`/batch/${batchId}`} text="Back to Batch Dashboard" />
                 <h1 className="text-3xl font-bold mb-2">{level.name}</h1>
                  <Card className="mt-8 text-center py-10">
-                    <p className="text-gray-500">This training level is not yet available.</p>
+                    <p className="text-gray-500 dark:text-gray-400">This training level is not yet available.</p>
                 </Card>
             </div>
         )

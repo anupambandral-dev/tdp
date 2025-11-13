@@ -299,6 +299,9 @@ export const SubmitChallenge: React.FC<SubmitChallengeProps> = ({ currentUser })
     const isReportDeadlinePassed = !rules.report.enabled || !subChallenge.report_end_time || new Date(subChallenge.report_end_time) < new Date();
     const isReportDisabled = isReportDeadlinePassed || isChallengeEnded || submitting;
     
+    const inputClasses = "block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 p-2";
+    const labelClasses = "block mb-1 font-medium";
+
     return (
         <div className="container mx-auto p-4 sm:p-6 lg:p-8 max-w-4xl">
             <BackButton to={`/batch/${batchId}/level/4/trainee/sub-challenge/${subChallenge.id}`} text="Back to Challenge Details" />
@@ -372,19 +375,19 @@ export const SubmitChallenge: React.FC<SubmitChallengeProps> = ({ currentUser })
                                 </p>
                                  <div className="space-y-4">
                                     <div>
-                                        <label htmlFor="newResultValue">Result (e.g., Patent Number, URL)</label>
-                                        <input id="newResultValue" type="text" value={newResultValue} onChange={e => setNewResultValue(e.target.value)} placeholder="US-1234567-B2" className="input" disabled={isResultsDisabled} />
+                                        <label htmlFor="newResultValue" className={labelClasses}>Result (e.g., Patent Number, URL)</label>
+                                        <input id="newResultValue" type="text" value={newResultValue} onChange={e => setNewResultValue(e.target.value)} placeholder="US-1234567-B2" className={inputClasses} disabled={isResultsDisabled} />
                                     </div>
                                     <div className="grid grid-cols-2 gap-4">
                                         <div>
-                                            <label htmlFor="newResultType">Result Type</label>
-                                            <select id="newResultType" value={newResultType} onChange={e => setNewResultType(e.target.value as ResultType)} className="input" disabled={isResultsDisabled}>
+                                            <label htmlFor="newResultType" className={labelClasses}>Result Type</label>
+                                            <select id="newResultType" value={newResultType} onChange={e => setNewResultType(e.target.value as ResultType)} className={inputClasses} disabled={isResultsDisabled}>
                                                 {Object.values(ResultType).map(type => <option key={type} value={type}>{type}</option>)}
                                             </select>
                                         </div>
                                         <div>
-                                            <label htmlFor="newResultTier">Tier Category</label>
-                                            <select id="newResultTier" value={newResultTier} onChange={e => setNewResultTier(e.target.value as ResultTier)} className="input" disabled={isResultsDisabled}>
+                                            <label htmlFor="newResultTier" className={labelClasses}>Tier Category</label>
+                                            <select id="newResultTier" value={newResultTier} onChange={e => setNewResultTier(e.target.value as ResultTier)} className={inputClasses} disabled={isResultsDisabled}>
                                                 {Object.values(ResultTier).map(tier => <option key={tier} value={tier}>{tier}</option>)}
                                             </select>
                                         </div>
@@ -409,7 +412,7 @@ export const SubmitChallenge: React.FC<SubmitChallengeProps> = ({ currentUser })
                                     Current file: <span className="font-semibold">{existingReportName}</span>
                                 </p>
                             )}
-                            <label htmlFor="reportFile" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                            <label htmlFor="reportFile" className={`block text-sm font-medium text-gray-700 dark:text-gray-300 ${labelClasses}`}>
                                 {existingReportName ? 'Upload a new file to replace the old one' : 'Upload your report'}
                             </label>
                             <input 
@@ -434,7 +437,6 @@ export const SubmitChallenge: React.FC<SubmitChallengeProps> = ({ currentUser })
                 )}
 
             </Card>
-            <style>{`label { display: block; margin-bottom: 0.25rem; font-weight: 500; } .input { display: block; width: 100%; border-radius: 0.375rem; border: 1px solid #D1D5DB; padding: 0.5rem 0.75rem; } .dark .input { background-color: #374151; border-color: #4B5563; }`}</style>
         </div>
     );
 };

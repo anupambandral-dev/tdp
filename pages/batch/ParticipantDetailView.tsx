@@ -94,7 +94,7 @@ export const ParticipantDetailView: React.FC = () => {
                         <Card key={level}>
                             <div className="flex justify-between items-center mb-4">
                                 <h3 className="text-xl font-semibold">{name}</h3>
-                                <span className="text-sm font-medium bg-gray-200 dark:bg-gray-700 px-3 py-1 rounded-full">
+                                <span className="text-sm font-medium bg-gray-200 text-gray-800 dark:text-gray-200 dark:bg-gray-700 px-3 py-1 rounded-full">
                                     Cluster: {levelData.cluster}
                                 </span>
                             </div>
@@ -107,7 +107,7 @@ export const ParticipantDetailView: React.FC = () => {
                             )}
 
                             <div className="text-center py-8 bg-gray-50 dark:bg-gray-800 rounded-lg">
-                                <p className="text-gray-500">
+                                <p className="text-gray-500 dark:text-gray-400">
                                     {level === 4 
                                      ? "Tour de Prior Art performance data will be shown here."
                                      : `Performance data for Level ${level} will be shown here.`

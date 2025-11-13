@@ -181,7 +181,7 @@ const AppContent: React.FC = () => {
   if (loading) {
     return (
         <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900">
-            <p className="text-gray-500">Loading application...</p>
+            <p className="text-gray-500 dark:text-gray-400">Loading application...</p>
         </div>
     );
   }

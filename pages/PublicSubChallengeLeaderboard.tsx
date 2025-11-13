@@ -165,7 +165,7 @@ export const PublicSubChallengeLeaderboard: React.FC = () => {
         fetchAndProcessLeaderboard();
     }, [subChallengeId]);
 
-    if (loading) return <div className="min-h-screen flex items-center justify-center p-4 bg-gray-100 dark:bg-gray-900"><p className="text-gray-500">Loading leaderboard...</p></div>;
+    if (loading) return <div className="min-h-screen flex items-center justify-center p-4 bg-gray-100 dark:bg-gray-900"><p className="text-gray-500 dark:text-gray-400">Loading leaderboard...</p></div>;
     if (error) return <div className="min-h-screen flex items-center justify-center p-4 bg-red-100 dark:bg-red-900"><Card><p className="text-red-700 dark:text-red-200">{error}</p></Card></div>;
     if (!leaderboardData || !leaderboardData.sub_challenge_title) return <div className="min-h-screen flex items-center justify-center p-4"><p>Sub-challenge not found.</p></div>;
 
@@ -202,9 +202,9 @@ export const PublicSubChallengeLeaderboard: React.FC = () => {
                          <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
                             <thead className="bg-gray-50 dark:bg-gray-700">
                                 <tr>
-                                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Rank</th>
-                                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Participant</th>
-                                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Score</th>
+                                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Rank</th>
+                                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Participant</th>
+                                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Score</th>
                                 </tr>
                             </thead>
                              <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
@@ -218,12 +218,12 @@ export const PublicSubChallengeLeaderboard: React.FC = () => {
                             </tbody>
                         </table>
                         {leaderboard.length === 0 && (
-                            <p className="text-center text-gray-500 py-6">No participants have evaluated submissions for this sub-challenge yet.</p>
+                            <p className="text-center text-gray-500 dark:text-gray-400 py-6">No participants have evaluated submissions for this sub-challenge yet.</p>
                         )}
                     </div>
                 </Card>
                  <footer className="text-center mt-4">
-                    <p className="text-xs text-gray-500">Tour de Prior Art</p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400">Tour de Prior Art</p>
                 </footer>
             </main>
         </div>

@@ -65,13 +65,13 @@ export const QuizDashboard: React.FC<QuizDashboardProps> = ({ currentUser }) => 
             </div>
 
             {loading && <p>Loading quizzes...</p>}
-            {error && <p className="text-red-500">Error: {error}</p>}
+            {error && <p className="text-red-500 dark:text-red-400">Error: {error}</p>}
             
             {!loading && !error && (
                 <div className="space-y-4">
                     {quizzes.length === 0 ? (
                          <Card className="text-center py-10">
-                            <p className="text-gray-500">No quizzes have been created for this batch yet.</p>
+                            <p className="text-gray-500 dark:text-gray-400">No quizzes have been created for this batch yet.</p>
                         </Card>
                     ) : (
                         quizzes.map(quiz => {

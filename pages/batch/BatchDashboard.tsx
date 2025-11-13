@@ -23,7 +23,7 @@ const levelData = [
 
 // Helper component for clickable table headers, visible only to managers
 const ThButton: React.FC<{ children: React.ReactNode; onClick: () => void }> = ({ children, onClick }) => (
-    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
         <button onClick={onClick} className="w-full text-left hover:text-blue-600 dark:hover:text-blue-400 font-medium flex items-center gap-1">
             {children}
             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="opacity-50"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
@@ -33,7 +33,7 @@ const ThButton: React.FC<{ children: React.ReactNode; onClick: () => void }> = (
 
 // Helper for static, non-clickable headers for other roles
 const ThStatic: React.FC<{ children: React.ReactNode }> = ({ children }) => (
-     <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{children}</th>
+     <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">{children}</th>
 );
 
 
@@ -180,10 +180,10 @@ export const BatchDashboard: React.FC<BatchDashboardProps> = ({ currentUser }) =
 
             <div className="border-b border-gray-200 dark:border-gray-700 mb-6">
                 <nav className="-mb-px flex space-x-8" aria-label="Tabs">
-                    <button onClick={() => setActiveTab('levels')} className={`${activeTab === 'levels' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'} whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm`}>
+                    <button onClick={() => setActiveTab('levels')} className={`${activeTab === 'levels' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 hover:border-gray-300 dark:hover:border-gray-600'} whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm`}>
                         Modules
                     </button>
-                    <button onClick={() => setActiveTab('participants')} className={`${activeTab === 'participants' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'} whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm`}>
+                    <button onClick={() => setActiveTab('participants')} className={`${activeTab === 'participants' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 hover:border-gray-300 dark:hover:border-gray-600'} whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm`}>
                         Participants ({participants.length})
                     </button>
                 </nav>
@@ -209,7 +209,7 @@ export const BatchDashboard: React.FC<BatchDashboardProps> = ({ currentUser }) =
                         <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
                             <thead className="bg-gray-50 dark:bg-gray-700">
                                 <tr>
-                                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
+                                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Name</th>
                                     {isManager ? <ThButton onClick={() => setEditingLevel('overall')}>Overall Cluster</ThButton> : <ThStatic>Overall Cluster</ThStatic>}
                                     {isManager ? <ThButton onClick={() => setEditingLevel('1')}>Lvl 1 Cluster</ThButton> : <ThStatic>Lvl 1 Cluster</ThStatic>}
                                     {isManager ? <ThButton onClick={() => setEditingLevel('2')}>Lvl 2 Cluster</ThButton> : <ThStatic>Lvl 2 Cluster</ThStatic>}
@@ -226,12 +226,12 @@ export const BatchDashboard: React.FC<BatchDashboardProps> = ({ currentUser }) =
                                                 {p.profiles?.name || 'Unknown User'}
                                             </Link>
                                         </td>
-                                        <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500">{p.overall_cluster || 'N/A'}</td>
-                                        <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500">{p.level_1_cluster || 'N/A'}</td>
-                                        <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500">{p.level_2_cluster || 'N/A'}</td>
-                                        <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500">{p.level_3_cluster || 'N/A'}</td>
-                                        <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500">{p.level_4_cluster || 'N/A'}</td>
-                                        <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500">{p.level_5_cluster || 'N/A'}</td>
+                                        <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">{p.overall_cluster || 'N/A'}</td>
+                                        <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">{p.level_1_cluster || 'N/A'}</td>
+                                        <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">{p.level_2_cluster || 'N/A'}</td>
+                                        <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">{p.level_3_cluster || 'N/A'}</td>
+                                        <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">{p.level_4_cluster || 'N/A'}</td>
+                                        <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">{p.level_5_cluster || 'N/A'}</td>
                                     </tr>
                                 ))}
                              </tbody>

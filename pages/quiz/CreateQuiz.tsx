@@ -20,7 +20,7 @@ interface TempQuestion {
 }
 
 const TrashIcon = () => (
-    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4 text-gray-500 hover:text-red-500"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2-2h-4"></path></svg>
+    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4 text-gray-500 dark:text-gray-400 hover:text-red-500"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2-2h-4"></path></svg>
 );
 
 export const CreateQuiz: React.FC<CreateQuizProps> = ({ currentUser }) => {
@@ -124,6 +124,8 @@ export const CreateQuiz: React.FC<CreateQuizProps> = ({ currentUser }) => {
         setLoading(false);
     };
 
+    const inputClasses = "block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 p-2";
+
     return (
         <div className="container mx-auto p-4 sm:p-6 lg:p-8 max-w-4xl">
             <BackButton to={`/batch/${batchId}/quiz`} text="Back to Quiz Dashboard" />
@@ -132,7 +134,7 @@ export const CreateQuiz: React.FC<CreateQuizProps> = ({ currentUser }) => {
                     <h1 className="text-3xl font-bold mb-6">Create New Quiz</h1>
                     <div className="mb-6">
                         <label htmlFor="quizTitle" className="block text-sm font-medium">Quiz Title</label>
-                        <input id="quizTitle" type="text" value={title} onChange={e => setTitle(e.target.value)} className="input mt-1" required />
+                        <input id="quizTitle" type="text" value={title} onChange={e => setTitle(e.target.value)} className={`${inputClasses} mt-1`} required />
                     </div>
 
                     <div className="space-y-6">
@@ -142,12 +144,12 @@ export const CreateQuiz: React.FC<CreateQuizProps> = ({ currentUser }) => {
                                     <label className="font-semibold">Question {qIndex + 1}</label>
                                     <button type="button" onClick={() => removeQuestion(q.id)}><TrashIcon /></button>
                                 </div>
-                                <textarea value={q.text} onChange={e => updateQuestionText(q.id, e.target.value)} className="input w-full" rows={2} required />
+                                <textarea value={q.text} onChange={e => updateQuestionText(q.id, e.target.value)} className={`${inputClasses} w-full`} rows={2} required />
                                 <div className="mt-4 space-y-2">
                                     {q.options.map((opt) => (
                                         <div key={opt.id} className="flex items-center space-x-2">
                                             <input type="radio" name={`correct-opt-${q.id}`} checked={q.correctOptionId === opt.id} onChange={() => setCorrectOption(q.id, opt.id)} />
-                                            <input type="text" value={opt.text} onChange={e => updateOptionText(q.id, opt.id, e.target.value)} className="input flex-grow" required />
+                                            <input type="text" value={opt.text} onChange={e => updateOptionText(q.id, opt.id, e.target.value)} className={`${inputClasses} flex-grow`} required />
                                             {q.options.length > 1 && <button type="button" onClick={() => removeOption(q.id, opt.id)}><TrashIcon /></button>}
                                         </div>
                                     ))}
@@ -166,7 +168,6 @@ export const CreateQuiz: React.FC<CreateQuizProps> = ({ currentUser }) => {
                     </div>
                 </Card>
             </form>
-            <style>{`.input { display: block; width: 100%; border-radius: 0.375rem; border: 1px solid #D1D5DB; padding: 0.5rem 0.75rem; } .dark .input { background-color: #374151; border-color: #4B5563; }`}</style>
         </div>
     );
 };
