@@ -206,237 +206,241 @@ export const SubmitChallenge: React.FC<SubmitChallengeProps> = ({ currentUser })
         }
         setSubmitting(false);
     };
+
+    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        if (e.target.files && e.target.files.length > 0) {
+            setReportFile(e.target.files[0]);
+        }
+    };
     
     const handleReportSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!reportFile) {
-            setErrorMessage("Please select a report file to upload.");
+            setErrorMessage("Please select a file to upload.");
             return;
         }
+
         setSubmitting(true);
-        setSuccessMessage(null);
         setErrorMessage(null);
+        setSuccessMessage(null);
 
-        if (!currentUser.auth_id) {
-            setErrorMessage("Authentication error. Please try logging out and in again.");
-            setSubmitting(false);
-            return;
-        }
+        const fileExt = reportFile.name.split('.').pop();
+        const fileName = `${currentUser.id}_${uuidv4()}.${fileExt}`;
+        const filePath = `${subChallengeId}/${fileName}`;
 
-        const filePath = `${currentUser.auth_id}/${subChallengeId}/${uuidv4()}-${reportFile.name}`;
-        const { error: uploadError } = await supabase.storage.from('reports').upload(filePath, reportFile);
+        const { error: uploadError } = await supabase.storage
+            .from('reports')
+            .upload(filePath, reportFile, {
+                cacheControl: '3600',
+                upsert: true,
+            });
 
         if (uploadError) {
-            setErrorMessage(`Error uploading report: ${uploadError.message}`);
+            setErrorMessage(`Failed to upload report: ${uploadError.message}`);
             setSubmitting(false);
             return;
         }
-        
-        const reportFileData = { path: filePath, name: reportFile.name };
 
-        const { data: latestSubmission, error: fetchError } = await supabase
+        const reportFileData = {
+            path: filePath,
+            name: reportFile.name,
+        };
+        
+        const { error: dbError } = await supabase
             .from('submissions')
-            .select('id, report_file')
-            .eq('sub_challenge_id', subChallengeId!)
-            .eq('trainee_id', currentUser.id)
-            .single();
-
-        if (fetchError && fetchError.code !== 'PGRST116') {
-            setErrorMessage(`Could not verify submission status: ${fetchError.message}`);
-            setSubmitting(false);
-            return;
-        }
-        
-        let dbError = null;
-
-        if (latestSubmission) { // UPDATE existing submission
-            // Remove old file from storage if it exists
-            if (latestSubmission.report_file) {
-                const oldPath = (latestSubmission.report_file as {path: string}).path;
-                const { error: removeError } = await supabase.storage.from('reports').remove([oldPath]);
-                if (removeError) {
-                   console.warn(`Could not remove the old report file: ${removeError.message}`);
-                }
-            }
-
-            const { error: updateError } = await supabase
-                .from('submissions')
-                .update({ report_file: reportFileData as unknown as Json, submitted_at: new Date().toISOString() })
-                .eq('id', latestSubmission.id);
-            dbError = updateError;
-
-        } else { // INSERT new submission
-            const { error: insertError } = await supabase
-                .from('submissions')
-                .insert([{
+            .upsert(
+                {
+                    id: existingSubmission?.id,
                     sub_challenge_id: subChallengeId!,
                     trainee_id: currentUser.id,
                     report_file: reportFileData as unknown as Json,
-                }]);
-            dbError = insertError;
-        }
+                    submitted_at: new Date().toISOString(),
+                },
+                { onConflict: 'sub_challenge_id, trainee_id' }
+            );
 
         if (dbError) {
-            setErrorMessage(`Error saving report submission: ${dbError.message}`);
+            setErrorMessage(`Failed to save report record: ${dbError.message}`);
         } else {
-            setSuccessMessage('Report uploaded successfully!');
-            setReportFile(null);
+            setSuccessMessage('Report submitted successfully!');
             await fetchSubmission();
-            setTimeout(() => setSuccessMessage(null), 5000);
+            setReportFile(null);
+            const fileInput = document.getElementById('reportFile') as HTMLInputElement;
+            if (fileInput) fileInput.value = "";
+            setTimeout(() => setSuccessMessage(null), 3000);
         }
         setSubmitting(false);
     };
 
-    if (loading) return <div className="p-8">Loading submission form...</div>;
-    if (!subChallenge || !overallChallenge) return <div className="p-8 text-center">Challenge not found.</div>;
+    const handleDeleteResult = async (resultId: string) => {
+        if (!existingSubmission) return;
+
+        const isConfirmed = window.confirm("Are you sure you want to delete this result?");
+        if (!isConfirmed) return;
+
+        const updatedResults = results.filter(r => r.id !== resultId);
+
+        const { error } = await supabase
+            .from('submissions')
+            .update({ results: updatedResults as unknown as Json })
+            .eq('id', existingSubmission.id);
+        
+        if (error) {
+            setErrorMessage(`Failed to delete result: ${error.message}`);
+        } else {
+            setSuccessMessage("Result deleted.");
+            await fetchSubmission();
+            setTimeout(() => setSuccessMessage(null), 3000);
+        }
+    };
+
+    if (loading) return <div className="p-8">Loading submission page...</div>;
+    if (!subChallenge) return <div className="p-8 text-center">Challenge not found or you do not have access.</div>;
     
+    const isOverallChallengeEnded = !!overallChallenge?.ended_at;
     const rules = subChallenge.evaluation_rules as unknown as EvaluationRules;
-    const isChallengeEnded = !!overallChallenge.ended_at;
-
-    const isResultsDeadlinePassed = new Date(subChallenge.submission_end_time) < new Date();
-    const isResultsDisabled = isResultsDeadlinePassed || isChallengeEnded || submitting;
-
-    const isReportDeadlinePassed = !rules.report.enabled || !subChallenge.report_end_time || new Date(subChallenge.report_end_time) < new Date();
-    const isReportDisabled = isReportDeadlinePassed || isChallengeEnded || submitting;
     
+    const isResultsSubmissionOpen = new Date(subChallenge.submission_end_time) > new Date();
+    const isReportSubmissionOpen = rules.report.enabled && subChallenge.report_end_time ? new Date(subChallenge.report_end_time) > new Date() : false;
+
+    const canSubmitResults = !isOverallChallengeEnded && isResultsSubmissionOpen;
+    const canSubmitReport = !isOverallChallengeEnded && isReportSubmissionOpen;
+    
+    const canSubmitMoreResults = !subChallenge.submission_limit || results.length < subChallenge.submission_limit;
+
     const inputClasses = "block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 p-2";
-    const labelClasses = "block mb-1 font-medium";
+    const labelClasses = "block mb-1 text-sm font-medium";
 
     return (
         <div className="container mx-auto p-4 sm:p-6 lg:p-8 max-w-4xl">
-            <BackButton to={`/batch/${batchId}/level/4/trainee/sub-challenge/${subChallenge.id}`} text="Back to Challenge Details" />
-            <Card>
-                <div className="border-b pb-4 mb-6 dark:border-gray-700">
-                    <h1 className="text-3xl font-bold">{subChallenge.title}</h1>
-                    <p className="text-gray-500 dark:text-gray-400">Submission Form</p>
-                    <div className="mt-2 space-y-1 text-sm">
-                        <p>
-                            Results Deadline: 
-                            <span className={`font-semibold ml-2 ${timeLeft.results.includes('passed') ? 'text-red-500' : 'text-green-600'}`}>
-                                {timeLeft.results}
-                            </span>
-                        </p>
-                        {rules.report.enabled && (
-                            <p>
-                                Report Deadline: 
-                                <span className={`font-semibold ml-2 ${timeLeft.report.includes('passed') ? 'text-red-500' : 'text-green-600'}`}>
-                                    {timeLeft.report}
-                                </span>
-                            </p>
-                        )}
-                    </div>
-                </div>
+            <BackButton to={`/batch/${batchId}/level/4/trainee/sub-challenge/${subChallengeId}`} text="Back to Challenge Details" />
 
-                {successMessage && (
-                    <div className="mb-4 p-3 rounded-md bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-200 text-sm" role="alert">
-                        {successMessage}
-                    </div>
-                )}
-                {errorMessage && (
-                    <div className="mb-4 p-3 rounded-md bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-200 text-sm" role="alert">
-                        {errorMessage}
-                    </div>
-                )}
-                
-                <div className="border-b border-gray-200 dark:border-gray-700">
-                    <nav className="-mb-px flex space-x-8" aria-label="Tabs">
-                        <button onClick={() => setActiveTab('results')} className={`${activeTab === 'results' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'} whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm`}>
-                            Prior Art Results
-                        </button>
-                        {rules.report.enabled && (
-                            <button onClick={() => setActiveTab('report')} className={`${activeTab === 'report' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'} whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm`}>
-                                Search Report
-                            </button>
-                        )}
-                    </nav>
-                </div>
-
-                {activeTab === 'results' && (
-                    <div className="py-6">
-                        <h2 className="text-xl font-semibold mb-4">Submitted Results ({results.length}/{subChallenge.submission_limit ?? 'Unlimited'})</h2>
-                        <div className="space-y-4 mb-6">
-                            {results.map(result => (
-                                <div key={result.id} className="flex items-center space-x-4 p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
-                                    <div className="flex-grow">
-                                        <p className="font-mono text-sm">{result.value}</p>
-                                        <p className="text-xs text-gray-500 dark:text-gray-400">{result.type} - {result.trainee_tier}</p>
-                                        {result.submitted_at && <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Submitted: {new Date(result.submitted_at).toLocaleString()}</p>}
-                                    </div>
-                                </div>
-                            ))}
-                            {results.length === 0 && <p className="text-center text-gray-500 py-4">No results submitted yet.</p>}
-                        </div>
-
-                        {(!subChallenge.submission_limit || results.length < subChallenge.submission_limit) && (
-                            <form onSubmit={handleResultSubmit} className={`p-4 border-t dark:border-gray-700 ${isResultsDisabled ? 'opacity-50' : ''}`}>
-                                 <h3 className="font-medium mb-2">Add New Result</h3>
-                                 <p className="text-xs text-gray-500 dark:text-gray-400 mb-4">
-                                    Each result submitted is final and cannot be changed or removed.
-                                </p>
-                                 <div className="space-y-4">
-                                    <div>
-                                        <label htmlFor="newResultValue" className={labelClasses}>Result (e.g., Patent Number, URL)</label>
-                                        <input id="newResultValue" type="text" value={newResultValue} onChange={e => setNewResultValue(e.target.value)} placeholder="US-1234567-B2" className={inputClasses} disabled={isResultsDisabled} />
-                                    </div>
-                                    <div className="grid grid-cols-2 gap-4">
-                                        <div>
-                                            <label htmlFor="newResultType" className={labelClasses}>Result Type</label>
-                                            <select id="newResultType" value={newResultType} onChange={e => setNewResultType(e.target.value as ResultType)} className={inputClasses} disabled={isResultsDisabled}>
-                                                {Object.values(ResultType).map(type => <option key={type} value={type}>{type}</option>)}
-                                            </select>
-                                        </div>
-                                        <div>
-                                            <label htmlFor="newResultTier" className={labelClasses}>Tier Category</label>
-                                            <select id="newResultTier" value={newResultTier} onChange={e => setNewResultTier(e.target.value as ResultTier)} className={inputClasses} disabled={isResultsDisabled}>
-                                                {Object.values(ResultTier).map(tier => <option key={tier} value={tier}>{tier}</option>)}
-                                            </select>
-                                        </div>
-                                    </div>
-                                    <div className="text-right">
-                                        <Button type="submit" disabled={isResultsDisabled || !newResultValue.trim() || submitting}>
-                                            {submitting ? 'Submitting...' : '+ Submit Result'}
-                                        </Button>
-                                    </div>
-                                 </div>
-                            </form>
-                        )}
-                    </div>
-                )}
-
-                {activeTab === 'report' && rules.report.enabled && (
-                    <form onSubmit={handleReportSubmit} className="py-6">
-                        <h2 className="text-xl font-semibold mb-4">Upload Search Report</h2>
-                        <div className={`p-4 border rounded-lg dark:border-gray-700 ${isReportDisabled ? 'opacity-50' : ''}`}>
-                            {existingReportName && !reportFile && (
-                                <p className="mb-2 text-sm text-gray-600 dark:text-gray-300">
-                                    Current file: <span className="font-semibold">{existingReportName}</span>
-                                </p>
-                            )}
-                            <label htmlFor="reportFile" className={`block text-sm font-medium text-gray-700 dark:text-gray-300 ${labelClasses}`}>
-                                {existingReportName ? 'Upload a new file to replace the old one' : 'Upload your report'}
-                            </label>
-                            <input 
-                                id="reportFile" 
-                                type="file" 
-                                onChange={(e) => { if (e.target.files) setReportFile(e.target.files[0]); }}
-                                className="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 dark:file:bg-blue-900/20 dark:file:text-blue-300 dark:hover:file:bg-blue-800/30"
-                                disabled={isReportDisabled}
-                            />
-                            {reportFile && (
-                                <p className="mt-2 text-sm text-green-600 dark:text-green-400">
-                                    New file selected: <span className="font-semibold">{reportFile.name}</span>
-                                </p>
-                            )}
-                        </div>
-                         <div className="pt-6 mt-6 border-t dark:border-gray-700 flex justify-end">
-                            <Button type="submit" disabled={isReportDisabled || !reportFile || submitting}>
-                                {submitting ? 'Uploading...' : 'Upload Report'}
-                            </Button>
-                        </div>
-                    </form>
-                )}
-
+            <Card className="mb-6">
+                <h1 className="text-3xl font-bold">{subChallenge.title}</h1>
+                <p className="text-gray-500 dark:text-gray-400">Patent: {subChallenge.patent_number}</p>
             </Card>
+
+            <div className="border-b border-gray-200 dark:border-gray-700 mb-6">
+                <nav className="-mb-px flex space-x-8" aria-label="Tabs">
+                    <button onClick={() => setActiveTab('results')} className={`${activeTab === 'results' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'} whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm`}>
+                        Submit Results
+                    </button>
+                    {rules.report.enabled && (
+                        <button onClick={() => setActiveTab('report')} className={`${activeTab === 'report' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'} whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm`}>
+                            Submit Report
+                        </button>
+                    )}
+                </nav>
+            </div>
+            
+            {errorMessage && <div className="mb-4 p-3 rounded-md bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-200 text-sm" role="alert">{errorMessage}</div>}
+            {successMessage && <div className="mb-4 p-3 rounded-md bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-200 text-sm" role="alert">{successMessage}</div>}
+
+            {activeTab === 'results' && (
+                <Card>
+                    <div className="flex justify-between items-center mb-4">
+                        <h2 className="text-2xl font-semibold">Results Submission</h2>
+                        <div className="text-right">
+                             <p className={`text-sm font-semibold ${canSubmitResults ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
+                                {canSubmitResults ? 'Open' : 'Closed'}
+                            </p>
+                            <p className="text-xs text-gray-500 dark:text-gray-400">{timeLeft.results}</p>
+                        </div>
+                    </div>
+                    {canSubmitResults && canSubmitMoreResults && (
+                        <form onSubmit={handleResultSubmit} className="space-y-4 p-4 border rounded-md dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50">
+                            <div>
+                                <label htmlFor="resultValue" className={labelClasses}>Result Value (e.g., US-1234567-B2)</label>
+                                <input id="resultValue" type="text" value={newResultValue} onChange={e => setNewResultValue(e.target.value)} required className={inputClasses} disabled={submitting} />
+                            </div>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                    <label htmlFor="resultType" className={labelClasses}>Type</label>
+                                    <select id="resultType" value={newResultType} onChange={e => setNewResultType(e.target.value as ResultType)} className={inputClasses} disabled={submitting}>
+                                        {Object.values(ResultType).map(t => <option key={t} value={t}>{t}</option>)}
+                                    </select>
+                                </div>
+                                <div>
+                                    <label htmlFor="resultTier" className={labelClasses}>Tier</label>
+                                    <select id="resultTier" value={newResultTier} onChange={e => setNewResultTier(e.target.value as ResultTier)} className={inputClasses} disabled={submitting}>
+                                        {Object.values(ResultTier).map(t => <option key={t} value={t}>{t}</option>)}
+                                    </select>
+                                </div>
+                            </div>
+                            <div className="text-right">
+                                <Button type="submit" disabled={submitting || !canSubmitResults}>
+                                    {submitting ? 'Submitting...' : 'Add Result'}
+                                </Button>
+                            </div>
+                        </form>
+                    )}
+                    {!canSubmitMoreResults && canSubmitResults && (
+                         <div className="p-3 text-center bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-200 rounded-md">
+                            You have reached the submission limit of {subChallenge.submission_limit} results.
+                        </div>
+                    )}
+                     {!canSubmitResults && (
+                        <div className="p-3 text-center bg-gray-100 dark:bg-gray-700/30 text-gray-600 dark:text-gray-300 rounded-md">
+                            The submission window for results has closed.
+                        </div>
+                    )}
+
+                    <div className="mt-6">
+                        <h3 className="text-lg font-semibold">Your Submitted Results ({results.length}/{subChallenge.submission_limit || '∞'})</h3>
+                        <div className="mt-2 space-y-2">
+                            {results.length > 0 ? results.map(result => (
+                                <div key={result.id} className="p-3 border rounded-md dark:border-gray-700 flex justify-between items-start">
+                                    <div>
+                                        <p className="font-mono text-sm">{result.value}</p>
+                                        <p className="text-xs text-gray-500 dark:text-gray-400">{result.type} - Submitted as {result.trainee_tier}</p>
+                                    </div>
+                                    {canSubmitResults && (
+                                        <button onClick={() => handleDeleteResult(result.id)} className="text-red-500 hover:text-red-700 text-sm font-semibold">Delete</button>
+                                    )}
+                                </div>
+                            )) : <p className="text-sm text-gray-500 dark:text-gray-400">You have not submitted any results yet.</p>}
+                        </div>
+                    </div>
+                </Card>
+            )}
+
+            {activeTab === 'report' && rules.report.enabled && (
+                <Card>
+                    <div className="flex justify-between items-center mb-4">
+                        <h2 className="text-2xl font-semibold">Report Submission</h2>
+                         <div className="text-right">
+                             <p className={`text-sm font-semibold ${canSubmitReport ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
+                                {canSubmitReport ? 'Open' : 'Closed'}
+                            </p>
+                            <p className="text-xs text-gray-500 dark:text-gray-400">{timeLeft.report}</p>
+                        </div>
+                    </div>
+                    {canSubmitReport ? (
+                        <form onSubmit={handleReportSubmit} className="space-y-4">
+                             <div>
+                                <label htmlFor="reportFile" className={labelClasses}>Upload Your Report File</label>
+                                <input
+                                    id="reportFile"
+                                    type="file"
+                                    onChange={handleFileChange}
+                                    disabled={submitting}
+                                    className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 dark:file:bg-blue-900/20 dark:file:text-blue-300 dark:hover:file:bg-blue-800/30"
+                                />
+                                {existingReportName && <p className="text-xs text-gray-500 mt-2">Currently submitted: <strong>{existingReportName}</strong></p>}
+                             </div>
+                            <div className="text-right">
+                                <Button type="submit" disabled={submitting || !reportFile}>
+                                    {submitting ? 'Uploading...' : (existingReportName ? 'Upload & Replace Report' : 'Upload Report')}
+                                </Button>
+                            </div>
+                        </form>
+                    ) : (
+                        <div className="p-3 text-center bg-gray-100 dark:bg-gray-700/30 text-gray-600 dark:text-gray-300 rounded-md">
+                            The submission window for reports has closed.
+                        </div>
+                    )}
+                </Card>
+            )}
         </div>
     );
 };
