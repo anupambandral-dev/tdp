@@ -110,10 +110,17 @@ export interface ResultEvaluation {
   override_reason?: string;
 }
 
+export interface ReportEvaluationParameter {
+  id: string;
+  parameter: string;
+  score: number;
+}
+
 export interface Evaluation {
   evaluator_id: string;
   result_evaluations: ResultEvaluation[];
-  report_score?: number;
+  report_score?: number; // For backward compatibility
+  report_evaluation?: ReportEvaluationParameter[]; // New field
   feedback: string;
   evaluated_at: string;
 };

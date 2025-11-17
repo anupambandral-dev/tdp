@@ -220,13 +220,32 @@ const TraineeView: React.FC<TraineeViewProps> = ({ batchId, subChallenge, overal
                                     )
                                })}
                             </div>
-                             {rules.report.enabled && (
-                                <div className="flex justify-between items-center text-sm mb-4">
+                             {rules.report.enabled && evaluation.report_evaluation && evaluation.report_evaluation.length > 0 && (
+                                <div className="pt-4 border-t dark:border-gray-600">
+                                    <h4 className="text-md font-semibold mb-2">Report Breakdown</h4>
+                                    <div className="space-y-1 text-sm">
+                                        {evaluation.report_evaluation.map(param => (
+                                            <div key={param.id} className="flex justify-between">
+                                                <span>{param.parameter}</span>
+                                                <span className="font-semibold">{param.score}</span>
+                                            </div>
+                                        ))}
+                                        <div className="flex justify-between font-bold pt-1 border-t dark:border-gray-600">
+                                            <span>Total Report Score</span>
+                                            <span>
+                                                {evaluation.report_evaluation.reduce((sum, p) => sum + p.score, 0)} / {rules.report.maxScore}
+                                            </span>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+                            {rules.report.enabled && !evaluation.report_evaluation && evaluation.report_score != null && (
+                                <div className="flex justify-between items-center text-sm mb-4 pt-4 border-t dark:border-gray-600">
                                    <span className="font-semibold">Report Score:</span>
                                    <span>{evaluation.report_score || 0} / {rules.report.maxScore}</span>
                                 </div>
-                             )}
-                             <h3 className="text-lg font-semibold mb-2">Evaluator Feedback</h3>
+                            )}
+                             <h3 className="text-lg font-semibold mb-2 mt-4">Evaluator Feedback</h3>
                              <p className="text-gray-600 dark:text-gray-300 bg-gray-100 dark:bg-gray-900 p-3 rounded-md">{evaluation.feedback || "No feedback provided."}</p>
                         </Card>
                     ) : (

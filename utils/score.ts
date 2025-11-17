@@ -1,4 +1,3 @@
-
 import { Submission, SubChallenge, Evaluation, SubmittedResult, EvaluationRules, ResultType, ResultTier, IncorrectMarking } from '../types';
 
 /**
@@ -48,7 +47,10 @@ export const calculateScore = (submission: Submission | null | undefined, subCha
     }
 
     // Add report score if applicable
-    if (rules.report.enabled && evaluation.report_score != null) {
+    if (rules.report.enabled && evaluation.report_evaluation && evaluation.report_evaluation.length > 0) {
+        totalScore += evaluation.report_evaluation.reduce((sum, param) => sum + (param.score || 0), 0);
+    } else if (rules.report.enabled && evaluation.report_score != null) {
+        // Backward compatibility for old scoring model
         totalScore += evaluation.report_score;
     }
 

@@ -1,6 +1,3 @@
-
-
-
 import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { supabase } from '../../supabaseClient';
@@ -176,7 +173,25 @@ export const TraineePerforma: React.FC = () => {
                                                     })}
                                                 </ul>
                                                 {rules.report.enabled && (
-                                                    <p className="text-sm">Report Score: <strong>{evaluation.report_score} / {rules.report.maxScore}</strong></p>
+                                                    <div>
+                                                        <h5 className="text-sm font-semibold mt-2">Report Evaluation</h5>
+                                                        {evaluation.report_evaluation && evaluation.report_evaluation.length > 0 ? (
+                                                            <div className="text-xs space-y-1 mt-1">
+                                                                {evaluation.report_evaluation.map(p => (
+                                                                    <div key={p.id} className="flex justify-between p-1 bg-gray-100 dark:bg-gray-700 rounded">
+                                                                        <span>{p.parameter}</span>
+                                                                        <strong>{p.score}</strong>
+                                                                    </div>
+                                                                ))}
+                                                                <div className="flex justify-between p-1 font-bold border-t dark:border-gray-600">
+                                                                    <span>Total Report Score</span>
+                                                                    <span>{evaluation.report_evaluation.reduce((s, p) => s + p.score, 0)} / {rules.report.maxScore}</span>
+                                                                </div>
+                                                            </div>
+                                                        ) : evaluation.report_score != null ? (
+                                                            <p className="text-sm">Overall Score: <strong>{evaluation.report_score} / {rules.report.maxScore}</strong></p>
+                                                        ) : <p className="text-xs text-gray-500">No report score given.</p> }
+                                                    </div>
                                                 )}
                                                 <div>
                                                     <p className="text-sm font-medium text-gray-700 dark:text-gray-300">Feedback:</p>

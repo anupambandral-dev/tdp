@@ -1,10 +1,11 @@
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import { v4 as uuidv4 } from 'uuid';
 import { supabase } from '../../supabaseClient';
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { BackButton } from '../../components/ui/BackButton';
-import { Profile, ResultEvaluation, SubmittedResult, SubChallenge, Submission, Evaluation, EvaluationRules, SubmissionWithProfile, SubChallengeWithSubmissions, Json, EvaluationResultTier, OverallChallenge, ResultType, Role, ResultTier } from '../../types';
+import { Profile, ResultEvaluation, SubmittedResult, SubChallenge, Submission, Evaluation, EvaluationRules, SubmissionWithProfile, SubChallengeWithSubmissions, Json, EvaluationResultTier, OverallChallenge, ResultType, Role, ResultTier, ReportEvaluationParameter } from '../../types';
 
 const normalizeResultValue = (value: string, type: SubmittedResult['type']): string => {
     let normalized = value.trim().toLowerCase();
@@ -166,6 +167,10 @@ type SubChallengeForEvaluation = SubChallengeWithSubmissions & {
 
 type ActiveTab = 'evaluate' | 'duplicates' | 'tier1' | 'tier2' | 'tier3';
 
+const TrashIcon = () => (
+    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2-2h-4"></path></svg>
+);
+
 export const EvaluateSubmission: React.FC<EvaluateSubmissionProps> = ({ currentUser }) => {
     const { batchId, challengeId } = useParams<{ batchId: string; challengeId: string }>();
     const navigate = useNavigate();
@@ -182,7 +187,7 @@ export const EvaluateSubmission: React.FC<EvaluateSubmissionProps> = ({ currentU
     
     // Form state
     const [resultEvals, setResultEvals] = useState<ResultEvaluation[]>([]);
-    const [reportScore, setReportScore] = useState<number | string>('');
+    const [reportParams, setReportParams] = useState<ReportEvaluationParameter[]>([]);
     const [feedback, setFeedback] = useState<string>('');
     const [reportUrl, setReportUrl] = useState<string | null>(null);
 
@@ -253,7 +258,7 @@ export const EvaluateSubmission: React.FC<EvaluateSubmissionProps> = ({ currentU
         if (!selectedSubmission || !selectedTraineeId) {
             // Clear form if no submission is selected
             setResultEvals([]);
-            setReportScore('');
+            setReportParams([]);
             setFeedback('');
             setSavedEvaluation(null);
             setReportUrl(null);
@@ -290,14 +295,22 @@ export const EvaluateSubmission: React.FC<EvaluateSubmissionProps> = ({ currentU
         });
         
         setResultEvals(initialEvals);
-        setReportScore(existingEval?.report_score ?? '');
+
+        const initialReportParams: ReportEvaluationParameter[] = [];
+        if (existingEval?.report_evaluation) {
+            initialReportParams.push(...existingEval.report_evaluation);
+        } else if (existingEval?.report_score != null) {
+            initialReportParams.push({ id: uuidv4(), parameter: 'Overall Score', score: existingEval.report_score });
+        }
+        setReportParams(initialReportParams);
+        
         setFeedback(existingEval?.feedback ?? '');
 
         // Set the baseline for change detection
         const baselineEval: Evaluation = {
             evaluator_id: currentUser.id,
             result_evaluations: initialEvals,
-            report_score: existingEval?.report_score,
+            report_evaluation: initialReportParams,
             feedback: existingEval?.feedback ?? '',
             evaluated_at: new Date().toISOString(),
         };
@@ -319,11 +332,19 @@ export const EvaluateSubmission: React.FC<EvaluateSubmissionProps> = ({ currentU
     }, [selectedSubmission, currentUser.id, allResultsMap, selectedTraineeId]);
 
     const handleSave = async (isFinalSubmit: boolean = false) => {
-        if (!selectedSubmission) return;
+        if (!selectedSubmission || !challenge) return;
         
         setError(null);
         setSuccess(null);
         setIsSaving(true);
+        const rules = challenge.evaluation_rules as unknown as EvaluationRules;
+
+        const totalReportScore = reportParams.reduce((sum, p) => sum + (Number(p.score) || 0), 0);
+        if (rules.report.enabled && totalReportScore > rules.report.maxScore) {
+            setError(`Total report score (${totalReportScore}) cannot exceed the maximum of ${rules.report.maxScore}.`);
+            setIsSaving(false);
+            return;
+        }
 
         const newEvaluation: Evaluation = {
             evaluator_id: currentUser.id,
@@ -331,7 +352,7 @@ export const EvaluateSubmission: React.FC<EvaluateSubmissionProps> = ({ currentU
                 ...re,
                 score_override: re.score_override === null || re.score_override === undefined ? null : Number(re.score_override)
             })),
-            report_score: reportScore === '' ? undefined : Number(reportScore),
+            report_evaluation: reportParams.filter(p => p.parameter.trim() !== ''),
             feedback: feedback,
             evaluated_at: new Date().toISOString(),
         };
@@ -366,6 +387,23 @@ export const EvaluateSubmission: React.FC<EvaluateSubmissionProps> = ({ currentU
             setSelectedTraineeId(selectedTraineeId);
         }
         await fetchChallenge(); // Re-fetch to update progress bar on dashboard
+    };
+
+    const addReportParam = () => {
+        setReportParams([...reportParams, { id: uuidv4(), parameter: '', score: 0 }]);
+    };
+
+    const removeReportParam = (id: string) => {
+        setReportParams(reportParams.filter(p => p.id !== id));
+    };
+
+    const handleReportParamChange = (id: string, field: 'parameter' | 'score', value: string) => {
+        setReportParams(reportParams.map(p => {
+            if (p.id === id) {
+                return { ...p, [field]: field === 'score' ? (value === '' ? 0 : Number(value)) : value };
+            }
+            return p;
+        }));
     };
 
     if (loading) return <div className="p-8">Loading evaluation...</div>;
@@ -527,15 +565,56 @@ export const EvaluateSubmission: React.FC<EvaluateSubmissionProps> = ({ currentU
                                                 <h3 className="text-lg font-semibold mb-2">Report & Feedback</h3>
                                                 <div className="space-y-4">
                                                     <div>
-                                                        <label htmlFor="reportScore" className={formLabelClasses}>Report Score (Max: {rules.report.maxScore})</label>
-                                                        <input id="reportScore" type="number" max={rules.report.maxScore} min="0" value={reportScore} onChange={e => setReportScore(e.target.value)} className={formInputClasses} disabled={isChallengeEnded} />
+                                                        <div className="flex justify-between items-center mb-2">
+                                                            <label className={formLabelClasses}>Report Parameters</label>
+                                                            <span className="text-sm font-semibold">
+                                                                Total: {reportParams.reduce((sum, p) => sum + Number(p.score || 0), 0)} / {rules.report.maxScore}
+                                                            </span>
+                                                        </div>
+                                                        <div className="space-y-2 p-3 border rounded-md dark:border-gray-600 bg-gray-50 dark:bg-gray-800/50">
+                                                            {reportParams.map((param) => (
+                                                                <div key={param.id} className="flex items-center gap-2">
+                                                                    <input
+                                                                        type="text"
+                                                                        placeholder="Parameter name"
+                                                                        value={param.parameter}
+                                                                        onChange={(e) => handleReportParamChange(param.id, 'parameter', e.target.value)}
+                                                                        className={formInputClasses}
+                                                                        disabled={isChallengeEnded}
+                                                                    />
+                                                                    <input
+                                                                        type="number"
+                                                                        placeholder="Score"
+                                                                        value={param.score}
+                                                                        onChange={(e) => handleReportParamChange(param.id, 'score', e.target.value)}
+                                                                        className={`${formInputClasses} w-24`}
+                                                                        disabled={isChallengeEnded}
+                                                                    />
+                                                                    <button
+                                                                        type="button"
+                                                                        onClick={() => removeReportParam(param.id)}
+                                                                        disabled={isChallengeEnded}
+                                                                        className="text-gray-500 hover:text-red-500 p-1 disabled:opacity-50"
+                                                                        aria-label="Remove parameter"
+                                                                    >
+                                                                        <TrashIcon />
+                                                                    </button>
+                                                                </div>
+                                                            ))}
+                                                            {!isChallengeEnded && (
+                                                                <Button type="button" variant="secondary" size="sm" onClick={addReportParam}>
+                                                                    + Add Parameter
+                                                                </Button>
+                                                            )}
+                                                        </div>
+
                                                         {reportUrl && reportFile && (
                                                             <a
                                                                 href={reportUrl}
                                                                 download={downloadFilename}
                                                                 target="_blank"
                                                                 rel="noopener noreferrer"
-                                                                className="text-sm text-blue-600 dark:text-blue-400 hover:underline mt-1 block"
+                                                                className="text-sm text-blue-600 dark:text-blue-400 hover:underline mt-2 block"
                                                             >
                                                                 Download Submitted Report ({reportFile.name})
                                                             </a>
