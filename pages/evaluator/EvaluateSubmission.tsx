@@ -168,7 +168,7 @@ type SubChallengeForEvaluation = SubChallengeWithSubmissions & {
 type ActiveTab = 'evaluate' | 'duplicates' | 'tier1' | 'tier2' | 'tier3';
 
 const TrashIcon = () => (
-    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2-2h-4"></path></svg>
+    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2-2h-4"></path></svg>
 );
 
 export const EvaluateSubmission: React.FC<EvaluateSubmissionProps> = ({ currentUser }) => {
@@ -296,12 +296,31 @@ export const EvaluateSubmission: React.FC<EvaluateSubmissionProps> = ({ currentU
         
         setResultEvals(initialEvals);
 
+        const rules = challenge?.evaluation_rules as unknown as EvaluationRules;
         const initialReportParams: ReportEvaluationParameter[] = [];
-        if (existingEval?.report_evaluation) {
-            initialReportParams.push(...existingEval.report_evaluation);
-        } else if (existingEval?.report_score != null) {
-            initialReportParams.push({ id: uuidv4(), parameter: 'Overall Score', score: existingEval.report_score });
+
+        if (rules?.report.enabled) {
+            // Use existing detailed evaluation if present and not empty
+            if (existingEval?.report_evaluation && existingEval.report_evaluation.length > 0) {
+                initialReportParams.push(...existingEval.report_evaluation);
+            } 
+            // Handle backward compatibility for old single-score reports
+            else if (existingEval?.report_score != null) {
+                initialReportParams.push({ id: uuidv4(), parameter: 'Overall Score', score: existingEval.report_score });
+            } 
+            // For a completely new evaluation, pre-populate with default parameters
+            else if (!existingEval) {
+                const defaultParams = ["Bibliography", "Claim charts", "Strings", "Thought Process"];
+                defaultParams.forEach(param => {
+                    initialReportParams.push({
+                        id: uuidv4(),
+                        parameter: param,
+                        score: 0
+                    });
+                });
+            }
         }
+        
         setReportParams(initialReportParams);
         
         setFeedback(existingEval?.feedback ?? '');
@@ -329,7 +348,7 @@ export const EvaluateSubmission: React.FC<EvaluateSubmissionProps> = ({ currentU
         };
         fetchUrl();
 
-    }, [selectedSubmission, currentUser.id, allResultsMap, selectedTraineeId]);
+    }, [selectedSubmission, currentUser.id, allResultsMap, selectedTraineeId, challenge]);
 
     const handleSave = async (isFinalSubmit: boolean = false) => {
         if (!selectedSubmission || !challenge) return;
