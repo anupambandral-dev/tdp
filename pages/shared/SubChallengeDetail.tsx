@@ -107,17 +107,34 @@ const TraineeView: React.FC<TraineeViewProps> = ({ batchId, subChallenge, overal
 
         generateUrl();
     }, [submission]);
+
+    const rules = subChallenge.evaluation_rules as unknown as EvaluationRules;
+
+    const isResultsSubmissionOpen = !overallChallenge.ended_at && new Date(subChallenge.submission_end_time) > new Date();
+    const isReportSubmissionOpen = !overallChallenge.ended_at && rules.report.enabled && subChallenge.report_end_time ? new Date(subChallenge.report_end_time) > new Date() : false;
     
-    const isChallengeActive = !overallChallenge.ended_at && new Date(subChallenge.submission_end_time) > new Date();
+    const canMakeAnySubmission = isResultsSubmissionOpen || isReportSubmissionOpen;
+    const results = submission?.results as unknown as SubmittedResult[] | null;
+
+    const buttonText = () => {
+        if (isResultsSubmissionOpen) {
+            const canSubmitMore = !subChallenge.submission_limit || !results || results.length < subChallenge.submission_limit;
+            return canSubmitMore ? 'Add / Edit Results' : 'Edit Submission';
+        }
+        if (isReportSubmissionOpen) {
+            return 'Add / Edit Report';
+        }
+        return 'Edit Submission'; // Fallback
+    };
 
     if (!submission) {
-        if (isChallengeActive) {
+        if (canMakeAnySubmission) {
             return (
                 <Card className="text-center py-10">
                     <h2 className="text-xl font-semibold mb-2">Ready to start?</h2>
                     <p className="text-gray-600 dark:text-gray-400 mb-6">You have not made a submission for this challenge yet.</p>
                     <Link to={`/batch/${batchId}/level/4/trainee/challenge/${subChallenge.id}/submit`}>
-                        <Button>Submit Your Results Now</Button>
+                        <Button>Submit Now</Button>
                     </Link>
                 </Card>
             );
@@ -133,12 +150,8 @@ const TraineeView: React.FC<TraineeViewProps> = ({ batchId, subChallenge, overal
     
     const score = calculateScore(submission, subChallenge);
     const evaluation = submission.evaluation as unknown as Evaluation | null;
-    const results = submission.results as unknown as SubmittedResult[] | null;
     const reportFile = submission.report_file as { name: string; path: string; } | null;
-    const rules = subChallenge.evaluation_rules as unknown as EvaluationRules;
     const scoresPublished = !!subChallenge.scores_published_at;
-
-    const canSubmitMore = !subChallenge.submission_limit || !results || results.length < subChallenge.submission_limit;
 
     return (
         <div className="space-y-6">
@@ -146,9 +159,9 @@ const TraineeView: React.FC<TraineeViewProps> = ({ batchId, subChallenge, overal
                 <div>
                      <div className="flex justify-between items-center mb-4 flex-wrap gap-2">
                         <h2 className="text-2xl font-semibold">Your Submission</h2>
-                        {isChallengeActive && (
+                        {canMakeAnySubmission && (
                             <Link to={`/batch/${batchId}/level/4/trainee/challenge/${subChallenge.id}/submit`}>
-                                <Button>{canSubmitMore ? 'Add / Edit Results' : 'Edit Submission'}</Button>
+                                <Button>{buttonText()}</Button>
                             </Link>
                         )}
                     </div>
@@ -163,7 +176,7 @@ const TraineeView: React.FC<TraineeViewProps> = ({ batchId, subChallenge, overal
                                     <div className="mt-2 space-y-2">
                                         {results.map(result => (
                                         <div key={result.id} className="p-2 border-b dark:border-gray-700 last:border-b-0">
-                                            <p className="font-mono text-sm">{result.value}</p>
+                                            <p className="font-mono text-sm break-words">{result.value}</p>
                                             <p className="text-xs text-gray-500">{result.type} - Submitted as {result.trainee_tier}</p>
                                         </div>
                                         ))}
