@@ -98,18 +98,30 @@ export const TraineeDashboard: React.FC<TraineeDashboardProps> = ({ currentUser 
   const getStatus = (challenge: SubChallengeWithOverallChallenge) => {
     const submission = challenge.submissions?.find(s => s.trainee_id === currentUser.id);
     const rules = challenge.evaluation_rules as unknown as EvaluationRules;
+    const reportSubmitted = !!(submission?.report_file);
 
     const resultsEndTime = new Date(challenge.submission_end_time);
     const reportEndTime = (rules.report.enabled && challenge.report_end_time) ? new Date(challenge.report_end_time) : null;
     const now = new Date();
     
-    if (challenge.overall_challenges?.ended_at) return 'Ended';
-    if (submission) return 'Submitted';
+    if (challenge.overall_challenges?.ended_at) {
+        return 'Ended';
+    }
 
-    if (resultsEndTime > now) return 'Active';
-    if (reportEndTime && reportEndTime > now) return 'Report Due';
+    // 1. Check if results can be submitted
+    if (resultsEndTime > now) {
+        return submission ? 'Submitted' : 'Active';
+    }
 
-    return 'Ended';
+    // 2. Results deadline has passed. Check for report status.
+    if (rules.report.enabled && reportEndTime && reportEndTime > now) {
+        if (!reportSubmitted) {
+            return 'Report Due';
+        }
+    }
+
+    // 3. All deadlines have passed or work is complete.
+    return submission ? 'Submitted' : 'Ended';
   };
 
   const getDeadlineDisplay = (challenge: SubChallengeWithOverallChallenge) => {
