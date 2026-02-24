@@ -332,7 +332,11 @@ export const TraineeDashboard: React.FC<TraineeDashboardProps> = ({ currentUser 
                                     )}
                                 </div>
                                 {traineeStatus.link ? (
-                                    <Link to={traineeStatus.link}><Button>{traineeStatus.text}</Button></Link>
+                                    <Link to={traineeStatus.link}>
+                                        <Button variant={traineeStatus.color === 'green' ? 'secondary' : 'primary'}>
+                                            {traineeStatus.text}
+                                        </Button>
+                                    </Link>
                                 ) : (
                                     <span className={`px-3 py-1 text-sm font-semibold rounded-full ${
                                         traineeStatus.color === 'green' ? 'bg-green-100 text-green-800 dark:bg-green-800/20 dark:text-green-200' :
