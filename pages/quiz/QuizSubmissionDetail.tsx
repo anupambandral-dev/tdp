@@ -25,18 +25,26 @@ export const QuizSubmissionDetail: React.FC = () => {
             console.log("Fetching submission:", submissionId);
             
             try {
-                // Fetch submission with profile
+                // Fetch submission
                 const { data: subData, error: subError } = await supabase
                     .from('quiz_submissions')
-                    .select('*, profiles(*)')
+                    .select('*')
                     .eq('id', submissionId)
                     .single();
                 
                 if (subError) throw subError;
                 if (!subData) throw new Error("Submission not found.");
 
-                const submissionData = subData as unknown as QuizSubmission & { profiles: Profile | null };
-                setSubmission(submissionData);
+                const submissionData = subData as QuizSubmission;
+                
+                // Fetch profile separately for robustness
+                const { data: profileData } = await supabase
+                    .from('profiles')
+                    .select('*')
+                    .eq('id', submissionData.participant_id)
+                    .single();
+
+                setSubmission({ ...submissionData, profiles: profileData as Profile });
 
                 // Fetch quiz
                 const { data: quizData, error: quizError } = await supabase
