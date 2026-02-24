@@ -79,9 +79,10 @@ export const QuizSubmissionDetail: React.FC = () => {
     if (error) return <div className="p-8 text-red-500">Error: {error}</div>;
     if (!submission || !quiz) return <div className="p-8 text-center">Submission not found.</div>;
 
-    const answers = submission.answers as unknown as QuizAnswer[];
+    const answers = (submission.answers as unknown as QuizAnswer[]) || [];
 
     const getQuestionAnswer = (questionId: string) => {
+        if (!Array.isArray(answers)) return undefined;
         return answers.find(a => a.question_id === questionId);
     };
 
