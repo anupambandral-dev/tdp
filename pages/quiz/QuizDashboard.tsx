@@ -28,7 +28,7 @@ export const QuizDashboard: React.FC<QuizDashboardProps> = ({ currentUser }) => 
 
             const { data, error } = await supabase
                 .from('quizzes')
-                .select('*, quiz_submissions(id, participant_id)')
+                .select('*, quiz_submissions(id, participant_id, score, completed_at)')
                 .eq('batch_id', batchId)
                 .order('created_at', { ascending: false });
 
@@ -76,12 +76,27 @@ export const QuizDashboard: React.FC<QuizDashboardProps> = ({ currentUser }) => 
                     ) : (
                         quizzes.map(quiz => {
                             const traineeStatus = !isManager ? getTraineeQuizStatus(quiz) : null;
+                            const userSubmission = !isManager ? quiz.quiz_submissions.find(sub => sub.participant_id === currentUser.id) : null;
+                            
                             return (
                                 <Card key={quiz.id}>
                                     <div className="flex justify-between items-center">
                                         <div>
                                             <h2 className="text-xl font-semibold">{quiz.title}</h2>
                                             {isManager && <p className="text-sm text-gray-500 dark:text-gray-400">Status: {quiz.status}</p>}
+                                            {userSubmission && (
+                                                <div className="mt-1 flex items-center gap-4">
+                                                    <p className="text-sm text-green-600 dark:text-green-400 font-medium">
+                                                        Score: {userSubmission.score}
+                                                    </p>
+                                                    <Link 
+                                                        to={`/batch/${batchId}/quiz/submission/${userSubmission.id}`}
+                                                        className="text-xs text-blue-600 hover:underline"
+                                                    >
+                                                        View Responses
+                                                    </Link>
+                                                </div>
+                                            )}
                                         </div>
                                         {isManager ? (
                                             <Link to={`/batch/${batchId}/quiz/manage/${quiz.id}`}>
