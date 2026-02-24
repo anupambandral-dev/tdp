@@ -25,20 +25,48 @@ export const QuizDashboard: React.FC<QuizDashboardProps> = ({ currentUser }) => 
         const fetchQuizzes = async () => {
             if (!batchId) return;
             setLoading(true);
+            setError(null);
 
-            const { data, error } = await supabase
-                .from('quizzes')
-                .select('*, quiz_submissions(id, participant_id, score, completed_at)')
-                .eq('batch_id', batchId)
-                .order('created_at', { ascending: false });
+            try {
+                // Fetch quizzes
+                const { data: quizData, error: quizError } = await supabase
+                    .from('quizzes')
+                    .select('*')
+                    .eq('batch_id', batchId)
+                    .order('created_at', { ascending: false });
 
-            if (error) {
-                setError(error.message);
-                console.error("Error fetching quizzes:", error);
-            } else {
-                setQuizzes(data as unknown as QuizWithSubmission[]);
+                if (quizError) throw quizError;
+
+                // Fetch submissions for these quizzes
+                const quizIds = (quizData || []).map(q => q.id);
+                let submissionData: any[] = [];
+                
+                if (quizIds.length > 0) {
+                    const { data: subData, error: subError } = await supabase
+                        .from('quiz_submissions')
+                        .select('id, quiz_id, participant_id, score, completed_at')
+                        .in('quiz_id', quizIds);
+                    
+                    if (subError) {
+                        console.warn("Submissions fetch error (might be RLS):", subError);
+                    } else {
+                        submissionData = subData || [];
+                    }
+                }
+
+                // Map submissions back to quizzes
+                const quizzesWithSubs = (quizData || []).map(quiz => ({
+                    ...quiz,
+                    quiz_submissions: submissionData.filter(s => s.quiz_id === quiz.id)
+                }));
+
+                setQuizzes(quizzesWithSubs as unknown as QuizWithSubmission[]);
+            } catch (err: any) {
+                setError(err.message || "Failed to fetch quizzes");
+                console.error("Quiz Dashboard fetch error:", err);
+            } finally {
+                setLoading(false);
             }
-            setLoading(false);
         };
         fetchQuizzes();
     }, [batchId, currentUser.id]);
