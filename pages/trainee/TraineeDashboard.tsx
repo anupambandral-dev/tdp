@@ -75,16 +75,40 @@ export const TraineeDashboard: React.FC<TraineeDashboardProps> = ({ currentUser 
 
   const fetchQuizzes = useCallback(async () => {
       if (!batchId) return;
-      const { data, error } = await supabase
-          .from('quizzes')
-          .select('*, quiz_submissions(id, participant_id, score, completed_at)')
-          .eq('batch_id', batchId)
-          .order('created_at', { ascending: false });
+      try {
+          // Fetch quizzes
+          const { data: quizData, error: quizError } = await supabase
+              .from('quizzes')
+              .select('*')
+              .eq('batch_id', batchId)
+              .order('created_at', { ascending: false });
 
-      if (error) {
-          console.error("Error fetching quizzes:", error);
-      } else {
-          setQuizzes(data as unknown as QuizWithSubmission[]);
+          if (quizError) throw quizError;
+
+          // Fetch submissions for these quizzes
+          const quizIds = (quizData || []).map(q => q.id);
+          let submissionData: any[] = [];
+
+          if (quizIds.length > 0) {
+              const { data: subData, error: subError } = await supabase
+                  .from('quiz_submissions')
+                  .select('id, quiz_id, participant_id, score, completed_at')
+                  .in('quiz_id', quizIds);
+              
+              if (!subError) {
+                  submissionData = subData || [];
+              }
+          }
+
+          // Map submissions back to quizzes
+          const quizzesWithSubs = (quizData || []).map(quiz => ({
+              ...quiz,
+              quiz_submissions: submissionData.filter(s => s.quiz_id === quiz.id)
+          }));
+
+          setQuizzes(quizzesWithSubs as unknown as QuizWithSubmission[]);
+      } catch (err) {
+          console.error("Error fetching quizzes on trainee dashboard:", err);
       }
   }, [batchId]);
 
