@@ -110,7 +110,8 @@ export const TakeQuiz: React.FC<TakeQuizProps> = ({ currentUser }) => {
             setError(`Failed to submit quiz: ${error.message}`);
             setIsSubmitting(false);
         } else {
-            // Submission successful, redirect
+            // Submission successful, redirect to dashboard but show success first if possible
+            // For now, we'll just navigate back to the quiz dashboard
             navigate(`/batch/${batchId}/quiz`);
         }
     };
