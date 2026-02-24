@@ -72,8 +72,8 @@ export const QuizDashboard: React.FC<QuizDashboardProps> = ({ currentUser }) => 
     }, [batchId, currentUser.id]);
     
     const getTraineeQuizStatus = (quiz: QuizWithSubmission) => {
-        const hasSubmitted = quiz.quiz_submissions.some(sub => sub.participant_id === currentUser.id);
-        if (hasSubmitted) return { text: "Completed", color: "green", link: null };
+        const userSub = quiz.quiz_submissions.find(sub => sub.participant_id === currentUser.id);
+        if (userSub) return { text: "Completed", color: "green", link: `/batch/${batchId}/quiz/submission/${userSub.id}` };
         if (quiz.status === QuizStatusEnum.LIVE) return { text: "Take Quiz", color: "blue", link: `/batch/${batchId}/quiz/take/${quiz.id}` };
         if (quiz.status === QuizStatusEnum.DRAFT) return { text: "Not Started", color: "gray", link: null };
         if (quiz.status === QuizStatusEnum.ENDED) return { text: "Ended", color: "red", link: null };
@@ -132,7 +132,11 @@ export const QuizDashboard: React.FC<QuizDashboardProps> = ({ currentUser }) => 
                                             </Link>
                                         ) : (
                                             traineeStatus?.link ? (
-                                                <Link to={traineeStatus.link}><Button>{traineeStatus.text}</Button></Link>
+                                                <Link to={traineeStatus.link}>
+                                                    <Button variant={traineeStatus.color === 'green' ? 'secondary' : 'primary'}>
+                                                        {traineeStatus.text}
+                                                    </Button>
+                                                </Link>
                                             ) : (
                                                 <span className={`px-3 py-1 text-sm font-semibold rounded-full ${
                                                     traineeStatus?.color === 'green' ? 'bg-green-100 text-green-800 dark:bg-green-800/20 dark:text-green-200' :
