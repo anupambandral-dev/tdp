@@ -1,4 +1,6 @@
-import React, { useState, useEffect } from 'react';
+
+
+import React, { useState, useEffect, useCallback } from 'react';
 import { Link, useParams, useSearchParams } from 'react-router-dom';
 import { Profile, EvaluationRules, Submission, SubChallengeWithOverallChallenge, QuizWithSubmission, QuizStatusEnum } from '../../types';
 import { supabase } from '../../supabaseClient';
@@ -35,58 +37,58 @@ export const TraineeDashboard: React.FC<TraineeDashboardProps> = ({ currentUser 
     setSearchParams({ tab });
   };
 
-  useEffect(() => {
-    const fetchChallenges = async () => {
+  const fetchChallenges = useCallback(async () => {
+    if (!batchId) return;
+
+    const { data: overallChallenges, error: ocError } = await supabase
+      .from('overall_challenges')
+      .select('id')
+      .eq('batch_id', batchId!)
+      .contains('trainee_ids', [currentUser.id]);
+
+    if (ocError) {
+      setError(ocError.message);
+      return;
+    }
+
+    const challengeIds = overallChallenges ? overallChallenges.map(oc => oc.id) : [];
+
+    if (challengeIds.length === 0) {
+      setTraineeChallenges([]);
+      return;
+    }
+
+    const { data, error: scError } = await supabase
+      .from('sub_challenges')
+      .select('*, submissions(*, profiles(id, name, email, role)), overall_challenges(id, ended_at)')
+      .in('overall_challenge_id', challengeIds);
+
+    if (scError) {
+      setError(scError.message);
+    } else if (data) {
+      const sortedData = (data as unknown as SubChallengeWithOverallChallenge[]).sort((a, b) =>
+          a.title.localeCompare(b.title, undefined, { numeric: true })
+      );
+      setTraineeChallenges(sortedData);
+    }
+  }, [batchId, currentUser.id]);
+
+  const fetchQuizzes = useCallback(async () => {
       if (!batchId) return;
+      const { data, error } = await supabase
+          .from('quizzes')
+          .select('*, quiz_submissions(id, participant_id, score, completed_at)')
+          .eq('batch_id', batchId)
+          .order('created_at', { ascending: false });
 
-      const { data: overallChallenges, error: ocError } = await supabase
-        .from('overall_challenges')
-        .select('id')
-        .eq('batch_id', batchId!)
-        .contains('trainee_ids', [currentUser.id]);
-
-      if (ocError) {
-        setError(ocError.message);
-        return;
+      if (error) {
+          console.error("Error fetching quizzes:", error);
+      } else {
+          setQuizzes(data as unknown as QuizWithSubmission[]);
       }
+  }, [batchId]);
 
-      const challengeIds = overallChallenges ? overallChallenges.map(oc => oc.id) : [];
-
-      if (challengeIds.length === 0) {
-        setTraineeChallenges([]);
-        return;
-      }
-
-      const { data, error: scError } = await supabase
-        .from('sub_challenges')
-        .select('*, submissions(*, profiles(id, name, email, role)), overall_challenges(id, ended_at)')
-        .in('overall_challenge_id', challengeIds);
-
-      if (scError) {
-        setError(scError.message);
-      } else if (data) {
-        const sortedData = (data as unknown as SubChallengeWithOverallChallenge[]).sort((a, b) =>
-            a.title.localeCompare(b.title, undefined, { numeric: true })
-        );
-        setTraineeChallenges(sortedData);
-      }
-    };
-
-    const fetchQuizzes = async () => {
-        if (!batchId) return;
-        const { data, error } = await supabase
-            .from('quizzes')
-            .select('*, quiz_submissions(id, participant_id)')
-            .eq('batch_id', batchId)
-            .order('created_at', { ascending: false });
-
-        if (error) {
-            console.error("Error fetching quizzes:", error);
-        } else {
-            setQuizzes(data as unknown as QuizWithSubmission[]);
-        }
-    };
-
+  useEffect(() => {
     const initialFetch = async () => {
         setLoading(true);
         await Promise.all([fetchChallenges(), fetchQuizzes()]);
@@ -131,7 +133,7 @@ export const TraineeDashboard: React.FC<TraineeDashboardProps> = ({ currentUser 
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [currentUser.id, batchId]);
+  }, [currentUser.id, batchId, fetchChallenges, fetchQuizzes]);
 
   const getStatus = (challenge: SubChallengeWithOverallChallenge) => {
     const submission = challenge.submissions?.find(s => s.trainee_id === currentUser.id);
@@ -188,7 +190,12 @@ export const TraineeDashboard: React.FC<TraineeDashboardProps> = ({ currentUser 
 
   return (
     <div className="container mx-auto p-4 sm:p-6 lg:p-8">
-      <h1 className="text-3xl font-bold mb-6">Trainee Dashboard</h1>
+      <div className="flex justify-between items-center mb-6">
+        <h1 className="text-3xl font-bold">Trainee Dashboard</h1>
+        <Button variant="secondary" size="sm" onClick={() => Promise.all([fetchChallenges(), fetchQuizzes()])}>
+            Refresh
+        </Button>
+      </div>
 
       <div className="border-b border-gray-200 dark:border-gray-700 mb-6">
         <nav className="-mb-px flex space-x-8" aria-label="Tabs">
@@ -287,12 +294,17 @@ export const TraineeDashboard: React.FC<TraineeDashboardProps> = ({ currentUser 
                                 <div>
                                     <h2 className="text-xl font-semibold">{quiz.title}</h2>
                                     {userSubmission && (
-                                        <Link 
-                                            to={`/batch/${batchId}/quiz/submission/${userSubmission.id}`}
-                                            className="text-sm text-blue-600 hover:underline mt-1 inline-block"
-                                        >
-                                            View My Responses
-                                        </Link>
+                                        <div className="mt-1 flex items-center gap-3">
+                                            <span className="text-sm font-medium text-green-600 dark:text-green-400">
+                                                Score: {userSubmission.score}
+                                            </span>
+                                            <Link 
+                                                to={`/batch/${batchId}/quiz/submission/${userSubmission.id}`}
+                                                className="text-xs text-blue-600 hover:underline"
+                                            >
+                                                View My Responses
+                                            </Link>
+                                        </div>
                                     )}
                                 </div>
                                 {traineeStatus.link ? (
