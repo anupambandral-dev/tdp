@@ -20,31 +20,26 @@ export const QuizManagerDetail: React.FC = () => {
         setLoading(true);
         setError(null);
 
-        const quizPromise = supabase.from('quizzes').select('*').eq('id', quizId).single();
-        const questionsPromise = supabase.from('quiz_questions').select('*').eq('quiz_id', quizId).order('created_at');
-        const submissionsPromise = supabase.from('quiz_submissions').select('*, profiles(*)').eq('quiz_id', quizId).order('completed_at', { ascending: false });
+        try {
+            const quizPromise = supabase.from('quizzes').select('*').eq('id', quizId).single();
+            const questionsPromise = supabase.from('quiz_questions').select('*').eq('quiz_id', quizId).order('created_at');
+            const submissionsPromise = supabase.from('quiz_submissions').select('*, profiles(*)').eq('quiz_id', quizId).order('completed_at', { ascending: false });
 
-        const [quizResult, questionsResult, submissionsResult] = await Promise.all([quizPromise, questionsPromise, submissionsPromise]);
+            const [quizResult, questionsResult, submissionsResult] = await Promise.all([quizPromise, questionsPromise, submissionsPromise]);
 
-        if (quizResult.error) {
-            setError(quizResult.error.message);
-        } else {
+            if (quizResult.error) throw quizResult.error;
+            if (questionsResult.error) throw questionsResult.error;
+            if (submissionsResult.error) throw submissionsResult.error;
+
             setQuiz(quizResult.data as Quiz);
-        }
-
-        if (questionsResult.error) {
-            setError(questionsResult.error.message);
-        } else {
             setQuestions(questionsResult.data as QuizQuestion[]);
-        }
-
-        if (submissionsResult.error) {
-            setError(submissionsResult.error.message);
-        } else {
             setSubmissions(submissionsResult.data as unknown as QuizSubmissionWithProfile[]);
+        } catch (err: any) {
+            setError(err.message || "Failed to fetch quiz data");
+            console.error("Quiz fetch error:", err);
+        } finally {
+            setLoading(false);
         }
-
-        setLoading(false);
     }, [quizId]);
 
     useEffect(() => {
@@ -96,6 +91,9 @@ export const QuizManagerDetail: React.FC = () => {
                         </p>
                     </div>
                     <div className="flex items-center space-x-2">
+                        <Button variant="secondary" onClick={fetchQuizData} disabled={loading}>
+                            {loading ? 'Refreshing...' : 'Refresh Data'}
+                        </Button>
                         {quiz.status === QuizStatusEnum.DRAFT && (
                             <Button onClick={() => handleStatusChange(QuizStatusEnum.LIVE)}>Go Live</Button>
                         )}
