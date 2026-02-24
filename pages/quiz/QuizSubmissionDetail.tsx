@@ -15,51 +15,54 @@ export const QuizSubmissionDetail: React.FC = () => {
 
     useEffect(() => {
         const fetchData = async () => {
-            if (!submissionId) return;
+            if (!submissionId) {
+                setError("No submission ID provided.");
+                setLoading(false);
+                return;
+            }
+            
             setLoading(true);
+            console.log("Fetching submission:", submissionId);
             
-            // Fetch submission with profile
-            const { data: subData, error: subError } = await supabase
-                .from('quiz_submissions')
-                .select('*, profiles(*)')
-                .eq('id', submissionId)
-                .single();
-            
-            if (subError) {
-                setError(subError.message);
-                setLoading(false);
-                return;
-            }
-            const submissionData = subData as unknown as QuizSubmission & { profiles: Profile | null };
-            setSubmission(submissionData);
+            try {
+                // Fetch submission with profile
+                const { data: subData, error: subError } = await supabase
+                    .from('quiz_submissions')
+                    .select('*, profiles(*)')
+                    .eq('id', submissionId)
+                    .single();
+                
+                if (subError) throw subError;
+                if (!subData) throw new Error("Submission not found.");
 
-            // Fetch quiz
-            const { data: quizData, error: quizError } = await supabase
-                .from('quizzes')
-                .select('*')
-                .eq('id', submissionData.quiz_id)
-                .single();
-            
-            if (quizError) {
-                setError(quizError.message);
-                setLoading(false);
-                return;
-            }
-            setQuiz(quizData as Quiz);
+                const submissionData = subData as unknown as QuizSubmission & { profiles: Profile | null };
+                setSubmission(submissionData);
 
-            // Fetch questions
-            const { data: questionsData, error: questionsError } = await supabase
-                .from('quiz_questions')
-                .select('*')
-                .eq('quiz_id', submissionData.quiz_id)
-                .order('created_at');
-            
-            if (questionsError) {
-                setError(questionsError.message);
-            } else {
+                // Fetch quiz
+                const { data: quizData, error: quizError } = await supabase
+                    .from('quizzes')
+                    .select('*')
+                    .eq('id', submissionData.quiz_id)
+                    .single();
+                
+                if (quizError) throw quizError;
+                setQuiz(quizData as Quiz);
+
+                // Fetch questions
+                const { data: questionsData, error: questionsError } = await supabase
+                    .from('quiz_questions')
+                    .select('*')
+                    .eq('quiz_id', submissionData.quiz_id)
+                    .order('created_at');
+                
+                if (questionsError) throw questionsError;
                 setQuestions(questionsData as QuizQuestion[]);
+            } catch (err: any) {
+                console.error("Error fetching submission detail:", err);
+                setError(err.message || "An unexpected error occurred.");
+            } finally {
+                setLoading(false);
             }
-            setLoading(false);
         };
         fetchData();
     }, [submissionId]);
