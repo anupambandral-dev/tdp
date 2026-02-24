@@ -152,7 +152,7 @@ export type SubChallengeWithOverallChallenge = SubChallenge & {
 export type SubChallengeForEvaluator = SubChallengeWithSubmissions;
 
 export type QuizWithSubmission = Quiz & {
-    quiz_submissions: Pick<QuizSubmission, 'id' | 'participant_id'>[];
+    quiz_submissions: Pick<QuizSubmission, 'id' | 'participant_id' | 'score' | 'completed_at'>[];
 };
 
 export type QuizSubmissionWithProfile = QuizSubmission & {
