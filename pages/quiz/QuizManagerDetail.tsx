@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, Link } from 'react-router-dom';
 import { supabase } from '../../supabaseClient';
 // FIX: Imported QuizStatus type to use for function parameter annotation.
-import { Quiz, QuizQuestion, QuizSubmissionWithProfile, QuizStatus, QuizStatusEnum, Json, QuizOption } from '../../types';
+import { Quiz, QuizQuestion, QuizSubmissionWithProfile, QuizStatus, QuizStatusEnum, QuizOption } from '../../types';
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { BackButton } from '../../components/ui/BackButton';
@@ -133,10 +133,14 @@ export const QuizManagerDetail: React.FC = () => {
                              <h3 className="font-semibold mb-2">Participants</h3>
                              <div className="space-y-2 max-h-80 overflow-y-auto">
                                 {submissions.map(sub => (
-                                    <div key={sub.id} className="flex justify-between items-center text-sm p-2 rounded-md bg-gray-50 dark:bg-gray-700">
+                                    <Link 
+                                        key={sub.id} 
+                                        to={`/batch/${batchId}/quiz/submission/${sub.id}`}
+                                        className="flex justify-between items-center text-sm p-2 rounded-md bg-gray-50 dark:bg-gray-700 hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors"
+                                    >
                                         <span>{sub.profiles?.name || 'Unknown'}</span>
                                         <span className="font-bold">{sub.score}/{questions.length}</span>
-                                    </div>
+                                    </Link>
                                 ))}
                                 {submissions.length === 0 && <p className="text-sm text-center text-gray-500 py-4">No submissions yet.</p>}
                              </div>
