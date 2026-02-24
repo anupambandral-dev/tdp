@@ -165,7 +165,13 @@ export const BatchDashboard: React.FC<BatchDashboardProps> = ({ currentUser }) =
 
     const getLinkForLevel = (levelId: number | string) => {
         if (levelId === 'quiz') {
+            if (currentUser.role === Role.TRAINEE) {
+                return `/batch/${batchId}/level/4/trainee?tab=quizzes`;
+            }
             return `/batch/${batchId}/quiz`;
+        }
+        if (levelId === 4 && currentUser.role === Role.TRAINEE) {
+            return `/batch/${batchId}/level/4/trainee?tab=challenges`;
         }
         return `/batch/${batchId}/level/${levelId}`;
     };
