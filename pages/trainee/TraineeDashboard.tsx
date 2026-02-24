@@ -1,5 +1,3 @@
-
-
 import React, { useState, useEffect } from 'react';
 import { Link, useParams, useSearchParams } from 'react-router-dom';
 import { Profile, EvaluationRules, Submission, SubChallengeWithOverallChallenge, QuizWithSubmission, QuizStatusEnum } from '../../types';
@@ -281,11 +279,21 @@ export const TraineeDashboard: React.FC<TraineeDashboardProps> = ({ currentUser 
             ) : (
                 quizzes.map(quiz => {
                     const traineeStatus = getTraineeQuizStatus(quiz);
+                    const userSubmission = quiz.quiz_submissions.find(sub => sub.participant_id === currentUser.id);
+                    
                     return (
                         <Card key={quiz.id}>
                             <div className="flex justify-between items-center">
                                 <div>
                                     <h2 className="text-xl font-semibold">{quiz.title}</h2>
+                                    {userSubmission && (
+                                        <Link 
+                                            to={`/batch/${batchId}/quiz/submission/${userSubmission.id}`}
+                                            className="text-sm text-blue-600 hover:underline mt-1 inline-block"
+                                        >
+                                            View My Responses
+                                        </Link>
+                                    )}
                                 </div>
                                 {traineeStatus.link ? (
                                     <Link to={traineeStatus.link}><Button>{traineeStatus.text}</Button></Link>
