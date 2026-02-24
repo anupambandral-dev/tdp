@@ -79,11 +79,10 @@ export const QuizSubmissionDetail: React.FC = () => {
     if (error) return <div className="p-8 text-red-500">Error: {error}</div>;
     if (!submission || !quiz) return <div className="p-8 text-center">Submission not found.</div>;
 
-    const answers = (submission.answers as unknown as QuizAnswer[]) || [];
+    const answers = Array.isArray(submission.answers) ? (submission.answers as unknown as QuizAnswer[]) : [];
 
     const getQuestionAnswer = (questionId: string) => {
-        if (!Array.isArray(answers)) return undefined;
-        return answers.find(a => a.question_id === questionId);
+        return answers.find(a => a?.question_id === questionId);
     };
 
     return (
@@ -107,7 +106,7 @@ export const QuizSubmissionDetail: React.FC = () => {
                 {questions.map((q, index) => {
                     const userAnswer = getQuestionAnswer(q.id);
                     const isCorrect = userAnswer?.selected_option_id === q.correct_option_id;
-                    const options = q.options as unknown as QuizOption[];
+                    const options = Array.isArray(q.options) ? (q.options as unknown as QuizOption[]) : [];
 
                     return (
                         <Card key={q.id} className={`border-l-4 ${isCorrect ? 'border-l-green-500' : 'border-l-red-500'}`}>
@@ -121,7 +120,7 @@ export const QuizSubmissionDetail: React.FC = () => {
                             </div>
 
                             <div className="space-y-2">
-                                {options.map(opt => {
+                                {options.length > 0 ? options.map(opt => {
                                     const isSelected = userAnswer?.selected_option_id === opt.id;
                                     const isCorrectOpt = q.correct_option_id === opt.id;
                                     
@@ -152,7 +151,7 @@ export const QuizSubmissionDetail: React.FC = () => {
                                             </div>
                                         </div>
                                     );
-                                })}
+                                }) : <p className="text-sm text-gray-500 italic">No options available for this question.</p>}
                             </div>
                         </Card>
                     );
