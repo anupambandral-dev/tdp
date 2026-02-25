@@ -14,6 +14,7 @@ export const QuizSubmissionDetail: React.FC = () => {
     const [error, setError] = useState<string | null>(null);
 
     useEffect(() => {
+        console.log("QuizSubmissionDetail mounted with ID:", submissionId);
         const fetchData = async () => {
             if (!submissionId) {
                 setError("No submission ID provided.");
@@ -76,8 +77,24 @@ export const QuizSubmissionDetail: React.FC = () => {
     }, [submissionId]);
 
     if (loading) return <div className="p-8 text-center">Loading submission details...</div>;
-    if (error) return <div className="p-8 text-red-500">Error: {error}</div>;
-    if (!submission || !quiz) return <div className="p-8 text-center">Submission not found.</div>;
+    
+    if (error || !submission || !quiz) {
+        return (
+            <div className="container mx-auto p-8 max-w-3xl">
+                <BackButton to={batchId ? `/batch/${batchId}/quiz` : '/batches'} text="Back" />
+                <Card className="mt-4 border-red-200 bg-red-50">
+                    <h2 className="text-xl font-bold text-red-700 mb-2">Debug Information</h2>
+                    <p className="text-red-600 mb-4">{error || "Data not found"}</p>
+                    <div className="bg-white p-4 rounded border text-xs font-mono overflow-auto max-h-60">
+                        <p>Submission ID: {submissionId}</p>
+                        <p>Batch ID: {batchId}</p>
+                        <p>Submission Data: {JSON.stringify(submission, null, 2)}</p>
+                        <p>Quiz Data: {JSON.stringify(quiz, null, 2)}</p>
+                    </div>
+                </Card>
+            </div>
+        );
+    }
 
     const answers = Array.isArray(submission.answers) ? (submission.answers as unknown as QuizAnswer[]) : [];
 
