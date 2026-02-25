@@ -29,6 +29,7 @@ import { QuizDashboard } from './pages/quiz/QuizDashboard';
 import { CreateQuiz } from './pages/quiz/CreateQuiz';
 import { QuizManagerDetail } from './pages/quiz/QuizManagerDetail';
 import { TakeQuiz } from './pages/quiz/TakeQuiz';
+import { QuizSubmissionDetail } from './pages/quiz/QuizSubmissionDetail';
 
 
 const AppContent: React.FC = () => {
@@ -195,6 +196,8 @@ const AppContent: React.FC = () => {
           <Route path="/leaderboard/:challengeId" element={<PublicLeaderboard />} />
           <Route path="/sub-challenge-leaderboard/:subChallengeId" element={<PublicSubChallengeLeaderboard />} />
           <Route path="/reset-password" element={<ResetPasswordPage onResetSuccess={handleResetSuccess} />} />
+          <Route path="/quiz-debug/:submissionId" element={<QuizSubmissionDetail />} />
+          <Route path="/batch/:batchId/quiz/submission/:submissionId" element={<QuizSubmissionDetail />} />
 
           {/* AUTH & ONBOARDING */}
           <Route path="/" element={
