@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { v4 as uuidv4 } from 'uuid';
 import { supabase } from '../../supabaseClient';
@@ -30,11 +30,37 @@ const PlusIcon = () => (
 export const CreateQuiz: React.FC<CreateQuizProps> = ({ currentUser }) => {
     const { batchId } = useParams<{ batchId: string }>();
     const navigate = useNavigate();
+    const storageKey = `create-quiz-draft-${batchId}-${currentUser.id}`;
+
     const [activeTab, setActiveTab] = useState<'general' | 'questions'>('general');
-    const [title, setTitle] = useState('');
-    const [questions, setQuestions] = useState<TempQuestion[]>([]);
+    
+    // Initialize state from localStorage if available
+    const [title, setTitle] = useState(() => {
+        const saved = localStorage.getItem(`${storageKey}-title`);
+        return saved || '';
+    });
+    
+    const [questions, setQuestions] = useState<TempQuestion[]>(() => {
+        const saved = localStorage.getItem(`${storageKey}-questions`);
+        return saved ? JSON.parse(saved) : [];
+    });
+
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
+
+    // Save to localStorage on change
+    useEffect(() => {
+        localStorage.setItem(`${storageKey}-title`, title);
+    }, [title, storageKey]);
+
+    useEffect(() => {
+        localStorage.setItem(`${storageKey}-questions`, JSON.stringify(questions));
+    }, [questions, storageKey]);
+
+    const clearDraft = () => {
+        localStorage.removeItem(`${storageKey}-title`);
+        localStorage.removeItem(`${storageKey}-questions`);
+    };
 
     const addQuestion = () => {
         const newOptionId = uuidv4();
@@ -124,6 +150,7 @@ export const CreateQuiz: React.FC<CreateQuizProps> = ({ currentUser }) => {
         if (questionsError) {
             setError(`Quiz created, but failed to add questions: ${questionsError.message}`);
         } else {
+            clearDraft();
             navigate(`/batch/${batchId}/quiz`);
         }
         setLoading(false);
