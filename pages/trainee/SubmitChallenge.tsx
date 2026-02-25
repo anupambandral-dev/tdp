@@ -171,7 +171,7 @@ export const SubmitChallenge: React.FC<SubmitChallengeProps> = ({ currentUser })
         if (latestSubmission) { // Submission exists, so UPDATE it
             const currentResults = (latestSubmission.results as unknown as SubmittedResult[] | null) || [];
 
-            if (subChallenge?.submission_limit !== null && currentResults.length >= subChallenge.submission_limit) {
+            if (subChallenge?.submission_limit !== null && subChallenge?.submission_limit !== undefined && currentResults.length >= subChallenge.submission_limit) {
                 setErrorMessage(`You cannot submit more than ${subChallenge.submission_limit} results.`);
                 setSubmitting(false);
                 return;
@@ -389,13 +389,13 @@ export const SubmitChallenge: React.FC<SubmitChallengeProps> = ({ currentUser })
                         <h3 className="text-lg font-semibold">Your Submitted Results ({results.length}/{subChallenge.submission_limit || '∞'})</h3>
                         <div className="mt-2 space-y-2">
                             {results.length > 0 ? results.map(result => (
-                                <div key={result.id} className="p-3 border rounded-md dark:border-gray-700 flex justify-between items-start">
-                                    <div>
-                                        <p className="font-mono text-sm">{result.value}</p>
+                                <div key={result.id} className="p-3 border rounded-md dark:border-gray-700 flex justify-between items-start gap-4">
+                                    <div className="min-w-0">
+                                        <p className="font-mono text-sm break-words">{result.value}</p>
                                         <p className="text-xs text-gray-500 dark:text-gray-400">{result.type} - Submitted as {result.trainee_tier}</p>
                                     </div>
                                     {canSubmitResults && (
-                                        <button onClick={() => handleDeleteResult(result.id)} className="text-red-500 hover:text-red-700 text-sm font-semibold">Delete</button>
+                                        <button onClick={() => handleDeleteResult(result.id)} className="text-red-500 hover:text-red-700 text-sm font-semibold flex-shrink-0">Delete</button>
                                     )}
                                 </div>
                             )) : <p className="text-sm text-gray-500 dark:text-gray-400">You have not submitted any results yet.</p>}
