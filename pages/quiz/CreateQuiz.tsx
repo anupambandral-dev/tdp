@@ -30,32 +30,78 @@ const PlusIcon = () => (
 export const CreateQuiz: React.FC<CreateQuizProps> = ({ currentUser }) => {
     const { batchId } = useParams<{ batchId: string }>();
     const navigate = useNavigate();
-    const storageKey = `create-quiz-draft-${batchId}-${currentUser.id}`;
+    
+    const storageKey = `create-quiz-draft-${batchId}-${currentUser?.id || 'anon'}`;
 
     const [activeTab, setActiveTab] = useState<'general' | 'questions'>('general');
     
-    // Initialize state from localStorage if available
+    // Initialize state directly from localStorage to avoid race conditions
     const [title, setTitle] = useState(() => {
-        const saved = localStorage.getItem(`${storageKey}-title`);
-        return saved || '';
+        return localStorage.getItem(`${storageKey}-title`) || '';
     });
     
     const [questions, setQuestions] = useState<TempQuestion[]>(() => {
         const saved = localStorage.getItem(`${storageKey}-questions`);
-        return saved ? JSON.parse(saved) : [];
+        if (saved) {
+            try {
+                const parsed = JSON.parse(saved);
+                return Array.isArray(parsed) ? parsed : [];
+            } catch (e) {
+                return [];
+            }
+        }
+        return [];
     });
 
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [saveStatus, setSaveStatus] = useState<'saved' | 'saving' | 'idle'>('idle');
+    const isInitialMount = React.useRef(true);
 
-    // Save to localStorage on change
+    // Save to localStorage on change (debounced)
     useEffect(() => {
-        localStorage.setItem(`${storageKey}-title`, title);
-    }, [title, storageKey]);
+        if (isInitialMount.current) {
+            isInitialMount.current = false;
+            return;
+        }
 
+        setSaveStatus('saving');
+        const timeout = setTimeout(() => {
+            localStorage.setItem(`${storageKey}-title`, title);
+            localStorage.setItem(`${storageKey}-questions`, JSON.stringify(questions));
+            setSaveStatus('saved');
+            
+            const statusTimeout = setTimeout(() => setSaveStatus('idle'), 2000);
+            return () => clearTimeout(statusTimeout);
+        }, 500);
+
+        return () => clearTimeout(timeout);
+    }, [title, questions, storageKey]);
+
+    // Extra persistence on tab switch/close
     useEffect(() => {
-        localStorage.setItem(`${storageKey}-questions`, JSON.stringify(questions));
-    }, [questions, storageKey]);
+        const handleVisibilityChange = () => {
+            if (document.visibilityState === 'hidden' && storageKey) {
+                localStorage.setItem(`${storageKey}-title`, title);
+                localStorage.setItem(`${storageKey}-questions`, JSON.stringify(questions));
+            }
+        };
+
+        const handleBeforeUnload = (_e: BeforeUnloadEvent) => {
+            if ((title.trim() || questions.length > 0) && storageKey) {
+                localStorage.setItem(`${storageKey}-title`, title);
+                localStorage.setItem(`${storageKey}-questions`, JSON.stringify(questions));
+            }
+        };
+
+        document.addEventListener('visibilitychange', handleVisibilityChange);
+        window.addEventListener('beforeunload', handleBeforeUnload);
+        
+        return () => {
+            document.removeEventListener('visibilitychange', handleVisibilityChange);
+            window.removeEventListener('beforeunload', handleBeforeUnload);
+        };
+    }, [title, questions, storageKey]);
 
     const clearDraft = () => {
         localStorage.removeItem(`${storageKey}-title`);
@@ -163,7 +209,13 @@ export const CreateQuiz: React.FC<CreateQuizProps> = ({ currentUser }) => {
             <BackButton to={`/batch/${batchId}/quiz`} text="Back to Quiz Dashboard" />
             <form onSubmit={handleSubmit}>
                 <Card>
-                    <h1 className="text-3xl font-bold mb-6">Create New Quiz</h1>
+                    <div className="flex justify-between items-center mb-6">
+                        <h1 className="text-3xl font-bold">Create New Quiz</h1>
+                        <div className="text-xs text-gray-400 flex items-center">
+                            {saveStatus === 'saving' && <span className="animate-pulse">Saving draft...</span>}
+                            {saveStatus === 'saved' && <span className="text-green-500 flex items-center"><svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path></svg> Draft saved</span>}
+                        </div>
+                    </div>
                     
                     <div className="border-b border-gray-200 dark:border-gray-700 mb-6">
                         <nav className="-mb-px flex space-x-8" aria-label="Tabs">
