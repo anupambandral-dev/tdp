@@ -6,6 +6,8 @@ import { BackButton } from '../../components/ui/BackButton';
 import { Card } from '../../components/ui/Card';
 import { ManagerDashboard } from '../manager/ManagerDashboard';
 import { TraineeDashboard } from '../trainee/TraineeDashboard';
+import { Level1ManagerView } from './Level1ManagerView';
+import { Level1TraineeView } from './Level1TraineeView';
 
 const levelData: { [key: string]: { name: string; description: string } } = {
     "1": { name: "Level 1: Sessions & Tasks", description: "Manage training sessions and evaluate post-session tasks." },
@@ -84,6 +86,16 @@ export const LevelDetailView: React.FC<{ currentUser: Profile }> = ({ currentUse
         if (levelId === '4') {
             return <TraineeDashboard currentUser={currentUser} />;
         }
+        if (levelId === '1') {
+            return (
+                <div className="container mx-auto p-4 sm:p-6 lg:p-8">
+                    <BackButton to={`/batch/${batchId}`} text="Back to Batch Dashboard" />
+                    <h1 className="text-3xl font-bold mb-2">{level.name}</h1>
+                    <p className="text-gray-500 dark:text-gray-400 mb-8">{level.description}</p>
+                    <Level1TraineeView batchId={batchId!} currentUser={currentUser} />
+                </div>
+            );
+        }
         // For other levels, a trainee might have a different view in the future
         return (
              <div className="container mx-auto p-4 sm:p-6 lg:p-8">
@@ -109,6 +121,11 @@ export const LevelDetailView: React.FC<{ currentUser: Profile }> = ({ currentUse
                 <>
                     {levelId === '4' ? (
                         <ManagerDashboard currentUser={currentUser} />
+                    ) : levelId === '1' ? (
+                        <Level1ManagerView 
+                            batchId={batchId!} 
+                            participants={participants} 
+                        />
                     ) : (
                         <LevelPlaceholder levelId={levelId} participants={participants} />
                     )}
