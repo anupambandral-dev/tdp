@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../../supabaseClient';
-import { Profile, SessionWithAttendance, SessionAttendance, BatchParticipantWithProfile, SessionFile } from '../../types';
+import { SessionWithAttendance, SessionAttendance, BatchParticipantWithProfile, SessionFile } from '../../types';
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { PlusIcon, TrashIcon, EditIcon, FileIcon, LinkIcon, XIcon } from 'lucide-react';
