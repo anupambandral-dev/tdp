@@ -158,3 +158,38 @@ export type QuizWithSubmission = Quiz & {
 export type QuizSubmissionWithProfile = QuizSubmission & {
     profiles: Profile | null;
 };
+
+export interface SessionFile {
+    name: string;
+    url: string;
+    type: 'file' | 'link';
+}
+
+export interface Session {
+    id: string;
+    batch_id: string;
+    name: string;
+    details: string | null;
+    session_date: string;
+    start_time: string;
+    end_time: string;
+    files: SessionFile[];
+    pst_details: string | null;
+    created_at: string;
+    created_by: string | null;
+}
+
+export interface SessionAttendance {
+    id: string;
+    session_id: string;
+    participant_id: string;
+    is_present: boolean;
+    session_score: number;
+    pst_score: number;
+    comments: string | null;
+    created_at: string;
+}
+
+export type SessionWithAttendance = Session & {
+    session_attendance: SessionAttendance[];
+};
