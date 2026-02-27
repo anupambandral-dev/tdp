@@ -1,11 +1,12 @@
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams } from 'react-router-dom';
 import { v4 as uuidv4 } from 'uuid';
 import { supabase } from '../../supabaseClient';
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { BackButton } from '../../components/ui/BackButton';
-import { Profile, ResultEvaluation, SubmittedResult, SubChallenge, Submission, Evaluation, EvaluationRules, SubmissionWithProfile, SubChallengeWithSubmissions, Json, EvaluationResultTier, OverallChallenge, ResultType, Role, ResultTier, ReportEvaluationParameter } from '../../types';
+import { Profile, ResultEvaluation, SubmittedResult, SubmissionWithProfile, SubChallengeWithSubmissions, Json, EvaluationResultTier, OverallChallenge, ResultType, ResultTier, ReportEvaluationParameter, Evaluation, EvaluationRules } from '../../types';
+import { usePersistentState } from '../../hooks/usePersistentState';
 
 const normalizeResultValue = (value: string, type: SubmittedResult['type']): string => {
     let normalized = value.trim().toLowerCase();
@@ -140,7 +141,7 @@ const TierSubmissionsView: React.FC<{ tier: ResultTier; submissions: SubmissionW
                         <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
                             {tierResults.map((result, index) => (
                                 <tr key={index}>
-                                    <td className="px-6 py-4 whitespace-pre-wrap font-mono text-sm">{result.value}</td>
+                                    <td className="px-6 py-4 whitespace-pre-wrap font-mono text-sm break-all">{result.value}</td>
                                     <td className="px-6 py-4 whitespace-nowrap">{result.profile?.name || 'Unknown'}</td>
                                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
                                         {new Date(result.submittedAt).toLocaleString()}
@@ -173,27 +174,26 @@ const TrashIcon = () => (
 
 export const EvaluateSubmission: React.FC<EvaluateSubmissionProps> = ({ currentUser }) => {
     const { batchId, challengeId } = useParams<{ batchId: string; challengeId: string }>();
-    const navigate = useNavigate();
     const [challenge, setChallenge] = useState<SubChallengeForEvaluation | null>(null);
     const [loading, setLoading] = useState(true);
 
     const [selectedTraineeId, setSelectedTraineeId] = useState<string | null>(null);
     const [activeTab, setActiveTab] = useState<ActiveTab>('evaluate');
     
+    const storageKey = `eval-draft-${challengeId}-${selectedTraineeId || 'none'}`;
+
+    // Form state with persistence
+    const [resultEvals, setResultEvals] = usePersistentState<ResultEvaluation[]>(`${storageKey}-results`, []);
+    const [reportParams, setReportParams] = usePersistentState<ReportEvaluationParameter[]>(`${storageKey}-report`, []);
+    const [feedback, setFeedback] = usePersistentState<string>(`${storageKey}-feedback`, '');
+    
     // Derived state for the selected submission
     const selectedSubmission = useMemo(() => {
         return challenge?.submissions?.find(s => s.trainee_id === selectedTraineeId);
     }, [challenge, selectedTraineeId]);
     
-    // Form state
-    const [resultEvals, setResultEvals] = useState<ResultEvaluation[]>([]);
-    const [reportParams, setReportParams] = useState<ReportEvaluationParameter[]>([]);
-    const [feedback, setFeedback] = useState<string>('');
     const [reportUrl, setReportUrl] = useState<string | null>(null);
 
-    // State to track saved data for change detection
-    const [savedEvaluation, setSavedEvaluation] = useState<Evaluation | null>(null);
-    
     // Loading/submitting states
     const [isSaving, setIsSaving] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -256,84 +256,78 @@ export const EvaluateSubmission: React.FC<EvaluateSubmissionProps> = ({ currentU
     // Effect to reset form when selected trainee changes
     useEffect(() => {
         if (!selectedSubmission || !selectedTraineeId) {
-            // Clear form if no submission is selected
-            setResultEvals([]);
-            setReportParams([]);
-            setFeedback('');
-            setSavedEvaluation(null);
             setReportUrl(null);
             return;
         };
 
-        const submittedResults = (selectedSubmission.results as unknown as SubmittedResult[]) || [];
-        const existingEval = selectedSubmission.evaluation as unknown as Evaluation | null;
+        // Check if we already have persisted data for this trainee
+        const savedResults = localStorage.getItem(`${storageKey}-results`);
+        
+        // If we don't have saved data, initialize from existing submission
+        if (!savedResults) {
+            const submittedResults = (selectedSubmission.results as unknown as SubmittedResult[]) || [];
+            const existingEval = selectedSubmission.evaluation as unknown as Evaluation | null;
 
-        // Create a full list of evaluations, ensuring one for each submitted result.
-        const initialEvals = submittedResults.map(result => {
-            const existing = existingEval?.result_evaluations.find(re => re.result_id === result.id);
+            // Create a full list of evaluations, ensuring one for each submitted result.
+            const initialEvals = submittedResults.map(result => {
+                const existing = existingEval?.result_evaluations.find(re => re.result_id === result.id);
 
-            let scoreOverride: number | null = existing?.score_override ?? null;
-            let overrideReason: string = existing?.override_reason || '';
+                let scoreOverride: number | null = existing?.score_override ?? null;
+                let overrideReason: string = existing?.override_reason || '';
 
-            // Auto-set override for duplicates if this is a new evaluation
-            if (!existing) {
-                const duplicatesInfo = allResultsMap.get(normalizeResultValue(result.value, result.type));
-                const isDuplicate = duplicatesInfo && duplicatesInfo.length > 1;
-                const isFirst = isDuplicate && duplicatesInfo[0].traineeId === selectedTraineeId;
-                if (isDuplicate && !isFirst) {
-                    scoreOverride = 0;
-                    overrideReason = `Duplicate. First submitted by ${duplicatesInfo[0].profile?.name}.`;
+                // Auto-set override for duplicates if this is a new evaluation
+                if (!existing) {
+                    const duplicatesInfo = allResultsMap.get(normalizeResultValue(result.value, result.type));
+                    const isDuplicate = duplicatesInfo && duplicatesInfo.length > 1;
+                    const isFirst = isDuplicate && duplicatesInfo[0].traineeId === selectedTraineeId;
+                    if (isDuplicate && !isFirst) {
+                        scoreOverride = 0;
+                        overrideReason = `Duplicate. First submitted by ${duplicatesInfo[0].profile?.name}.`;
+                    }
+                }
+
+                return {
+                    result_id: result.id,
+                    evaluator_tier: existing?.evaluator_tier || EvaluationResultTier.TIER_3,
+                    score_override: scoreOverride,
+                    override_reason: overrideReason
+                };
+            });
+            
+            setResultEvals(initialEvals);
+
+            const rules = challenge?.evaluation_rules as unknown as EvaluationRules;
+            const initialReportParams: ReportEvaluationParameter[] = [];
+
+            if (rules?.report.enabled) {
+                // Use existing detailed evaluation if present and not empty
+                if (existingEval?.report_evaluation && existingEval.report_evaluation.length > 0) {
+                    initialReportParams.push(...existingEval.report_evaluation);
+                } 
+                // Handle backward compatibility for old single-score reports
+                else if (existingEval?.report_score != null) {
+                    initialReportParams.push({ id: uuidv4(), parameter: 'Overall Score', score: existingEval.report_score });
+                } 
+                // For a completely new evaluation, pre-populate with default parameters
+                else if (!existingEval) {
+                    const defaultParams = ["Bibliography", "Claim charts", "Strings", "Thought Process"];
+                    defaultParams.forEach(param => {
+                        initialReportParams.push({
+                            id: uuidv4(),
+                            parameter: param,
+                            score: 0
+                        });
+                    });
                 }
             }
-
-            return {
-                result_id: result.id,
-                evaluator_tier: existing?.evaluator_tier || EvaluationResultTier.TIER_3,
-                score_override: scoreOverride,
-                override_reason: overrideReason
-            };
-        });
-        
-        setResultEvals(initialEvals);
-
-        const rules = challenge?.evaluation_rules as unknown as EvaluationRules;
-        const initialReportParams: ReportEvaluationParameter[] = [];
-
-        if (rules?.report.enabled) {
-            // Use existing detailed evaluation if present and not empty
-            if (existingEval?.report_evaluation && existingEval.report_evaluation.length > 0) {
-                initialReportParams.push(...existingEval.report_evaluation);
-            } 
-            // Handle backward compatibility for old single-score reports
-            else if (existingEval?.report_score != null) {
-                initialReportParams.push({ id: uuidv4(), parameter: 'Overall Score', score: existingEval.report_score });
-            } 
-            // For a completely new evaluation, pre-populate with default parameters
-            else if (!existingEval) {
-                const defaultParams = ["Bibliography", "Claim charts", "Strings", "Thought Process"];
-                defaultParams.forEach(param => {
-                    initialReportParams.push({
-                        id: uuidv4(),
-                        parameter: param,
-                        score: 0
-                    });
-                });
-            }
+            
+            setReportParams(initialReportParams);
+            setFeedback(existingEval?.feedback ?? '');
+        } else {
+            // If we have saved data, we still need to set the baseline for change detection
+            // based on what's in the DB, not what's in localStorage
+            // const existingEval = selectedSubmission.evaluation as unknown as Evaluation | null;
         }
-        
-        setReportParams(initialReportParams);
-        
-        setFeedback(existingEval?.feedback ?? '');
-
-        // Set the baseline for change detection
-        const baselineEval: Evaluation = {
-            evaluator_id: currentUser.id,
-            result_evaluations: initialEvals,
-            report_evaluation: initialReportParams,
-            feedback: existingEval?.feedback ?? '',
-            evaluated_at: new Date().toISOString(),
-        };
-        setSavedEvaluation(baselineEval);
         
         // Fetch report URL
         const fetchUrl = async () => {
@@ -348,7 +342,7 @@ export const EvaluateSubmission: React.FC<EvaluateSubmissionProps> = ({ currentU
         };
         fetchUrl();
 
-    }, [selectedSubmission, currentUser.id, allResultsMap, selectedTraineeId, challenge]);
+    }, [selectedSubmission, currentUser.id, allResultsMap, selectedTraineeId, challenge, storageKey]);
 
     const handleSave = async (isFinalSubmit: boolean = false) => {
         if (!selectedSubmission || !challenge) return;
@@ -386,7 +380,11 @@ export const EvaluateSubmission: React.FC<EvaluateSubmissionProps> = ({ currentU
         if (updateError) {
             setError(`Failed to save: ${updateError.message}`);
         } else {
-            setSavedEvaluation(newEvaluation); // Update baseline
+            // Clear local storage after successful save
+            localStorage.removeItem(`${storageKey}-results`);
+            localStorage.removeItem(`${storageKey}-report`);
+            localStorage.removeItem(`${storageKey}-feedback`);
+            
             if (!isFinalSubmit) {
                 setSuccess('Evaluation progress saved!');
                 setTimeout(() => setSuccess(null), 3000);
@@ -527,7 +525,7 @@ export const EvaluateSubmission: React.FC<EvaluateSubmissionProps> = ({ currentU
                                                 return (
                                                 <div key={result.id} className="p-3 mb-2 bg-gray-50 dark:bg-gray-800 rounded-lg space-y-3">
                                                     <div>
-                                                        <p className="font-mono text-sm">{result.value}</p>
+                                                        <p className="font-mono text-sm break-words">{result.value}</p>
                                                         {isDuplicate && (
                                                             <p className={`text-xs font-semibold ${isFirstSubmitter ? 'text-green-600 dark:text-green-400' : 'text-orange-500 dark:text-orange-400'}`}>
                                                                 {isFirstSubmitter 
