@@ -7,6 +7,7 @@ import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { BackButton } from '../../components/ui/BackButton';
 import { TablesInsert } from '../../database.types';
+import { usePersistentState } from '../../hooks/usePersistentState';
 
 interface CreateQuizProps {
     currentUser: Profile;
@@ -35,73 +36,30 @@ export const CreateQuiz: React.FC<CreateQuizProps> = ({ currentUser }) => {
 
     const [activeTab, setActiveTab] = useState<'general' | 'questions'>('general');
     
-    // Initialize state directly from localStorage to avoid race conditions
-    const [title, setTitle] = useState(() => {
-        return localStorage.getItem(`${storageKey}-title`) || '';
-    });
-    
-    const [questions, setQuestions] = useState<TempQuestion[]>(() => {
-        const saved = localStorage.getItem(`${storageKey}-questions`);
-        if (saved) {
-            try {
-                const parsed = JSON.parse(saved);
-                return Array.isArray(parsed) ? parsed : [];
-            } catch (e) {
-                return [];
-            }
-        }
-        return [];
-    });
+    const [title, setTitle] = usePersistentState<string>(`${storageKey}-title`, '');
+    const [questions, setQuestions] = usePersistentState<TempQuestion[]>(`${storageKey}-questions`, []);
 
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [saveStatus, setSaveStatus] = useState<'saved' | 'saving' | 'idle'>('idle');
-    const isInitialMount = React.useRef(true);
 
-    // Save to localStorage on change (debounced)
+    // Show saving status when title or questions change
+    const prevTitle = React.useRef(title);
+    const prevQuestions = React.useRef(questions);
+
     useEffect(() => {
-        if (isInitialMount.current) {
-            isInitialMount.current = false;
-            return;
+        if (prevTitle.current !== title || prevQuestions.current !== questions) {
+            setSaveStatus('saving');
+            const timeout = setTimeout(() => {
+                setSaveStatus('saved');
+                const statusTimeout = setTimeout(() => setSaveStatus('idle'), 2000);
+                return () => clearTimeout(statusTimeout);
+            }, 500);
+            prevTitle.current = title;
+            prevQuestions.current = questions;
+            return () => clearTimeout(timeout);
         }
-
-        setSaveStatus('saving');
-        const timeout = setTimeout(() => {
-            localStorage.setItem(`${storageKey}-title`, title);
-            localStorage.setItem(`${storageKey}-questions`, JSON.stringify(questions));
-            setSaveStatus('saved');
-            
-            const statusTimeout = setTimeout(() => setSaveStatus('idle'), 2000);
-            return () => clearTimeout(statusTimeout);
-        }, 500);
-
-        return () => clearTimeout(timeout);
-    }, [title, questions, storageKey]);
-
-    // Extra persistence on tab switch/close
-    useEffect(() => {
-        const handleVisibilityChange = () => {
-            if (document.visibilityState === 'hidden' && storageKey) {
-                localStorage.setItem(`${storageKey}-title`, title);
-                localStorage.setItem(`${storageKey}-questions`, JSON.stringify(questions));
-            }
-        };
-
-        const handleBeforeUnload = (_e: BeforeUnloadEvent) => {
-            if ((title.trim() || questions.length > 0) && storageKey) {
-                localStorage.setItem(`${storageKey}-title`, title);
-                localStorage.setItem(`${storageKey}-questions`, JSON.stringify(questions));
-            }
-        };
-
-        document.addEventListener('visibilitychange', handleVisibilityChange);
-        window.addEventListener('beforeunload', handleBeforeUnload);
-        
-        return () => {
-            document.removeEventListener('visibilitychange', handleVisibilityChange);
-            window.removeEventListener('beforeunload', handleBeforeUnload);
-        };
-    }, [title, questions, storageKey]);
+    }, [title, questions]);
 
     const clearDraft = () => {
         localStorage.removeItem(`${storageKey}-title`);
