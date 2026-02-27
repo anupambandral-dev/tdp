@@ -6,8 +6,8 @@ import { BackButton } from '../../components/ui/BackButton';
 import { Card } from '../../components/ui/Card';
 import { ManagerDashboard } from '../manager/ManagerDashboard';
 import { TraineeDashboard } from '../trainee/TraineeDashboard';
-import { Level1ManagerView } from './Level1ManagerView';
 import { Level1TraineeView } from './Level1TraineeView';
+import { Level1ManagerView } from './Level1ManagerView';
 
 const levelData: { [key: string]: { name: string; description: string } } = {
     "1": { name: "Level 1: Sessions & Tasks", description: "Manage training sessions and evaluate post-session tasks." },
