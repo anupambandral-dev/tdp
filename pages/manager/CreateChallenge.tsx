@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { Profile, Role } from '../../types';
+import { usePersistentState } from '../../hooks/usePersistentState';
 import { supabase } from '../../supabaseClient';
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
@@ -14,10 +15,13 @@ interface CreateChallengeProps {
 export const CreateChallenge: React.FC<CreateChallengeProps> = ({ currentUser }) => {
     const { batchId } = useParams<{ batchId: string }>();
     const navigate = useNavigate();
-    const [challengeName, setChallengeName] = useState('');
+    
+    const storageKey = `create-challenge-draft-${batchId}-${currentUser?.id || 'anon'}`;
+
+    const [challengeName, setChallengeName] = usePersistentState<string>(`${storageKey}-name`, '');
     const [allProfiles, setAllProfiles] = useState<Profile[]>([]);
-    const [selectedTraineeIds, setSelectedTraineeIds] = useState<string[]>([]);
-    const [selectedManagerIds, setSelectedManagerIds] = useState<string[]>([currentUser.id]);
+    const [selectedTraineeIds, setSelectedTraineeIds] = usePersistentState<string[]>(`${storageKey}-trainees`, []);
+    const [selectedManagerIds, setSelectedManagerIds] = usePersistentState<string[]>(`${storageKey}-managers`, [currentUser.id]);
     const [traineeSearchTerm, setTraineeSearchTerm] = useState('');
     const [managerSearchTerm, setManagerSearchTerm] = useState('');
     const [loading, setLoading] = useState(true);
@@ -85,6 +89,10 @@ export const CreateChallenge: React.FC<CreateChallengeProps> = ({ currentUser })
             setLoading(false);
         } else {
             alert('New challenge created successfully!');
+            // Clear local storage after successful creation
+            localStorage.removeItem(`${storageKey}-name`);
+            localStorage.removeItem(`${storageKey}-trainees`);
+            localStorage.removeItem(`${storageKey}-managers`);
             navigate(`/batch/${batchId}/level/4/manager`);
         }
     };
