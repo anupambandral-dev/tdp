@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../../supabaseClient';
 import { Profile, BatchParticipantWithProfile } from '../../types';
+import { usePersistentState } from '../../hooks/usePersistentState';
 import { Button } from '../../components/ui/Button';
-import { TablesInsert } from '../../database.types';
 
 interface ManageParticipantsModalProps {
     batchId: string;
@@ -17,8 +17,9 @@ const TrashIcon = () => (
 
 
 export const ManageParticipantsModal: React.FC<ManageParticipantsModalProps> = ({ batchId, existingParticipants, onClose, onSave }) => {
+    const storageKey = `manage-participants-draft-${batchId}`;
     const [allProfiles, setAllProfiles] = useState<Profile[]>([]);
-    const [participants, setParticipants] = useState<BatchParticipantWithProfile[]>(existingParticipants);
+    const [participants, setParticipants] = usePersistentState<BatchParticipantWithProfile[]>(storageKey, existingParticipants);
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
@@ -110,6 +111,8 @@ export const ManageParticipantsModal: React.FC<ManageParticipantsModalProps> = (
         if (errorResult) {
             alert(`Error saving changes: ${errorResult.error?.message}`);
         } else {
+            // Clear local storage after successful save
+            localStorage.removeItem(storageKey);
             onSave();
         }
         setSaving(false);
