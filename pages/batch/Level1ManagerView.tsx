@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../../supabaseClient';
 import { SessionWithAttendance, SessionAttendance, BatchParticipantWithProfile, SessionFile } from '../../types';
+import { usePersistentState } from '../../hooks/usePersistentState';
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { PlusIcon, TrashIcon, EditIcon, FileIcon, LinkIcon, XIcon } from 'lucide-react';
@@ -135,8 +136,9 @@ const SessionDetailView: React.FC<{
     participants: BatchParticipantWithProfile[];
     onUpdate: () => void;
 }> = ({ session, participants, onUpdate }) => {
+    const storageKey = `session-attendance-draft-${session.id}`;
     const [activeTab, setActiveTab] = useState<'attendance' | 'files' | 'pst'>('attendance');
-    const [attendanceData, setAttendanceData] = useState<Record<string, Partial<SessionAttendance>>>(() => {
+    const [attendanceData, setAttendanceData] = usePersistentState<Record<string, Partial<SessionAttendance>>>(storageKey, () => {
         const initial: Record<string, Partial<SessionAttendance>> = {};
         participants.forEach(p => {
             const existing = session.session_attendance.find(a => a.participant_id === p.participant_id);
@@ -158,24 +160,28 @@ const SessionDetailView: React.FC<{
     const [saving, setSaving] = useState(false);
 
     useEffect(() => {
-        const initial: Record<string, Partial<SessionAttendance>> = {};
-        participants.forEach(p => {
-            const existing = session.session_attendance.find(a => a.participant_id === p.participant_id);
-            if (existing) {
-                initial[p.participant_id] = existing;
-            } else {
-                initial[p.participant_id] = {
-                    session_id: session.id,
-                    participant_id: p.participant_id,
-                    is_present: false,
-                    session_score: 0,
-                    pst_score: 0,
-                    comments: ''
-                };
-            }
-        });
-        setAttendanceData(initial);
-    }, [session, participants]);
+        // Only reset if we don't have saved data for THIS session
+        const saved = localStorage.getItem(storageKey);
+        if (!saved) {
+            const initial: Record<string, Partial<SessionAttendance>> = {};
+            participants.forEach(p => {
+                const existing = session.session_attendance.find(a => a.participant_id === p.participant_id);
+                if (existing) {
+                    initial[p.participant_id] = existing;
+                } else {
+                    initial[p.participant_id] = {
+                        session_id: session.id,
+                        participant_id: p.participant_id,
+                        is_present: false,
+                        session_score: 0,
+                        pst_score: 0,
+                        comments: ''
+                    };
+                }
+            });
+            setAttendanceData(initial);
+        }
+    }, [session, participants, storageKey]);
 
     const handleAttendanceChange = (participantId: string, field: keyof SessionAttendance, value: any) => {
         setAttendanceData(prev => ({
@@ -198,6 +204,8 @@ const SessionDetailView: React.FC<{
         if (error) {
             alert(error.message);
         } else {
+            // Clear local storage after successful save
+            localStorage.removeItem(storageKey);
             onUpdate();
         }
         setSaving(false);
@@ -354,7 +362,8 @@ const SessionModal: React.FC<{
     onClose: () => void;
     onSave: () => void;
 }> = ({ batchId, session, onClose, onSave }) => {
-    const [formData, setFormData] = useState({
+    const storageKey = `session-modal-draft-${batchId}-${session?.id || 'new'}`;
+    const [formData, setFormData] = usePersistentState(`${storageKey}`, {
         name: session?.name || '',
         details: session?.details || '',
         session_date: session?.session_date || new Date().toISOString().split('T')[0],
@@ -407,6 +416,8 @@ const SessionModal: React.FC<{
         if (error) {
             alert(error.message);
         } else {
+            // Clear local storage after successful save
+            localStorage.removeItem(storageKey);
             onSave();
         }
         setLoading(false);
