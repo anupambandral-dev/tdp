@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '../../supabaseClient';
 import { Profile, Quiz, QuizQuestion, QuizOption, QuizStatusEnum, QuizAnswer, Json } from '../../types';
+import { usePersistentState } from '../../hooks/usePersistentState';
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 
@@ -12,21 +13,30 @@ interface TakeQuizProps {
 export const TakeQuiz: React.FC<TakeQuizProps> = ({ currentUser }) => {
     const { batchId, quizId } = useParams<{ batchId: string; quizId: string }>();
     const navigate = useNavigate();
+    
+    const storageKey = `take-quiz-${quizId}-${currentUser.id}`;
 
     const [quiz, setQuiz] = useState<Quiz | null>(null);
     const [questions, setQuestions] = useState<QuizQuestion[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
-    const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
-    const [selectedOptionId, setSelectedOptionId] = useState<string | null>(null);
-    const [answers, setAnswers] = useState<QuizAnswer[]>([]);
+    const [currentQuestionIndex, setCurrentQuestionIndex] = usePersistentState<number>(`${storageKey}-index`, 0);
+    const [selectedOptionId, setSelectedOptionId] = usePersistentState<string | null>(`${storageKey}-selected`, null);
+    const [answers, setAnswers] = usePersistentState<QuizAnswer[]>(`${storageKey}-answers`, []);
     const [isSubmitting, setIsSubmitting] = useState(false);
     
-    // Randomize questions once on load
+    // Persist randomized questions to keep order stable
+    const [persistedRandomizedQuestions, setPersistedRandomizedQuestions] = usePersistentState<QuizQuestion[]>(`${storageKey}-order`, []);
+
     const randomizedQuestions = useMemo(() => {
-        return [...questions].sort(() => Math.random() - 0.5);
-    }, [questions]);
+        if (persistedRandomizedQuestions.length > 0) return persistedRandomizedQuestions;
+        if (questions.length === 0) return [];
+        
+        const randomized = [...questions].sort(() => Math.random() - 0.5);
+        setPersistedRandomizedQuestions(randomized);
+        return randomized;
+    }, [questions, persistedRandomizedQuestions]);
 
     useEffect(() => {
         const fetchQuiz = async () => {
@@ -110,6 +120,12 @@ export const TakeQuiz: React.FC<TakeQuizProps> = ({ currentUser }) => {
             setError(`Failed to submit quiz: ${error.message}`);
             setIsSubmitting(false);
         } else {
+            // Clear persistent state on success
+            localStorage.removeItem(`${storageKey}-index`);
+            localStorage.removeItem(`${storageKey}-selected`);
+            localStorage.removeItem(`${storageKey}-answers`);
+            localStorage.removeItem(`${storageKey}-order`);
+            
             // Submission successful, redirect to dashboard but show success first if possible
             // For now, we'll just navigate back to the quiz dashboard
             navigate(`/batch/${batchId}/quiz`);
