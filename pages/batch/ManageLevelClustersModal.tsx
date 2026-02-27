@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../../supabaseClient';
 import { BatchParticipantWithProfile } from '../../types';
+import { usePersistentState } from '../../hooks/usePersistentState';
 import { Button } from '../../components/ui/Button';
 import { TablesInsert } from '../../database.types';
 
@@ -22,7 +23,8 @@ interface ManageLevelClustersModalProps {
 const clusterOptions = ['N/A', 'Cluster A', 'Cluster B', 'Cluster C', 'Cluster D'];
 
 export const ManageLevelClustersModal: React.FC<ManageLevelClustersModalProps> = ({ batchId, levelId, participants, onClose, onSave }) => {
-    const [updates, setUpdates] = useState<ParticipantUpdate[]>([]);
+    const storageKey = `manage-clusters-draft-${batchId}-${levelId}`;
+    const [updates, setUpdates] = usePersistentState<ParticipantUpdate[]>(storageKey, []);
     const [saving, setSaving] = useState(false);
     
     // The keys for the database columns based on levelId
@@ -31,14 +33,17 @@ export const ManageLevelClustersModal: React.FC<ManageLevelClustersModalProps> =
     const levelName = levelId === 'overall' ? 'Overall' : `Level ${levelId}`;
 
     useEffect(() => {
-        // Initialize the local state with current data from props
-        const initialUpdates = participants.map(p => ({
-            participant_id: p.participant_id,
-            cluster: p[clusterKey as keyof typeof p] as string | null,
-            comments: p[commentsKey as keyof typeof p] as string | null,
-        }));
-        setUpdates(initialUpdates);
-    }, [participants, clusterKey, commentsKey]);
+        // Only initialize if we don't have saved data
+        const saved = localStorage.getItem(storageKey);
+        if (!saved) {
+            const initialUpdates = participants.map(p => ({
+                participant_id: p.participant_id,
+                cluster: p[clusterKey as keyof typeof p] as string | null,
+                comments: p[commentsKey as keyof typeof p] as string | null,
+            }));
+            setUpdates(initialUpdates);
+        }
+    }, [participants, clusterKey, commentsKey, storageKey]);
 
     const handleUpdate = (participantId: string, field: 'cluster' | 'comments', value: string | null) => {
         setUpdates(prevUpdates =>
@@ -66,6 +71,8 @@ export const ManageLevelClustersModal: React.FC<ManageLevelClustersModalProps> =
         if (error) {
             alert(`Error saving changes: ${error.message}`);
         } else {
+            // Clear local storage after successful save
+            localStorage.removeItem(storageKey);
             onSave();
         }
         setSaving(false);
