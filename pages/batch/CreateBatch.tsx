@@ -5,6 +5,7 @@ import { Profile } from '../../types';
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { BackButton } from '../../components/ui/BackButton';
+import { usePersistentState } from '../../hooks/usePersistentState';
 
 interface CreateBatchProps {
     currentUser: Profile;
@@ -16,9 +17,12 @@ const TrashIcon = () => (
 
 export const CreateBatch: React.FC<CreateBatchProps> = ({ currentUser }) => {
     const navigate = useNavigate();
-    const [batchName, setBatchName] = useState('');
+    const storageKey = `create-batch-draft-${currentUser?.id || 'anon'}`;
+    
+    const [batchName, setBatchName] = usePersistentState<string>(`${storageKey}-name`, '');
+    const [selectedParticipants, setSelectedParticipants] = usePersistentState<Profile[]>(`${storageKey}-participants`, []);
+    
     const [allProfiles, setAllProfiles] = useState<Profile[]>([]);
-    const [selectedParticipants, setSelectedParticipants] = useState<Profile[]>([]);
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
@@ -96,6 +100,8 @@ export const CreateBatch: React.FC<CreateBatchProps> = ({ currentUser }) => {
         }
 
         // Step 3: Success, navigate to the new batch dashboard
+        localStorage.removeItem(`${storageKey}-name`);
+        localStorage.removeItem(`${storageKey}-participants`);
         navigate(`/batch/${newBatch.id}`);
     };
 
