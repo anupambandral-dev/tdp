@@ -1,11 +1,12 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams } from 'react-router-dom';
 import { v4 as uuidv4 } from 'uuid';
 import { supabase } from '../../supabaseClient';
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { BackButton } from '../../components/ui/BackButton';
 import { SubmittedResult, ResultType, ResultTier, Profile, Submission, SubChallenge, OverallChallenge, Json, EvaluationRules } from '../../types';
+import { usePersistentState } from '../../hooks/usePersistentState';
 
 interface SubmitChallengeProps {
     currentUser: Profile;
@@ -13,16 +14,17 @@ interface SubmitChallengeProps {
 
 export const SubmitChallenge: React.FC<SubmitChallengeProps> = ({ currentUser }) => {
     const { batchId, challengeId: subChallengeId } = useParams<{ batchId: string; challengeId: string }>();
-    const navigate = useNavigate();
 
     const [subChallenge, setSubChallenge] = useState<SubChallenge | null>(null);
     const [overallChallenge, setOverallChallenge] = useState<OverallChallenge | null>(null);
     const [existingSubmission, setExistingSubmission] = useState<Submission | null>(null);
 
+    const storageKey = `submit-challenge-draft-${subChallengeId}-${currentUser?.id || 'anon'}`;
+
     const [results, setResults] = useState<SubmittedResult[]>([]);
-    const [newResultValue, setNewResultValue] = useState('');
-    const [newResultType, setNewResultType] = useState<ResultType>(ResultType.PATENT);
-    const [newResultTier, setNewResultTier] = useState<ResultTier>(ResultTier.TIER_1);
+    const [newResultValue, setNewResultValue] = usePersistentState<string>(`${storageKey}-value`, '');
+    const [newResultType, setNewResultType] = usePersistentState<ResultType>(`${storageKey}-type`, ResultType.PATENT);
+    const [newResultTier, setNewResultTier] = usePersistentState<ResultTier>(`${storageKey}-tier`, ResultTier.TIER_1);
     
     const [reportFile, setReportFile] = useState<File | null>(null);
     const [existingReportName, setExistingReportName] = useState<string | null>(null);
@@ -201,6 +203,8 @@ export const SubmitChallenge: React.FC<SubmitChallengeProps> = ({ currentUser })
         } else {
             setSuccessMessage('Result submitted successfully!');
             setNewResultValue('');
+            // Clear local storage for the value after successful submission
+            localStorage.removeItem(`${storageKey}-value`);
             await fetchSubmission();
             setTimeout(() => setSuccessMessage(null), 3000);
         }
