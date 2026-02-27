@@ -2,33 +2,37 @@
 
 
 import React, { useState, useEffect } from 'react';
-import { useParams, Link, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '../../supabaseClient';
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { BackButton } from '../../components/ui/BackButton';
 import { EvaluationRules, ResultTier, IncorrectMarking, OverallChallenge, Json, Profile, Role, ResultType } from '../../types';
-import { TablesInsert, TablesUpdate } from '../../database.types';
+import { usePersistentState } from '../../hooks/usePersistentState';
+import { TablesInsert } from '../../database.types';
 import { RichTextInput } from '../../components/ui/RichTextInput';
 
 export const CreateSubChallenge: React.FC = () => {
     const { batchId, challengeId } = useParams<{ batchId: string, challengeId: string }>();
     const navigate = useNavigate();
+    
+    const storageKey = `create-subchallenge-draft-${challengeId}`;
+
     const [overallChallenge, setOverallChallenge] = useState<OverallChallenge | null>(null);
     const [loading, setLoading] = useState(true);
 
     const [allProfiles, setAllProfiles] = useState<Profile[]>([]);
-    const [selectedEvaluatorIds, setSelectedEvaluatorIds] = useState<string[]>([]);
+    const [selectedEvaluatorIds, setSelectedEvaluatorIds] = usePersistentState<string[]>(`${storageKey}-evaluators`, []);
     const [searchTerm, setSearchTerm] = useState('');
 
-    const [title, setTitle] = useState('');
-    const [patentNumber, setPatentNumber] = useState('');
-    const [summary, setSummary] = useState('');
-    const [claimFocus, setClaimFocus] = useState('');
-    const [submissionEndTime, setSubmissionEndTime] = useState('');
-    const [reportEndTime, setReportEndTime] = useState('');
-    const [submissionLimit, setSubmissionLimit] = useState<number | string>(6);
-    const [rules, setRules] = useState<EvaluationRules>({
+    const [title, setTitle] = usePersistentState<string>(`${storageKey}-title`, '');
+    const [patentNumber, setPatentNumber] = usePersistentState<string>(`${storageKey}-patent`, '');
+    const [summary, setSummary] = usePersistentState<string>(`${storageKey}-summary`, '');
+    const [claimFocus, setClaimFocus] = usePersistentState<string>(`${storageKey}-claim`, '');
+    const [submissionEndTime, setSubmissionEndTime] = usePersistentState<string>(`${storageKey}-sub-end`, '');
+    const [reportEndTime, setReportEndTime] = usePersistentState<string>(`${storageKey}-report-end`, '');
+    const [submissionLimit, setSubmissionLimit] = usePersistentState<number | string>(`${storageKey}-sub-limit`, 6);
+    const [rules, setRules] = usePersistentState<EvaluationRules>(`${storageKey}-rules`, {
         tierScores: {
             [ResultType.PATENT]: {
                 [ResultTier.TIER_1]: 20,
@@ -149,6 +153,16 @@ export const CreateSubChallenge: React.FC = () => {
             alert(`Error creating sub-challenge: ${error.message}`);
         } else {
             alert('New sub-challenge created!');
+            // Clear local storage after successful creation
+            localStorage.removeItem(`${storageKey}-evaluators`);
+            localStorage.removeItem(`${storageKey}-title`);
+            localStorage.removeItem(`${storageKey}-patent`);
+            localStorage.removeItem(`${storageKey}-summary`);
+            localStorage.removeItem(`${storageKey}-claim`);
+            localStorage.removeItem(`${storageKey}-sub-end`);
+            localStorage.removeItem(`${storageKey}-report-end`);
+            localStorage.removeItem(`${storageKey}-sub-limit`);
+            localStorage.removeItem(`${storageKey}-rules`);
             navigate(`/batch/${batchId}/level/4/challenge/${challengeId}`);
         }
         setLoading(false);
